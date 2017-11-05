@@ -1,0 +1,79 @@
+Done
+b empty: using B = 0.2
+n empty: using N = 4
+d empty: using D = 0.4
+[32mRunning with: 4 1. 0.2 0.4(B[m
+
+ nn =   10
+ i  =   10
+ j  =   10
+ *** END SDIAG ***
+
+real	0m0.025s
+user	0m0.000s
+sys	0m0.010s
+Done
+b empty: using B = 0.2
+d empty: using D = 0.4
+[32mRunning with: 20 1. 0.2 0.4(B[m
+
+ nn =  210
+ i  =  210
+ j  =  210
+ *** END SDIAG ***
+
+real	0m0.164s
+user	0m0.047s
+sys	0m0.060s
+Done
+d empty: using D = 0.4
+[32mRunning with: 90 1. 0.4 0.4(B[m
+Note: The following floating-point exceptions are signalling: IEEE_UNDERFLOW_FLAG IEEE_DENORMAL
+
+ nn = 4095
+ i  = 4095
+ j  = 4095
+ *** END SDIAG ***
+
+real	19m29.506s
+user	18m58.537s
+sys	0m9.030s
+Done
+b empty: using B = 0.2
+d empty: using D = 0.4
+[32mRunning with: 30 1. 0.2 0.4(B[m
+
+ nn =  465
+ i  =  465
+ j  =  465
+ *** END SDIAG ***
+
+real	0m0.728s
+user	0m0.377s
+sys	0m0.200s
+Done
+[32mRunning with: 10 1. 0 0(B[m
+
+ nn =   55
+ i  =   55
+ j  =   55
+ *** END SDIAG ***
+
+real	0m0.069s
+user	0m0.000s
+sys	0m0.063s
+Done
+b empty: using B = 0.2
+d empty: using D = 0.4
+[32mRunning with: 60 1. 0.2 0.4(B[m
+Note: The following floating-point exceptions are signalling: IEEE_UNDERFLOW_FLAG IEEE_DENORMAL
+
+ nn = 1830
+ i  = 1830
+ j  = 1830
+ *** END SDIAG ***
+
+real	0m47.205s
+user	0m44.641s
+sys	0m0.156s
+Done

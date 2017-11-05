@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+a=1.
+
+red=`tput setaf 1`
+green=`tput setaf 2`
+yellow=`tput setaf 3`
+reset=`tput sgr0`
+
+function run() {
+  echo "${green}Running with: $arg${reset}"
+  # go to the specified directory
+  dest_dir="../Output/B$b D$d N$n"
+  # check if folder exists
+  if [ ! -d "$dest_dir" ]; then
+    echo "${red}"$dest_dir" not found${reset}"
+    return
+  fi
+  cd "$dest_dir"
+  # LaTeX files
+  hamilt_file="results B$b D$d N$n.tex"
+
+  # check if files exist
+  if [ ! -f "$hamilt_file" ]; then
+    echo "${red}"$hamilt_file" not found${reset}"
+    cd ../../Scripts
+    return
+  fi
+  echo "${yellow}Compiling $hamilt_file${reset}"
+  pdflatex "$hamilt_file"
+
+  # return to Scripts directory
+  cd ../../Scripts
+}
+
+
+for i in "$@"
+do
+case $i in
+    -b=*)
+    b_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    -d=*)
+    d_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    -n=*)
+    n_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+done
+if [ -z "$b_list" ]; then
+  echo "b empty: using B = 0.2"
+  b_list=0.2
+fi
+if [ -z "$n_list" ]; then
+  echo "n empty: using N = 4"
+  n_list=4
+fi
+if [ -z "$d_list" ]; then
+  echo "d empty: using D = 0.4"
+  d_list=0.4
+fi
+for b in $b_list; do
+  for d in $d_list; do
+    for n in $n_list; do
+      arg="$n $a $b $d"
+      run
+    done
+  done
+done

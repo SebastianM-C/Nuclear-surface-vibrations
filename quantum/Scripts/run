@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+a=1.
+
+red=`tput setaf 1`
+green=`tput setaf 2`
+yellow=`tput setaf 3`
+reset=`tput sgr0`
+
+function run() {
+  ./clean
+  echo "${green}Running with: $arg${reset}"
+  # sync input
+  echo "$arg" > ../Source/Fortran/Hamiltonian/hamilt.inp
+  cd ../Bin
+  echo "$arg" > hamilt.inp
+  time ./hamilt
+  # save output
+  dest_dir="../Output/B$b D$d N$n"
+  if [ ! -d "$dest_dir" ]; then
+    mkdir -p "$dest_dir"
+  fi
+  cp hamilt.bin "$dest_dir"/hamilt.bin
+  # return to Scripts directory
+  cd ../Scripts
+}
+
+for i in "$@"
+do
+case $i in
+    -b=*)
+    b_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    -d=*)
+    d_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    -n=*)
+    n_list="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+done
+if [ -z "$b_list" ]; then
+  echo "b empty: using B = 0.2" >> log
+  b_list=0.2
+fi
+if [ -z "$n_list" ]; then
+  echo "n empty: using N = 4" >> log
+  n_list=4
+fi
+if [ -z "$d_list" ]; then
+  echo "d empty: using D = 0.4" >> log
+  d_list=0.4
+fi
+for b in $b_list; do
+  for d in $d_list; do
+    for n in $n_list; do
+      arg="$n $a $b $d"
+      run >> log 2>&1
+    done
+  done
+done
+echo "Done" >> log

@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+function copy() {
+  cd ../Output/
+
+  if [ "$1" == "landau" ] && [ "$2" == "local" ]; then
+   rsync -aHSvs -e 'ssh -p 26' --progress \
+   "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.pdf" "$3"
+   rsync -aHSvs -e 'ssh -p 26' --progress \
+   "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.txt" "$3"
+    rsync -aHSvs -e 'ssh -p 26' --progress \
+    "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.dat" "$3"
+  fi
+
+  if [ "$1" == "dirac" ] && [ "$2" == "local" ]; then
+    rsync -aHSvs --progress \
+    "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.pdf" "$3"
+    rsync -aHSvs --progress \
+    "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.txt" "$3"
+  fi
+
+  if [ "$1" == "mahler" ] && [ "$2" == "local" ]; then
+  #  rsync -aHSvs -e 'ssh -p 22125' --progress \
+  #  "marius@localhost:singularity/Bachelor-Thesis/Output/$3/*.pdf" "$3"
+  #  rsync -aHSvs -e 'ssh -p 22125' --progress \
+  #  "marius@localhost:singularity/Bachelor-Thesis/Output/$3/*.txt" "$3"
+    rsync -aHSvs -e 'ssh -p 22125' --progress \
+    "marius@localhost:singularity/Bachelor-Thesis/Output/$3/*.dat" "$3"
+  fi
+
+  if [ "$1" == "fermi" ] && [ "$2" == "local" ]; then
+   rsync -aHSvs -e 'ssh -p 23' --progress \
+   "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.pdf" "$3"
+  #  rsync -aHSvs -e 'ssh -p 23' --progress \
+  #  "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.txt" "$3"
+    rsync -aHSvs -e 'ssh -p 23' --progress \
+    "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/$3/*.dat" "$3"
+  fi
+
+  if [ "$1" == "landau" ] && [ "$2" == "dirac" ]; then
+    rsync -aHSvs --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "landau" ] && [ "$2" == "mahler" ]; then
+    rsync -aHSvs -e 'ssh -p 22125' --progress --bwlimit=0 \
+    "$3" "marius@localhost:singularity/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "dirac" ] && [ "$2" == "landau" ]; then
+    rsync -aHSvs -e 'ssh -p 26' --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "dirac" ] && [ "$2" == "mahler" ]; then
+    rsync -aHSvs -e 'ssh -p 22125' --progress --bwlimit=0 \
+    "$3" "marius@localhost:singularity/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "dirac" ] && [ "$2" == "fermi" ]; then
+    rsync -aHSvs -e 'ssh -p 23' --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "mahler" ] && [ "$2" == "landau" ]; then
+    rsync -aHSvs -e 'ssh -p 26' --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "mahler" ] && [ "$2" == "dirac" ]; then
+    rsync -aHSvs --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "fermi" ] && [ "$2" == "dirac" ]; then
+    rsync -aHSvs --progress --bwlimit=0 \
+    "$3" "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Output/"
+  fi
+
+  if [ "$1" == "local" ] && [ "$2" == "mahler" ]; then
+    cd ../Scripts
+    rsync -aHSvs -e 'ssh -p 22125' --progress --bwlimit=0 \
+    $3 "marius@localhost:singularity/Bachelor-Thesis/Scripts/"
+  fi
+
+  if [ "$1" == "local" ] && [ "$2" == "landau" ]; then
+    cd ../../Scripts
+    rsync -aHSvs -e 'ssh -p 26' --progress --bwlimit=0 \
+    $3 "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Scripts/"
+  fi
+
+  if [ "$1" == "local" ] && [ "$2" == "dirac" ]; then
+    cd ../Scripts
+    rsync -aHSvs --progress --bwlimit=0 \
+    $3 "virgil@fpcm1.fizica.unibuc.ro:sebastian2017/Bachelor-Thesis/Scripts/"
+  fi
+}
+
+if [[ $# -eq 3 ]]; then
+  copy "$1" "$2" "$3"
+elif [[ $# -gt 3 ]]; then
+  for (( i = 3; i <= "$#"; i++ )); do
+    copy "$1" "$2" "${!i}"
+  done
+fi
