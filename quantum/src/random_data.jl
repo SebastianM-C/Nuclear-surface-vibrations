@@ -1,43 +1,49 @@
 #!/usr/bin/env julia
 module RandomData
 include("regions.jl")
+include("dataio.jl")
 
-using Plots, StatPlots, LaTeXStrings
 using StatsBase, Distributions
 using LsqFit, NLsolve
 
-using .Regions
+using .Regions, .DataIO
 
-export fit_α, η, PoissonWigner, Rayleigh, Exponential, plot_dist
+export fit_α, η, PoissonWigner, Rayleigh, Exponential, α_range
 
-pgfplots()
+wigner(s) = π / 2 * s * exp(-π / 4 * s^2)
+poisson(s) = exp(-s)
+model(s, α) = @. α[1] * poisson(s) + (1 - α[1]) * wigner(s)
 
-function plot_P(bars, bin_size, dist::Distribution)
-    label = "Random data: "*
-        L"$\alpha = "*"$(fit_α(bars, bin_size).param[1]),"*
-        L"\,\eta\ = "*"$(η(bars))"*L"$"
-    plt = histogram(bins=collect(0:bin_size:4),
-        bars, framestyle=:box, normed=true, xlims=(0., 4.), ylims=(0., 1.),
-        xlabel=L"$s$", ylabel=L"$P(s)$", label=label);
-    if typeof(dist) <: PoissonWigner
-        plot!(plt, linspace(0, 4, 100), pdf.(PoissonWigner(dist.α),
-            linspace(0, 4, 100)), label="Probability distribution function")
-    else
-        plot!(plt, dist, label="Probability distribution function")
-    end
-    return plt
+# function fit_α(s::AbstractVector{<:Number}, bin_size)
+#     ws = weights(ones(s) / (float(length(s)) * bin_size))
+#     hist = fit(Histogram, s, ws, 0:bin_size:4, closed=:left)
+#     nbins = Int(4 / bin_size)
+#     x_data = linspace(0 + bin_size / 2, 4 - bin_size / 2, nbins)
+#     y_data = hist.weights
+#     p0 = rand(1,)
+#     c_fit = curve_fit(model, x_data, y_data, ones(nbins), p0;
+#         lower=[0.], upper=[1.])
+#     return c_fit
+# end
+
+function hist_P(data, bin_size)
+    ws = @. weights(ones(data) / (3 * length(data) * bin_size))
+    hists = [fit(Histogram, d, w, 0:bin_size:4, closed=:left)
+        for (d, w) in zip(data, ws)]
 end
 
-function fit_α(s::AbstractVector, bin_size)
-    wigner(s) = π / 2 * s * exp(-π / 4 * s^2)
-    poisson(s) = exp(-s)
-    model(s, α) = @. α[1] * poisson(s) + (1 - α[1]) * wigner(s)
+function fit_α(Γ::NTuple{N, AbstractArray{<:Number}}, bin_size) where {N}
+    fit_α(hist_P(Γ, bin_size), bin_size)
+end
 
-    ws = weights(ones(s) / (float(length(s)) * bin_size))
-    hist = fit(Histogram, s, ws, 0:bin_size:4, closed=:left)
+function fit_α(Γs::NTuple{N, AbstractArray{<:AbstractArray}}, bin_size) where {N}
+    [fit_α(Γ_regs_i(Γs, i), bin_size) for i in 1:length(Γs[1])]
+end
+
+function fit_α(hists::AbstractVector, bin_size)
     nbins = Int(4 / bin_size)
     x_data = linspace(0 + bin_size / 2, 4 - bin_size / 2, nbins)
-    y_data = hist.weights
+    y_data = sum(h.weights for h in hists)
     p0 = rand(1,)
     c_fit = curve_fit(model, x_data, y_data, ones(nbins), p0;
         lower=[0.], upper=[1.])
@@ -49,6 +55,14 @@ function η(s)
     σ_W = 4 / π - 1
     σ_P = 1
     (σ - σ_W) / (σ_P - σ_W)
+end
+
+function η(Γ::NTuple{N, AbstractArray{<:Number}}) where {N}
+    sum(length.(Γ) .* η.(Γ)) / sum(length.(Γ))
+end
+
+function η(Γs::NTuple{N, AbstractArray{<:AbstractArray}}) where {N}
+    [η(Γ_regs_i(Γs, i)) for i in 1:length(Γs[1])]
 end
 
 
@@ -80,20 +94,44 @@ function Distributions.pdf(d::PoissonWigner{T}, x::Real) where T<:Real
 	d.α * exp(-x) + (1 - d.α) * π / 2 * x * exp(- π / 4 * (x^2))
 end
 
-function _plot_dist(bin_size, distribution, spacings, fname)
-    plt = plot_P(spacings, bin_size, distribution)
-    savefig(plt, fname)
+function α_range(target_αs, N, bin_size, slices)
+    αs = Array{eltype(target_αs)}(length(target_αs), 1)
+    ηs = zeros(αs)
+
+    for (idx, target_α) in enumerate(target_αs)
+        spacings = rand(PoissonWigner(target_α), N)
+        ηs[idx, 1] = η(spacings)
+        αs[idx, 1] = fit_α(spacings, bin_size).param[1]
+
+        sp_regions = regions(spacings, slices)
+        for i in 1:slices
+            ηs[idx, 1+i] = η(sp_regions[i])
+            αs[idx, 1+i] = fit_α(sp_regions[i], bin_size).param[1]
+        end
+    end
+
+    return αs, ηs
 end
 
-function plot_dist(prefix, bin_size, slices, N, distribution, name)
-    spacings = rand(distribution, N)
-    sp_regions = regions(spacings, slices)
-    _plot_dist(bin_size, distribution, spacings, "$prefix/"*name*"_$N.pdf")
+function α_range(target_αs, N, bin_size)
+    αs = Array{eltype(target_αs)}(0)
+    ηs = zeros(αs)
 
-    for i in 1:slices
-        _plot_dist(bin_size, distribution, sp_regions[i],
-            "$prefix/"*name*"_$N-slice$i.pdf")
+    for (idx, target_α) in enumerate(target_αs)
+        spacings = rand(PoissonWigner(target_α), N)
+        push!(ηs, η(spacings))
+        push!(αs, fit_α(spacings, bin_size).param[1])
     end
+
+    return αs, ηs
+end
+
+function rand_spacings(Γ_regs::NTuple{N, AbstractArray{<:AbstractArray}}, f, αs) where {N}
+    ntuple(i->rand_spacings(Γ_regs[i], f, αs), length(Γ_regs))
+end
+
+function rand_spacings(Γ_regs::AbstractArray{<:AbstractArray}, f, αs)
+    [rand(PoissonWigner(α), f * length(Γ)) for (α, Γ) in zip(αs, Γ_regs)]
 end
 
 end  # module RandomData
