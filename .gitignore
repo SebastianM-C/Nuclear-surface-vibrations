@@ -1,6 +1,7 @@
 singularity/
 *output/
 *notebooks/
+calssical/src/parameters
 quantum/Statistics
 *__pycache__*
 *.ipynb_checkpoints
