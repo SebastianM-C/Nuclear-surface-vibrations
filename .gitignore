@@ -1,7 +1,6 @@
 singularity/
-classical/output
-classical/notebooks
-quantum/Output
+*output/
+*notebooks/
 quantum/Statistics
 *__pycache__*
 *.ipynb_checkpoints
