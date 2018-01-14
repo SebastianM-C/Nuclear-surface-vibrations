@@ -46,7 +46,7 @@ def main(B, D, N, max_energy=[0], energy_plot=False, small_plot=False):
 
     ax.set_xlabel('$\\alpha$')
     ax.set_ylabel('$\\eta$')
-    fig.savefig('../../../Statistics/correlation_B[' +
+    fig.savefig('../../Statistics/correlation_B[' +
                 ', '.join('{:.2}' for i in B).format(*B) +
                 ']_N' + str(N) + '.pdf', dpi=400)
 

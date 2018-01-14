@@ -30,7 +30,7 @@ def b_plot(B, d, n_i, max_e, ax, msize, marker):
             cd(b, d, n_i)
             rep = np.loadtxt(r + '.dat', usecols=(0,))
             values.append(compute_eta(rep[rep < max_e] if max_e else rep))
-            os.chdir('../../../Scripts')
+            os.chdir('../../Scripts')
         # Plot the results
         ax.plot(B, values, linestyle='', label=rnames[r], markersize=msize,
                 marker=marker)
@@ -53,7 +53,7 @@ def e_plot(b_i, d, n_i, max_energy, ax, msize, marker):
         ax.plot(max_energy, values, linestyle='',
                 label=r'$B=' + str(b_i) + r'$, ' + rnames[r],
                 markersize=msize, marker=marker)
-    os.chdir('../../../Scripts')
+    os.chdir('../../Scripts')
 
 
 def main(B, D, N, max_energy=[0], energy_plot=False, small_plot=False):

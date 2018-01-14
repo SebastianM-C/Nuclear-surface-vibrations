@@ -94,7 +94,7 @@ def main(b, d, n, delta_n, st_epsilon, lvl_epsilon, reselect=True, cut=0,
               figsize=(5.8, 3.7))
     # Version
     with open('version.txt', 'w') as f:
-        f.write('1.4.2')
+        f.write('1.5.0')
     os.chdir("../../Scripts")
 
 

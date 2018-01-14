@@ -8,7 +8,7 @@ from tools import find, get_input
 
 
 def main(B, D, N):
-    files = find('avg_sp.txt', '../Output')
+    files = find('avg_sp.txt', '../output')
     fig, ax = plt.subplots(figsize=(5.8, 4))
     msize = 8
     for n_i in N:

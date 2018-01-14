@@ -17,7 +17,7 @@ def get_input(path=''):
 
 def exists(b, d, n):
     """Check if the folder specified by the given parameters exists"""
-    return os.path.isdir("../Output/Quantum/B" +
+    return os.path.isdir("../output/B" +
                          str(b) + " D" + str(d) + " N" + str(n))
 
 
@@ -46,13 +46,13 @@ def cd(b, d, n):
             # print('Already there:', os.getcwd())
             return
         else:
-            os.chdir("../../../Scripts")
+            os.chdir("../../Scripts")
             # print('Went back to Scripts')
     except AttributeError as e:
         pass
     # The script should be in the Scripts directory
     if exists(b, d, n):
-        os.chdir('../Output/Quantum/B' + str(b) + ' D' + str(d) + ' N' + str(n))
+        os.chdir('../output/B' + str(b) + ' D' + str(d) + ' N' + str(n))
         # print('Succes: ', os.getcwd())
     else:
         print('The specified directory does not exist!\n',

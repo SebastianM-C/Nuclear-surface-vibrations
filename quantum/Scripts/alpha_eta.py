@@ -25,7 +25,7 @@ def main(B, D, N, max_energy=[0], energy_plot=False, small_plot=False):
         marks = itertools.cycle(symblols[:len(max_energy)])
 
     # alpha
-    files = find('alpha*.txt', '../Output/Quantum/')
+    files = find('alpha*.txt', '../output')
     msize = 8
     for n_i in N:
         if energy_plot:
