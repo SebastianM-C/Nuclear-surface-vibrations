@@ -31,7 +31,7 @@ function fit_α(Γ::NTuple{N, AbstractArray{<:Number}}, bin_size) where {N}
 end
 
 function fit_α(Γs::NTuple{N, AbstractArray{<:AbstractArray}}, bin_size) where {N}
-    [fit_α(Γ_regs_i(Γs, i), bin_size) for i in 1:size(Γs[1], 1)]
+    [fit_α(Γ_regs_i(Γs, i), bin_size) for i in 1:length(Γs[1])]
 end
 
 function fit_α(hists::AbstractVector, bin_size)

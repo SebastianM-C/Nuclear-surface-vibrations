@@ -39,20 +39,7 @@ function input_param()
 end
 
 function main(target_αs, N, bin_size, slices, name)
-    αs = Array{eltype(target_αs)}(length(target_αs), 4)
-    ηs = zeros(αs)
-
-    for (idx, target_α) in enumerate(target_αs)
-        spacings = rand(PoissonWigner(target_α), N)
-        ηs[idx, 1] = η(spacings)
-        αs[idx, 1] = fit_α(spacings, bin_size).param[1]
-
-        sp_regions = regions(spacings, slices)
-        for i in 1:slices
-            ηs[idx, 1+i] = η(sp_regions[i])
-            αs[idx, 1+i] = fit_α(sp_regions[i], bin_size).param[1]
-        end
-    end
+    αs, ηs = α_range(target_αs, N, bin_size, slices)
 
     plt = scatter(ηs[:,1], αs[:,1], aspect_ratio=1, framestyle=:box,
         xlabel=L"\eta", ylabel=L"\alpha", legend=:none)
@@ -67,7 +54,7 @@ end
 function main()
     N, m, bin_size, slices = input_param()
     target_αs = linspace(0, 1, m)
-    prefix = "../Output/random_data/"
+    prefix = "../output/random_data/"
     for n in N
         name = "$prefix/alpha(eta)_N$n-$m-points"
         main(target_αs, n, bin_size, slices, name)

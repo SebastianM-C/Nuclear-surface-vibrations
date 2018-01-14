@@ -90,7 +90,7 @@ function main()
 
     for δᵢ in δ
         for b in B
-            prefix = "../Output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
+            prefix = "../output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
             main(prefix, ΔE)
         end
     end

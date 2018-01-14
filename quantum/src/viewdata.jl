@@ -26,12 +26,12 @@ function main(prefix, bin_size, slices)
     η_s = [line[2][2] for line in data]
     η_b = [line[2][3] for line in data]
     η_avg = [line[3] for line in data]
-    γ1_a = [line[4][1] for line in data]
-    γ1_s = [line[4][2] for line in data]
-    γ1_b = [line[4][3] for line in data]
-    kurt_a = [line[5][1] for line in data]
-    kurt_s = [line[5][2] for line in data]
-    kurt_b = [line[5][3] for line in data]
+    γ1_a = [line[6][1] for line in data]
+    γ1_s = [line[6][2] for line in data]
+    γ1_b = [line[6][3] for line in data]
+    kurt_a = [line[7][1] for line in data]
+    kurt_s = [line[7][2] for line in data]
+    kurt_b = [line[7][3] for line in data]
     E₁_a = getE(Γ_regs, 1, 1)
     E₁_s = getE(Γ_regs, 2, 1)
     E₁_b = getE(Γ_regs, 3, 1)
@@ -71,7 +71,7 @@ function main()
 
     for δᵢ in δ
         for b in B
-            prefix = "../Output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
+            prefix = "../output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
             main(prefix, bin_size, slices)
         end
     end

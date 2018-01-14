@@ -8,6 +8,8 @@ include("input.jl")
 include("regions.jl")
 include("dataio.jl")
 include("statistics.jl")
+include("random_data.jl")
+
 using Regions, DataIO, Statistics
 
 function plot_P(hists, bin_size)
@@ -48,10 +50,26 @@ function main(prefix, bin_size, slices)
     αs = [α.param[1] for α in fit_α(Γ_regs, bin_size)]
     ηs = [η.(Γ_regs_i(Γ_regs, i)) for i=1:length(Γ_regs[1])]
     avg_ηs = η(Γ_regs)
-    γ1 = [skewness.(Γ_regs_i(Γ_regs, i)) for i=1:length(Γ_regs[1])]
-    kurt = [kurtosis.(Γ_regs_i(Γ_regs, i)) for i=1:length(Γ_regs[1])]
+    γ1 = [skewness.(rel_spacing.(Γ_regs_i(Γ_regs, i))) for i=1:length(Γ_regs[1])]
+    kurt = [kurtosis.(rel_spacing.(Γ_regs_i(Γ_regs, i))) for i=1:length(Γ_regs[1])]
 
-    add(prefix, Γ_regs, αs, ηs, avg_ηs, γ1, kurt)
+    f = 100
+    # Errors computed from random data
+    # The errors for `α` and `η` are given by the standard deviation
+    # of the values taken by `α` and `η` on the `f` corresponding
+    # ensambles of random values
+    rand_regs = RandomData.rand_spacings(Γ_regs, f, αs)
+    ε_αs = Vector{eltype(αs)}(length(Γ_regs[1]))
+    ε_ηs = Vector{eltype(αs)}(length(Γ_regs[1]))
+    for i=1:length(Γ_regs[1])
+        ensambles = regions(Γ_regs_i(rand_regs, i), f)
+        rand_αs = [α.param[1] for α in RandomData.fit_α(ensambles, bin_size)]
+        rand_ηs = RandomData.η(ensambles)
+        ε_αs[i] = std(rand_αs)
+        ε_ηs[i] = std(rand_ηs)
+    end
+
+    add(prefix, Γ_regs, αs, ηs, avg_ηs, ε_αs, ε_ηs, γ1, kurt)
 
     for i=1:length(Γ_regs[1])
         plt = plot_P_fit(Γ_regs_i(Γ_regs, i), bin_size)
@@ -64,7 +82,7 @@ function main()
 
     for δᵢ in δ
         for b in B
-            prefix = "../Output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
+            prefix = "../output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
             main(prefix, bin_size, slices)
         end
     end

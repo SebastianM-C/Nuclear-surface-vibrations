@@ -23,7 +23,7 @@ function read_Γ(prefix)
             readdlm("$prefix/rebde.dat")[:,1]
 end
 
-function add(prefix, Γ_regs, αs, ηs, avg_ηs, γ1, kurt)
+function add(prefix, Γ_regs, αs, ηs, avg_ηs, ε_αs, ε_ηs, γ1, kurt)
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -31,11 +31,12 @@ function add(prefix, Γ_regs, αs, ηs, avg_ηs, γ1, kurt)
         dict = load("$prefix/stats.jld", "dict")
     else
         dict = Dict{typeof(Γ_key(Γ_regs, 1)),
-            typeof((αs[1], ηs[1], avg_ηs[1], γ1[1], kurt[1]))}()
+            typeof((αs[1], ηs[1], avg_ηs[1], ε_αs[1], ε_ηs[1], γ1[1], kurt[1]))}()
     end
 
     for i=1:length(Γ_regs[1])
-        dict[Γ_key(Γ_regs, i)] = (αs[i], ηs[i], avg_ηs[i], γ1[i], kurt[i])
+        dict[Γ_key(Γ_regs, i)] = (αs[i], ηs[i], avg_ηs[i], ε_αs[i], ε_ηs[i],
+            γ1[i], kurt[i])
     end
 
     save("$prefix/stats.jld", "dict", dict)
