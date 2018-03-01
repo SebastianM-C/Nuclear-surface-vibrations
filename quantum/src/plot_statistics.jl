@@ -4,11 +4,11 @@ using StatsBase
 # pyplot()
 pgfplots()
 
-include("input.jl")
-include("regions.jl")
-include("dataio.jl")
-include("statistics.jl")
-include("random_data.jl")
+include("$(pwd())/input.jl")
+include("$(pwd())/regions.jl")
+include("$(pwd())/dataio.jl")
+include("$(pwd())/statistics.jl")
+include("$(pwd())/random_data.jl")
 
 using Regions, DataIO, Statistics
 
@@ -73,7 +73,8 @@ function main(prefix, bin_size, slices)
 
     for i=1:length(Γ_regs[1])
         plt = plot_P_fit(Γ_regs_i(Γ_regs, i), bin_size)
-        savefig(plt, "$prefix/P(s)_$(Γ_regs_idx(Γ_regs, i)).pdf")
+        # savefig(plt, "$prefix/P(s)_$(Γ_regs_idx(Γ_regs, i)).pdf")
+        savefig(plt, "$prefix/P(s)_$(Γ_regs_idx(Γ_regs, i)).tex")
     end
 end
 

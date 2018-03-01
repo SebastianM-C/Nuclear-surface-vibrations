@@ -97,9 +97,9 @@ function createMap(defProb, q0list, p0list, tspan, solver, axis, sgn, H, E;
         progress_info="Progress: ", plot_kwargs=Dict(:markersize=>0.5))
     @assert size(q0list, 1) == size(p0list, 1) "q0 and p0 have different sizes!"
     if axis == 1        # q₀ == 0
-        plt = plot(xaxis=L"$q_2$", yaxis=L"$p_2$");
+        plt = plot(xaxis=L"$q_2$", yaxis=L"$p_2$", framestyle=:box);
     elseif axis == 2    # q₂ == 0
-        plt = plot(xaxis=L"$q_0$", yaxis=L"$p_0$");
+        plt = plot(xaxis=L"$q_0$", yaxis=L"$p_0$", framestyle=:box);
     else
         error("Invalid axis value $axis !")
     end

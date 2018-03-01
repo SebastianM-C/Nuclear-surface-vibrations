@@ -130,7 +130,8 @@ function main()
                 error("No configuration for $plot_type")
             end
         end
-        savefig(plt, "$prefix/poincare_$plot_type-ax$axis-t_$(tspan[2])_sgn$sgn.pdf");
+        # savefig(plt, "$prefix/poincare_$plot_type-ax$axis-t_$(tspan[2])_sgn$sgn.pdf");
+        savefig(plt, "$prefix/poincare_$plot_type-ax$axis-t_$(tspan[2])_sgn$sgn.tex");
     end
 
     prog_m = Progress(size(E_list, 1), "Energy list: ")

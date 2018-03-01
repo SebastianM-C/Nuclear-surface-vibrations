@@ -32,7 +32,7 @@ function main()
 
         # Plots setup
         plt1 = plot(xlabel=L"$B$", ylabel=L"$\alpha$", framestyle=:box,
-            xlims=(0.2, 0.8), ylims=(0., 1.))
+            xlims=(0.4, 0.8), ylims=(0., 1.))
         plt2 = plot(xlabel=L"$B$", ylabel=L"$\eta$", framestyle=:box,
             xlims=(0.2, 0.8), ylims=(0., 1.))
         plt3 = plot(xlabel=L"$\eta$", ylabel=L"$\alpha$", framestyle=:box,
@@ -50,7 +50,8 @@ function main()
         if !isdir(prefix)
             mkpath(prefix)
         end
-        savefig(plt1, "$prefix/alpha_$slices.pdf")
+        # savefig(plt1, "$prefix/alpha_$slices.pdf")
+        savefig(plt1, "$prefix/alpha_$slices.tex")
         savefig(plt2, "$prefix/eta_$slices.pdf")
         savefig(plt3, "$prefix/alpha_eta_$slices.pdf")
     end
