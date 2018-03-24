@@ -113,7 +113,8 @@ function main()
                     return nothing
                 end
                 plt = createMap(defProb, q0list[regular,:], p0list[regular,:],
-                    tspan, solver, axis, sgn, H, E, progress_info="Regular: ")
+                    tspan, solver, axis, sgn, H, E, progress_info="Regular: ",
+                    plot_kwargs=Dict(:markersize=>1.2))
                 if size(chaotic, 1) == 0
                     warn("No chaotic trajectories.")
                     return nothing
@@ -125,7 +126,7 @@ function main()
                 #     plot_kwargs=Dict(:markersize=>1, :palette=>:grays))
                 createMap!(plt, defProb, q0list[chaotic,:], p0list[chaotic,:],
                     tspan, solver, axis, sgn, H, E, progress_info="Chaotic: ",
-                    plot_kwargs=Dict(:markersize=>1, :color=>:black))
+                    plot_kwargs=Dict(:markersize=>1.5, :color=>:black))
             else
                 error("No configuration for $plot_type")
             end
