@@ -55,8 +55,8 @@ spacing distributions. The contributions of the 3 irreducible representations
 are summed. The resulting histograms are fitted with a probability distribution
 corresponding to a superposition of a Poisson distribution and a Wigner one
 
-\[
+$$
 P(s) = \alpha P_P(s) + (1-\alpha) P_W(s)
-\]
+$$
 
 and the $\alpha$ coefficient is obtained.  
