@@ -1,4 +1,4 @@
-a_1^\dagger# Fingerprints of global classical phase-space structure in quantum spectra
+# Fingerprints of global classical phase-space structure in quantum spectra
 
 This code reproduces the results of the following article:
 **Fingerprints of global classical phase-space structure in quantum spectra**,
@@ -11,11 +11,11 @@ classical and quantum chaos.
 - The classical mechanics code simulates the dynamics of the nuclear surface
 modeled by the following Hamiltonian:
 
-\[
+$$
 H_{cl} = \frac{A}{2}(p_0^2+p_2^2)+\frac{A}{2}(q_0^2+q_2^2)
 +\frac{B}{\sqrt{2}}q_0(3q_2^2-q_0^2)
 +\frac{D}{4}(q_0^2+q_2^2)^2
-\]
+$$
 
 The equations of motion are numerically integrated in order to build Poincare maps.
 In order to measure the degree of chaos for a given set of parameters at a given energy,
@@ -24,7 +24,7 @@ the maximal Lyapunov exponent is computed for each trajectory.
 - The quantum mechanics code simulates the quantized version of the system by
 diagonalizing the Hamiltonian expressed in the basis of a double harmonic oscillator
 
-\[
+$$
 \begin{split}
   H_B &= A \left( a_1^\dagger a_1 + a_2^\dagger a_2 \right)
     + \frac{B}{4} \bigg[ \left( 3 a_1^\dagger {a_2^\dagger}^2 + 3 a_1 a_2^2
@@ -43,7 +43,7 @@ diagonalizing the Hamiltonian expressed in the basis of a double harmonic oscill
       \right)
                         \bigg].
 \end{split}
-\]
+$$
 
 In order to verify the accuracy of the computed eigenvalues, two different dimensions
 of the basis are taken and only the eigenvalues that are within $\delta$ of each other
