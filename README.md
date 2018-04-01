@@ -5,6 +5,8 @@ This code reproduces the results of the following article:
 *S. Micluta-Campeanu, M.C. Raportaru, A.I. Nicolin, V. Baran*,
 Rom. Rep. Phys. **70**, 105 (2018)
 
+[Note: In order to render LaTeX on GitHub, use https://github.com/orsharir/github-mathjax]
+
 The code is organized in two parts, corresponding to the simulations for
 classical and quantum chaos.
 
@@ -28,16 +30,16 @@ $$
 \begin{split}
   H_B &= A \left( a_1^\dagger a_1 + a_2^\dagger a_2 \right)
     + \frac{B}{4} \bigg[ \left( 3 a_1^\dagger {a_2^\dagger}^2 + 3 a_1 a_2^2
-                               - {a_1^\dagger}^3 - a_1^3 \right)   \\
+                               - {a_1^\dagger}^3 - a_1^3 \right)   \\\\
   &\quad + 3 \left( a_1 {a_2^\dagger}^2 + a_1^\dagger a_2^2 - a_1^\dagger a_1^2 - {a_1^\dagger}^2 a_1
              + 2 a_1 a_2^\dagger a_2 + 2 a_1^\dagger a_2^\dagger a_2
-          \right) \bigg]  \\
+          \right) \bigg]  \\\\
   &\quad + \frac{D}{16} \bigg[ 6 \left( {a_1^\dagger}^2 a_1^2 + {a_2^\dagger}^2 a_2^2 \right)
                         + 2 \left( a_1^2 {a_2^\dagger}^2 + {a_1^\dagger}^2 a_2^2 \right)
-                        + 8 a_1^\dagger a_1 a_2^\dagger a_2  \\
+                        + 8 a_1^\dagger a_1 a_2^\dagger a_2  \\\\
   &\quad + 4 \left(a_1^\dagger a_1^3 + {a_1^\dagger}^3 a_1 + a_2^\dagger a_2^3 + {a_2^\dagger}^3 a_2
      + a_1^2 a_2^\dagger a_2 + {a_1^\dagger}^2 a_2^\dagger a_2 + a_1^\dagger a_1 a_2^2 + a_1^\dagger a_1 {a_2^\dagger}^2
-        \right)  \\
+        \right)  \\\\
   &\quad + \left( {a_1^\dagger}^4 + a_1^4 + {a_2^\dagger}^4 + a_2^4
      + 2 {a_1^\dagger}^2 {a_2^\dagger}^2 + 2 a_1^2 a_2^2
       \right)
