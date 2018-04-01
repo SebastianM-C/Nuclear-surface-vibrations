@@ -1,41 +1,42 @@
 #!/usr/bin/env julia
-using ArgParse
-using PyCall
 
-function input_param()
-    arg_settings = ArgParseSettings()
-    @add_arg_table arg_settings begin
-        "-n"
-            help = "Size of the diagonalization basis"
-            arg_type = Int64
-            default = 120
-        "-a", "-A"
-            help = "Hamiltonian A parameter"
-            arg_type = Float64
-            default = 1.
-        "-b", "-B"
-            help = "Hamiltonian B parameter"
-            arg_type = Float64
-            default = 0.55
-        "-d", "-D"
-            help = "Hamiltonian D parameter"
-            arg_type = Float64
-            default = 0.4
+__precompile__()
 
-    end
-    parsed_args = parse_args(ARGS, arg_settings)
-    n = parsed_args["n"]
-    a = parsed_args["a"]
-    b = parsed_args["b"]
-    d = parsed_args["d"]
+"""
+This module exports a function that generates the Hamiltonian as a
+dense matrix in the basis given by the eigenstates of an isotropic
+double harmonic oscillator.
+```math
+  H = A \\left( a_1^\\dagger a_1 + a_2^\\dagger a_2 \\right)
+  + \\frac{B}{4} \\bigg[ \\left( 3 a_1^\\dagger {a_2^\\dagger}^2 + 3 a_1 a_2^2
+                             - {a_1^\\dagger}^3 - a_1^3 \\right)
+   + 3 \\left( a_1 {a_2^\\dagger}^2 + a_1^\\dagger a_2^2 - a_1^\\dagger a_1^2 - {a_1^\\dagger}^2 a_1
+           + 2 a_1 a_2^\\dagger a_2 + 2 a_1^\\dagger a_2^\\dagger a_2
+        \\right) \\bigg]
+   + \\frac{D}{16} \\bigg[ 6 \\left( {a_1^\\dagger}^2 a_1^2 + {a_2^\\dagger}^2 a_2^2 \\right)
+                      + 2 \\left( a_1^2 {a_2^\\dagger}^2 + {a_1^\\dagger}^2 a_2^2 \\right)
+                      + 8 a_1^\\dagger a_1 a_2^\\dagger a_2
+   + 4 \\left(a_1^\\dagger a_1^3 + {a_1^\\dagger}^3 a_1 + a_2^\\dagger a_2^3 + {a_2^\\dagger}^3 a_2
+   + a_1^2 a_2^\\dagger a_2 + {a_1^\\dagger}^2 a_2^\\dagger a_2 + a_1^\\dagger a_1 a_2^2 + a_1^\\dagger a_1 {a_2^\\dagger}^2
+      \\right)
+   + \\left( {a_1^\\dagger}^4 + a_1^4 + {a_2^\\dagger}^4 + a_2^4
+   + 2 {a_1^\\dagger}^2 {a_2^\\dagger}^2 + 2 a_1^2 a_2^2
+    \\right)
+                      \\bigg].
+```
+"""
+module Hamiltonian
 
-    return n, a, b, d
-end
+export generate_hamiltonian
 
-#    Compute the matrix element on harmonic oscillator states
-#             + k    l
-#    < m | (a )  (a)  | n >
+"""
+    elem(m::Integer, n::Integer, k::Integer, l::Integer)
 
+Compute the matrix element on harmonic oscillator states
+``
+\\langle m | (a^{\\dagger})^k a^l | n \\rangle
+``
+"""
 @inline function elem(m::Integer, n::Integer, k::Integer, l::Integer)
     (m != n - l + k || n < l) && return 0.
 
@@ -52,7 +53,43 @@ end
     return elem
 end
 
-function generate_hamiltonian(n, a, b, d)
+"""
+    generate_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
+
+Generate the Hamiltonian with the given parameters as a dense matrix.
+
+## Arguments
+- `n::Integer`: the dimension of the harmonic oscillator basis
+in one of the directions. The dimension of the basis will be
+``N = \\frac{1}{2}n(n+1)`` and the matrix will have ``N^2`` elements.
+
+## Keyword arguments
+- `a = 1.`:   the Hamiltonian A parameter
+- `b = 0.55`: the Hamiltonian B parameter
+- `d = 0.4`:  the Hamiltonian D parameter
+
+## Examples
+
+```jldoctest
+julia> generate_hamiltonian(3)
+6×6 Array{Float64,2}:
+ 0.0  0.0    0.0        0.0       0.0     0.0
+ 0.0  1.0    0.0        0.0       0.825   0.0
+ 0.0  0.0    2.3        0.583363  0.0     0.1
+ 0.0  0.0    0.583363   1.0       0.0    -0.583363
+ 0.0  0.825  0.0        0.0       2.2     0.0
+ 0.0  0.0    0.1       -0.583363  0.0     2.3
+
+julia> generate_hamiltonian(3, b=0.2)
+6×6 Array{Float64,2}:
+ 0.0  0.0  0.0        0.0       0.0   0.0
+ 0.0  1.0  0.0        0.0       0.3   0.0
+ 0.0  0.0  2.3        0.212132  0.0   0.1
+ 0.0  0.0  0.212132   1.0       0.0  -0.212132
+ 0.0  0.3  0.0        0.0       2.2   0.0
+ 0.0  0.0  0.1       -0.212132  0.0   2.3
+"""
+function generate_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
     N = Int(n * (n + 1) / 2)
     H = Matrix{Float64}(N, N)
     idx = Matrix{Int64}(2, N)
@@ -112,15 +149,4 @@ function generate_hamiltonian(n, a, b, d)
    return H
 end
 
-function main()
-    n, a, b, d = input_param()
-    prefix = "../output/B$b D$d N$n"
-    if !isdir(prefix)
-        mkpath(prefix)
-    end
-    @time H = generate_hamiltonian(n, a, b, d)
-    @pyimport numpy as np
-    np.savez_compressed("$prefix/hamilt.npz", H=H)
-end
-
-main()
+end  # module Hamiltonian
