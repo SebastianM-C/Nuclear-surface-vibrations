@@ -59,18 +59,19 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     H = sparse(generate_hamiltonian(n, a=a, b=b, d=d))
     N = n*(n+1)/2
     nev = Int(floor(f*N))
+    prefix = "../../output/quantum/B$b-D$d-N$n"
     # Use already computed values when available
-    # if isfile("eigensystem.jld")
-    #     info("Loading previously computed values.")
-    #     E, eigv, nconv, niter, nmult, resid = load("eigensystem.jld",
-    #         "E", "eigv", "nconv", "niter", "nmult", "resid", "f")
-    # else
+    if isfile("$prefix/eigensystem.jld")
+        info("Loading previously computed values.")
+        E, eigv, nconv, niter, nmult, resid = load("eigensystem.jld",
+            "E", "eigv", "nconv", "niter", "nmult", "resid", "f")
+    else
         @timeit "Diagonalisation" begin
             E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
         end
-    #     save("eigensystem.jld", "E", E, "eigv", eigv, "nconv", nconv,
-    #         "niter", niter, "nmult", nmult, "resid", resid, "f", f)
-    # end
+        save("$prefix/eigensystem.jld", "E", E, "eigv", eigv, "nconv", nconv,
+            "niter", niter, "nmult", nmult, "resid", resid, "f", f)
+    end
     nconv != f*N && warn("Not all eigenvalues converged.")
     niter >= 300 && warn("Reached maximum number of iterations.")
 
