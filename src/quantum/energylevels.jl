@@ -60,6 +60,8 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     N = n*(n+1)/2
     nev = Int(floor(f*N))
     prefix = "../../output/quantum/B$b-D$d-N$n"
+    if !isdir(prefix)
+        mkpath(prefix)
     # Use already computed values when available
     if isfile("$prefix/eigensystem.jld")
         info("Loading previously computed values.")

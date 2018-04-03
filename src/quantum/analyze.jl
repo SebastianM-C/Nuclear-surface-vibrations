@@ -3,11 +3,7 @@ include("hamiltonian.jl")
 
 using EnergyLevels
 using Hamiltonian
-
 using Plots
-
-nlvl(n,f) = Int(floor(n*(n+1)/2*f))
-nlvl(340,0.05)
 
 n = 340
 f = 0.05
