@@ -1,9 +1,7 @@
-singularity/
-*output/
-*notebooks/
-calssical/src/parameters
-quantum/Statistics
+output/
+notebooks/
 *__pycache__*
 *.ipynb_checkpoints
 *.problems/
 *legacy/
+julia.simg

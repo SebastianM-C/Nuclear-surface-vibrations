@@ -2,8 +2,10 @@
 
 module EnergyLevels
 
+export levels
+
 include("hamiltonian.jl")
-using Hamiltonian
+using .Hamiltonian
 using TimerOutputs
 using JLD
 
@@ -64,8 +66,7 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     #         "E", "eigv", "nconv", "niter", "nmult", "resid", "f")
     # else
         @timeit "Diagonalisation" begin
-            E, eigv, nconv, niter, nmult, resid =
-                eigs(H, nev=nev, which=:SM)
+            E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
         end
     #     save("eigensystem.jld", "E", E, "eigv", eigv, "nconv", nconv,
     #         "niter", niter, "nmult", nmult, "resid", resid, "f", f)
@@ -91,23 +92,10 @@ representations of the ``C_{3v}`` group.
 ## Arguments
 - `E`: energy levels
 - `ket`: the states in the number operator representation
-- `ε`: the
+- `ε`: the maximum difference between two degenerate levels
 """
 function irreducible_reps(E, ket, ε=1e-8)
 
-
 end
-using Plots
-Int(260*261/2)
-E, eigv, max_c_idx, index = levels(260, 0.7)
-plot(eigv2[1:size(eigv,1),908])
-plot(E2[1:length(E)] - E)
-maximum(abs.(E2[1:length(E)] - E))
-E2, eigv2, max_c_idx2, index2 = levels(140, 0.7)
-index[max_c_idx][103]
-E[98:104]
-
-H=sparse(generate_hamiltonian(120))
-heatmap(generate_hamiltonian(65), aspect_ratio=1, clims=(-1,1))
 
 end  # module EnergyLevels
