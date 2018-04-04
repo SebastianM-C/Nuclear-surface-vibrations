@@ -59,9 +59,10 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     H = sparse(generate_hamiltonian(n, a=a, b=b, d=d))
     N = n*(n+1)/2
     nev = Int(floor(f*N))
-    prefix = "../../output/quantum/B$b-D$d-N$n"
+    prefix = "../../output/quantum/N$n-B$b-D$d"
     if !isdir(prefix)
         mkpath(prefix)
+    end
     # Use already computed values when available
     if isfile("$prefix/eigensystem.jld")
         info("Loading previously computed values.")
