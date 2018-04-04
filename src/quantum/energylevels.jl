@@ -56,7 +56,9 @@ where `N = n*(n+1)/2`.
 See also [`generate_hamiltonian`](@ref)
 """
 function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
-    H = sparse(generate_hamiltonian(n, a=a, b=b, d=d))
+    @timeit "Hamiltonian generation for B$b N$n"
+        H = sparse(generate_hamiltonian(n, a=a, b=b, d=d))
+    end
     N = n*(n+1)/2
     nev = Int(floor(f*N))
     prefix = "../../output/quantum/N$n-B$b-D$d"

@@ -6,16 +6,18 @@ using EnergyLevels
 using Plots
 using TimerOutputs
 
-n = 120
-f = 0.1
+list = [(400, 0.1), (420, 0.1), (500, 0.07)]
 
 # N = n*(n+1)/2
 # nev = Int(floor(f*N))
 # @time E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
 
-levels(n, f)
+for (n,f) in list
+    levels(n, f)
+end
 
 print_timer()
+println('\n')
 # maximum(abs.(sort(real(E)) - E2[:values][1:length(E)]))
 # eps(10000.)
 # E2, eigv2, max_c_idx2, index2 = levels(140, 0.7)
