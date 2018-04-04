@@ -68,7 +68,7 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     # Use already computed values when available
     if isfile("$prefix/eigensystem-f$f.jld")
         info("Loading previously computed values.")
-        E, eigv, nconv, niter, nmult, resid = load("$prefix/eigensystem.jld",
+        E, eigv, nconv, niter, nmult, resid = load("$prefix/eigensystem-f$f.jld",
             "E", "eigv", "nconv", "niter", "nmult", "resid")
     else
         label = "Diagonalisation for B$b D$d N$n f$f"
