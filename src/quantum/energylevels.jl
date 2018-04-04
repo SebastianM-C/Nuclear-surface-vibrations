@@ -64,27 +64,46 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
         mkpath(prefix)
     end
     # Use already computed values when available
-    if isfile("$prefix/eigensystem.jld")
+    if isfile("$prefix/eigensystem-f$f.jld")
         info("Loading previously computed values.")
-        E, eigv, nconv, niter, nmult, resid = load("eigensystem.jld",
-            "E", "eigv", "nconv", "niter", "nmult", "resid", "f")
+        E, eigv, nconv, niter, nmult, resid = load("$prefix/eigensystem.jld",
+            "E", "eigv", "nconv", "niter", "nmult", "resid")
     else
-        @timeit "Diagonalisation" begin
+        label = "Diagonalisation for B$b D$d N$n f$f"
+        @timeit label begin
             E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
         end
-        save("$prefix/eigensystem.jld", "E", E, "eigv", eigv, "nconv", nconv,
-            "niter", niter, "nmult", nmult, "resid", resid, "f", f)
+        save("$prefix/eigensystem-f$f.jld", "E", E, "eigv", eigv, "nconv",
+            nconv, "niter", niter, "nmult", nmult, "resid", resid)
+        savepef(prefix, label)
     end
-    nconv != f*N && warn("Not all eigenvalues converged.")
+    nconv != nev && warn("Not all eigenvalues converged.")
     niter >= 300 && warn("Reached maximum number of iterations.")
 
     E, eigv = sortlvl!(E, eigv)
-    max_c_idx = [indmax(abs.(eigv[:,i])) for i=1:nev]
-    index = [(n1, n2) for n1=0:n-1 for n2=0:n-1-n1]
 
-    print_timer()
+    return E, eigv
+end
 
-    return E, eigv, max_c_idx, index
+function saveperf(prefix, label)
+    to = TimerOutputs.DEFAULT_TIMER
+
+    if !isfile("$prefix/raw_perf_data.jld")
+        save("$prefix/raw_perf_data.jld", "label", [label],
+            "t", [TimerOutputs.time(to[label]) / 1e9],
+            # 1 gibibyte (GiB) = 1073741824 bytes (B)
+            "allocated", [TimerOutputs.allocated(to[label]) / 1073741824],
+            "ncalls", [TimerOutputs.ncalls(to[label])])
+    else
+        oldlabel, t, allocated, ncalls = load("$prefix/raw_perf_data.jld",
+            "label", "t", "allocated", "ncalls")
+        save("$prefix/raw_perf_data.jld", "label", push!(oldlabel, label),
+            "t", push!(t, TimerOutputs.time(to[label]) / 1e9),
+            # 1 gibibyte (GiB) = 1073741824 bytes (B)
+            "allocated", push!(allocated,
+                TimerOutputs.allocated(to[label]) / 1073741824),
+            "ncalls", push!(ncalls, TimerOutputs.ncalls(to[label])))
+    end
 end
 
 """
