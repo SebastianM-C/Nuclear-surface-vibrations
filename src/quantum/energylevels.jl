@@ -75,7 +75,7 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
         end
         save("$prefix/eigensystem-f$f.jld", "E", E, "eigv", eigv, "nconv",
             nconv, "niter", niter, "nmult", nmult, "resid", resid)
-        savepef(prefix, label)
+        saveperf(prefix, label)
     end
     nconv != nev && warn("Not all eigenvalues converged.")
     niter >= 300 && warn("Reached maximum number of iterations.")
