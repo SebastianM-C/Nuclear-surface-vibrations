@@ -53,14 +53,9 @@ where `N = n*(n+1)/2`.
 - `b = 0.55`: the Hamiltonian B parameter
 - `d = 0.4`:  the Hamiltonian D parameter
 
-See also [`generate_hamiltonian`](@ref)
+See also [`compute_hamiltonian`](@ref)
 """
 function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
-    @timeit "Hamiltonian generation for B$b N$n" begin
-        H = sparse(generate_hamiltonian(n, a=a, b=b, d=d))
-    end
-    N = n*(n+1)/2
-    nev = Int(floor(f*N))
     prefix = "../../output/quantum/N$n-B$b-D$d"
     if !isdir(prefix)
         mkpath(prefix)
@@ -68,9 +63,14 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     # Use already computed values when available
     if isfile("$prefix/eigensystem-f$f.jld")
         info("Loading previously computed values.")
-        E, eigv, nconv, niter, nmult, resid = load("$prefix/eigensystem-f$f.jld",
-            "E", "eigv", "nconv", "niter", "nmult", "resid")
+        E, eigv, nconv, niter = load("$prefix/eigensystem-f$f.jld",
+            "E", "eigv", "nconv", "niter")
     else
+        @timeit "Hamiltonian computation for B$b N$n" begin
+            H = compute_hamiltonian(n, a=a, b=b, d=d)
+        end
+        N = n*(n+1)/2
+        nev = Int(floor(f*N))
         label = "Diagonalisation for B$b D$d N$n f$f"
         @timeit label begin
             E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)

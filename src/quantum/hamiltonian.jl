@@ -27,7 +27,7 @@ double harmonic oscillator.
 """
 module Hamiltonian
 
-export generate_hamiltonian
+export compute_hamiltonian
 
 """
     elem(m::Integer, n::Integer, k::Integer, l::Integer)
@@ -54,9 +54,9 @@ Compute the matrix element on harmonic oscillator states
 end
 
 """
-    generate_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
+    compute_dense_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
 
-Generate the Hamiltonian with the given parameters as a dense matrix.
+Compute the Hamiltonian with the given parameters as a dense matrix.
 
 ## Arguments
 - `n::Integer`: the dimension of the harmonic oscillator basis
@@ -71,7 +71,7 @@ in one of the directions. The dimension of the basis will be
 ## Examples
 
 ```jldoctest
-julia> generate_hamiltonian(3)
+julia> compute_dense_hamiltonian(3)
 6×6 Array{Float64,2}:
  0.0  0.0    0.0        0.0       0.0     0.0
  0.0  1.0    0.0        0.0       0.825   0.0
@@ -80,16 +80,19 @@ julia> generate_hamiltonian(3)
  0.0  0.825  0.0        0.0       2.2     0.0
  0.0  0.0    0.1       -0.583363  0.0     2.3
 
-julia> generate_hamiltonian(3, b=0.2)
+julia> compute_dense_hamiltonian(3, b=0., d=0.)
 6×6 Array{Float64,2}:
- 0.0  0.0  0.0        0.0       0.0   0.0
- 0.0  1.0  0.0        0.0       0.3   0.0
- 0.0  0.0  2.3        0.212132  0.0   0.1
- 0.0  0.0  0.212132   1.0       0.0  -0.212132
- 0.0  0.3  0.0        0.0       2.2   0.0
- 0.0  0.0  0.1       -0.212132  0.0   2.3
+6×6 Array{Float64,2}:
+ 0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  2.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  1.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  2.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  2.0
+
+```
 """
-function generate_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
+function compute_dense_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
     N = Int(n * (n + 1) / 2)
     H = Matrix{Float64}(N, N)
     idx = Matrix{Int64}(2, N)
@@ -147,6 +150,47 @@ function generate_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
    end
 
    return H
+end
+
+"""
+    compute_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
+
+Compute the Hamiltonian with the given parameters as a sparse matrix. See
+also [`compute_dense_hamiltonian`](@ref).
+
+## Arguments
+- `n::Integer`: the dimension of the harmonic oscillator basis
+in one of the directions. The dimension of the basis will be
+``N = \\frac{1}{2}n(n+1)`` and the matrix will have ``N^2`` elements.
+
+## Keyword arguments
+- `a = 1.`:   the Hamiltonian A parameter
+- `b = 0.55`: the Hamiltonian B parameter
+- `d = 0.4`:  the Hamiltonian D parameter
+
+## Examples
+
+```jldoctest
+julia> compute_hamiltonian(3)
+6×6 SparseMatrixCSC{Float64,Int64} with 13 stored entries:
+  [2, 2]  =  1.0
+  [5, 2]  =  0.825
+  [3, 3]  =  2.3
+  [4, 3]  =  0.583363
+  [6, 3]  =  0.1
+  [3, 4]  =  0.583363
+  [4, 4]  =  1.0
+  [6, 4]  =  -0.583363
+  [2, 5]  =  0.825
+  [5, 5]  =  2.2
+  [3, 6]  =  0.1
+  [4, 6]  =  -0.583363
+  [6, 6]  =  2.3
+
+ ```
+"""
+function compute_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
+    sparse(compute_dense_hamiltonian(n, a=a, b=b, d=d))
 end
 
 end  # module Hamiltonian
