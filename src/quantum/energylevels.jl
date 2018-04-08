@@ -56,7 +56,7 @@ where `N = n*(n+1)/2`.
 See also [`compute_hamiltonian`](@ref)
 """
 function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
-    prefix = "../../output/quantum/N$n-B$b-D$d"
+    prefix = "../../output/quantum/n$n-b$b-d$d"
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -66,12 +66,12 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
         E, eigv, nconv, niter = load("$prefix/eigensystem-f$f.jld",
             "E", "eigv", "nconv", "niter")
     else
-        @timeit "Hamiltonian computation for B$b N$n" begin
+        @timeit "Hamiltonian computation for n$n b$b d$d" begin
             H = compute_hamiltonian(n, a=a, b=b, d=d)
         end
         N = n*(n+1)/2
         nev = Int(floor(f*N))
-        label = "Diagonalisation for B$b D$d N$n f$f"
+        label = "Diagonalisation for n$n f$f b$b d$d"
         @timeit label begin
             E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
         end
@@ -87,23 +87,35 @@ function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     return E, eigv
 end
 
+function parse_label(label)
+    re = r"n([0-9]+) f(0.[0-9]+) b([0-9]+\.?[0-9]+) d([0-9]+\.?[0-9]+)"
+    n, f, b, d = match(re, label).captures
+    parse(Int, n), float.((f, b, d))...
+end
+
 function saveperf(prefix, label)
     to = TimerOutputs.DEFAULT_TIMER
+    n, f, b, d  = parse_label(label)
+    params = ([n], [f], [b], [d])
 
-    if !isfile("$prefix/raw_perf_data.jld")
-        save("$prefix/raw_perf_data.jld", "label", [label],
-            "t", [TimerOutputs.time(to[label]) / 1e9],
-            # 1 gibibyte (GiB) = 1073741824 bytes (B)
-            "allocated", [TimerOutputs.allocated(to[label]) / 1073741824],
+    if !isfile("$prefix/perf_data.jld")
+        # 1 gibibyte (GiB) = 2³⁰ bytes (B)
+        save("$prefix/perf_data.jld", "cores", [Int(ceil(Sys.CPU_CORES / 2))],
+            "memory", [Sys.total_memory() / 2^30], "params", params,
+            "t", [TimerOutputs.time(to[label]) / 1e9],  # 1s = 1e9 ns
+            "allocated", [TimerOutputs.allocated(to[label]) / 2^30],
             "ncalls", [TimerOutputs.ncalls(to[label])])
     else
-        oldlabel, t, allocated, ncalls = load("$prefix/raw_perf_data.jld",
-            "label", "t", "allocated", "ncalls")
-        save("$prefix/raw_perf_data.jld", "label", push!(oldlabel, label),
+        cores, memory, oldparams, t, allocated, ncalls = load("$prefix/perf_data.jld",
+            "cores", "memory", "params", "t", "allocated", "ncalls")
+        for i=1:length(params) push!(oldparams[i], params[i][1]) end
+        push!(cores, Int(ceil(Sys.CPU_CORES / 2)))
+        push!(memory, Sys.total_memory() / 2^30)
+        save("$prefix/perf_data.jld", "cores", cores, "memory", memory,
+            "params", oldparams,
             "t", push!(t, TimerOutputs.time(to[label]) / 1e9),
-            # 1 gibibyte (GiB) = 1073741824 bytes (B)
             "allocated", push!(allocated,
-                TimerOutputs.allocated(to[label]) / 1073741824),
+                TimerOutputs.allocated(to[label]) / 2^30),
             "ncalls", push!(ncalls, TimerOutputs.ncalls(to[label])))
     end
 end
