@@ -20,6 +20,17 @@ end
 
 print_timer()
 println('\n')
+
+using Plots StatPlots
+using DataFrames, Query
+
+df = concat()
+
+df |>
+    @filter(_.cores == 20) |>
+    @df scatter(:n, :t)
+
+
 # maximum(abs.(sort(real(E)) - E2[:values][1:length(E)]))
 # eps(10000.)
 # E2, eigv2, max_c_idx2, index2 = levels(140, 0.7)
