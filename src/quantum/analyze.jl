@@ -8,6 +8,8 @@ using TimerOutputs
 
 list = [(400, 0.1), (420, 0.1), (500, 0.07)]
 
+levels(120, 0.05, b=0.3)
+
 # N = n*(n+1)/2
 # nev = Int(floor(f*N))
 # @time E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)

@@ -8,6 +8,7 @@ include("hamiltonian.jl")
 using .Hamiltonian
 using TimerOutputs
 using JLD
+using DataFrames, CSV
 
 """
     sortlvl!(E, eigv)
@@ -58,7 +59,7 @@ See also [`compute_hamiltonian`](@ref)
 function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
     prefix = "../../output/quantum/n$n-b$b-d$d"
     N = n*(n+1)/2
-    nev = Int(floor(f*N)) 
+    nev = Int(floor(f*N))
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -96,28 +97,26 @@ end
 function saveperf(prefix, label)
     to = TimerOutputs.DEFAULT_TIMER
     n, f, b, d  = parse_label(label)
-    params = ([n], [f], [b], [d])
 
-    if !isfile("$prefix/perf_data.jld")
+    if !isfile("$prefix/perf_data.csv")
         # 1 gibibyte (GiB) = 2³⁰ bytes (B)
-        save("$prefix/perf_data.jld", "cores", [Int(ceil(Sys.CPU_CORES / 2))],
-            "memory", [Sys.total_memory() / 2^30], "params", params,
-            "t", [TimerOutputs.time(to[label]) / 1e9],  # 1s = 1e9 ns
-            "allocated", [TimerOutputs.allocated(to[label]) / 2^30],
-            "ncalls", [TimerOutputs.ncalls(to[label])])
+        df = DataFrame()
+        df[:cores] = [Int(ceil(Sys.CPU_CORES / 2))]
+        df[:memory] = [Sys.total_memory() / 2^30]
+        df[:n] = [n]
+        df[:b] = [b]
+        df[:d] = [d]
+        df[:t] = [TimerOutputs.time(to[label]) / 1e9]  # 1s = 1e9 ns
+        df[:allocated] = [TimerOutputs.allocated(to[label]) / 2^30]
+        df[:ncalls] = [TimerOutputs.ncalls(to[label])]
     else
-        cores, memory, oldparams, t, allocated, ncalls = load("$prefix/perf_data.jld",
-            "cores", "memory", "params", "t", "allocated", "ncalls")
-        for i=1:length(params) push!(oldparams[i], params[i][1]) end
-        push!(cores, Int(ceil(Sys.CPU_CORES / 2)))
-        push!(memory, Sys.total_memory() / 2^30)
-        save("$prefix/perf_data.jld", "cores", cores, "memory", memory,
-            "params", oldparams,
-            "t", push!(t, TimerOutputs.time(to[label]) / 1e9),
-            "allocated", push!(allocated,
-                TimerOutputs.allocated(to[label]) / 2^30),
-            "ncalls", push!(ncalls, TimerOutputs.ncalls(to[label])))
+        df = CSV.read("$prefix/perf_data.csv")
+        push!(df, [Int(ceil(Sys.CPU_CORES / 2)), Sys.total_memory() / 2^30,
+            n, b, d, TimerOutputs.time(to[label]) / 1e9,
+            TimerOutputs.allocated(to[label]) / 2^30,
+            TimerOutputs.ncalls(to[label])])
     end
+    CSV.write("$prefix/perf_data.csv", df)
 end
 
 """
