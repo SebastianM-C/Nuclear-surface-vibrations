@@ -113,7 +113,7 @@ function saveperf(prefix, label)
     else
         df = CSV.read("$prefix/perf_data.csv")
         push!(df, [Int(ceil(Sys.CPU_CORES / 2)), Sys.total_memory() / 2^30,
-            n, b, d, TimerOutputs.time(to[label]) / 1e9,
+            n, b, f, d, TimerOutputs.time(to[label]) / 1e9,
             TimerOutputs.allocated(to[label]) / 2^30,
             TimerOutputs.ncalls(to[label])])
     end
