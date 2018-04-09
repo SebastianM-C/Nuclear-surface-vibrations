@@ -104,6 +104,7 @@ function saveperf(prefix, label)
         df[:cores] = [Int(ceil(Sys.CPU_CORES / 2))]
         df[:memory] = [Sys.total_memory() / 2^30]
         df[:n] = [n]
+        df[:f] = [f]
         df[:b] = [b]
         df[:d] = [d]
         df[:t] = [TimerOutputs.time(to[label]) / 1e9]  # 1s = 1e9 ns
