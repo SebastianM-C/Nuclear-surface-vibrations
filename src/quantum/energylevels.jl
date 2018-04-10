@@ -177,7 +177,7 @@ should have a single value for Hamiltonian parameters (given by the
 """
 function δ(df::AbstractDataFrame)
     allsame(v) = isempty(v) || all(isequal(first(v)), v)
-    allsame(df[:b]) && allsame(df[:d]) && error("The parameters are not the same.")
+    allsame(df[:b]) && allsame(df[:d]) || error("The parameters are not the same.")
     ref = df[indmax(nlvls.(df[:n], df[:f])), :]
     r_E = elvls(ref[:n][1], ref[:f][1], b=ref[:b][1], d=ref[:d][1])
     [δ(r_E, elvls(df[i,:][:n][1], df[i,:][:f][1], b=df[i,:][:b][1],
