@@ -168,14 +168,14 @@ function δ(r_E, E)
 end
 
 """
-    δ(df::DataFrame)
+    δ(df::AbstractDataFrame)
 
 Compute the maximum energy difference for a `DataFrame` taking as reference
 the the row with the greatest number of levels. The given `DataFrame`
 should have a single value for Hamiltonian parameters (given by the
 `b` and `d` columns).
 """
-function δ(df::DataFrame)
+function δ(df::AbstractDataFrame)
     allsame(v) = isempty(v) || all(isequal(first(v)), v)
     allsame(df[:b]) && allsame(df[:d]) && error("The parameters are not the same.")
     ref = df[indmax(nlvls.(df[:n], df[:f])), :]
