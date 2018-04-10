@@ -45,7 +45,7 @@ function concat(name::Regex; location="quantum")
     filenames = files(name; location=location)
     df = CSV.read(filenames[1], allowmissing=:none)
     for i=2:length(filenames)
-        append!(df, CSV.read(filenames[i]))
+        append!(df, CSV.read(filenames[i]), allowmissing=:none)
     end
 
     return df
