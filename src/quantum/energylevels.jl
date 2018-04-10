@@ -2,7 +2,7 @@
 
 module EnergyLevels
 
-export levels
+export diagonalize, elvls
 
 include("hamiltonian.jl")
 using .Hamiltonian
@@ -29,11 +29,10 @@ function sortlvl!(E, eigv)
 end
 
 """
-    levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
+    diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
 
 Compute the first `floor(f*N)` eigenvalues, the corresponding eigenvectors
-of the Hamiltonian, the maximum coefficient index for the eigenvectors
-and the index corresponding to the ordering of the basis.
+of the Hamiltonian.
 
 The basis is oredered as follows
 ```math
@@ -45,7 +44,7 @@ If those values were previously computed, they will be used instead.
 ## Arguments
 - `n::Integer`: the dimension of the harmonic oscillator basis
 in one of the directions.
-- `f = 0.1`: the fraction of the number of eigenvalues to be computed.
+- `f = 0.075`: the fraction of the number of eigenvalues to be computed.
 For a given value, `Int(floor(f*N))` eigenvalues will be computed,
 where `N = n*(n+1)/2`.
 
@@ -56,7 +55,7 @@ where `N = n*(n+1)/2`.
 
 See also [`compute_hamiltonian`](@ref)
 """
-function levels(n::Integer, f=0.1; a=1., b=0.55, d=0.4)
+function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     prefix = "../../output/quantum/n$n-b$b-d$d"
     N = n*(n+1)/2
     nev = Int(floor(f*N))
@@ -118,6 +117,45 @@ function saveperf(prefix, label)
             TimerOutputs.ncalls(to[label])])
     end
     CSV.write("$prefix/perf_data.csv", df)
+end
+
+"""
+    elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
+
+Return the energy levels corresponding to the given parameters from previous
+cpmputations. If there is no previous computation, the compute them.
+See also [`diagonalize`](@ref).
+
+## Arguments
+- `n::Integer`: the dimension of the harmonic oscillator basis
+in one of the directions.
+- `f = 0.075`: the fraction of the number of eigenvalues to be computed.
+For a given value, `Int(floor(f*N))` eigenvalues will be computed,
+where `N = n*(n+1)/2`.
+
+## Keyword Arguments
+- `a = 1.`:   the Hamiltonian A parameter
+- `b = 0.55`: the Hamiltonian B parameter
+- `d = 0.4`:  the Hamiltonian D parameter
+"""
+function elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
+    prefix = "../../output/quantum/n$n-b$b-d$d"
+    N = n*(n+1)/2
+    nev = Int(floor(f*N))
+    if !isdir(prefix)
+        mkpath(prefix)
+    end
+    # Use already computed values when available
+    if isfile("$prefix/eigensystem-f$f.jld")
+        info("Loading previously computed values.")
+        E, nconv, niter = load("$prefix/eigensystem-f$f.jld",
+            "E", "nconv", "niter")
+        nconv != nev && warn("Not all eigenvalues converged.")
+        niter >= 300 && warn("Reached maximum number of iterations.")
+        return sort(real(E))
+    else
+        return diagonalize(n, f, a=a, b=b, d=d)[1]
+    end
 end
 
 """
