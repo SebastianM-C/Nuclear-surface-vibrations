@@ -2,7 +2,7 @@
 
 module EnergyLevels
 
-export diagonalize, elvls
+export diagonalize, elvls, nlvls, δ
 
 include("hamiltonian.jl")
 using .Hamiltonian
@@ -27,6 +27,8 @@ function sortlvl!(E, eigv)
 
     E[idx], eigv[:, idx]
 end
+
+nlvls(n, f) = Int(floor(n*(n+1)/2 * f))
 
 """
     diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
@@ -57,8 +59,7 @@ See also [`compute_hamiltonian`](@ref)
 """
 function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     prefix = "../../output/quantum/n$n-b$b-d$d"
-    N = n*(n+1)/2
-    nev = Int(floor(f*N))
+    nev = nlvls(n, f)
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -140,8 +141,7 @@ where `N = n*(n+1)/2`.
 """
 function elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     prefix = "../../output/quantum/n$n-b$b-d$d"
-    N = n*(n+1)/2
-    nev = Int(floor(f*N))
+    nev = nlvls(n, f)
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -155,6 +155,33 @@ function elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     else
         return diagonalize(n, f, a=a, b=b, d=d)[1]
     end
+end
+
+"""
+    δ(r_E, E)
+
+Compute the maximum energy difference between two sets of energy levels.
+"""
+function δ(r_E, E)
+    E1, E2 = length(r_E) > length(E) ? (r_E[1:length(E)], E) : (r_E, E[1:length(r_E)])
+    maximum(abs.(E1 - E2))
+end
+
+"""
+    δ(df::DataFrame)
+
+Compute the maximum energy difference for a `DataFrame` taking as reference
+the the row with the greatest number of levels. The given `DataFrame`
+should have a single value for Hamiltonian parameters (given by the
+`b` and `d` columns).
+"""
+function δ(df::DataFrame)
+    allsame(v) = isempty(v) || all(isequal(first(v)), v)
+    allsame(df[:b]) && allsame(df[:d]) && error("The parameters are not the same.")
+    ref = df[indmax(nlvls.(df[:n], df[:f])), :]
+    r_E = elvls(ref[:n][1], ref[:f][1], b=ref[:b][1], d=ref[:d][1])
+    [δ(r_E, elvls(df[i,:][:n][1], df[i,:][:f][1], b=df[i,:][:b][1],
+        d=df[i,:][:d][1])) for i=1:size(df, 1)]
 end
 
 """
