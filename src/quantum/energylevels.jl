@@ -171,14 +171,14 @@ end
     δ(df::AbstractDataFrame)
 
 Compute the maximum energy difference for a `DataFrame` taking as reference
-the the row with the greatest number of levels. The given `DataFrame`
+the the row with the greatest diagonalization basis `n`. The given `DataFrame`
 should have a single value for Hamiltonian parameters (given by the
 `b` and `d` columns).
 """
 function δ(df::AbstractDataFrame)
     allsame(v) = isempty(v) || all(isequal(first(v)), v)
     allsame(df[:b]) && allsame(df[:d]) || error("The parameters are not the same.")
-    ref = df[indmax(nlvls.(df[:n], df[:f])), :]
+    ref = df[indmax(df[:n]), :]
     r_E = elvls(ref[:n][1], ref[:f][1], b=ref[:b][1], d=ref[:d][1])
     [δ(r_E, elvls(df[i,:][:n][1], df[i,:][:f][1], b=df[i,:][:b][1],
         d=df[i,:][:d][1])) for i=1:size(df, 1)]
