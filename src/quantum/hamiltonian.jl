@@ -54,6 +54,33 @@ Compute the matrix element on harmonic oscillator states
 end
 
 """
+    index(n::Integer)
+
+Return an array that indexes the Hamiltonian by the ocupation numbers.
+
+The basis is oredered as follows
+```math
+|0,0⟩, |0,1⟩, |0,2⟩ … |0,n⟩, |1,0⟩ … |1,n-1⟩ … |i,0⟩, |i,n-i⟩ … |n-1,0⟩
+```
+
+## Arguments
+- `n::Integer`: the dimension of the harmonic oscillator basis
+in one of the directions.
+
+"""
+function index(n::Integer)
+    idx = Matrix{Int64}(2, Int(n * (n + 1) / 2))
+    k = 0
+    for n1 = 0:(n - 1), n2 = 0:(n - n1 - 1)
+        k += 1
+        idx[1, k] = n1
+        idx[2, k] = n2
+    end
+
+    return idx
+end
+
+"""
     compute_dense_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
 
 Compute the Hamiltonian with the given parameters as a dense matrix.
@@ -95,14 +122,7 @@ julia> compute_dense_hamiltonian(3, b=0., d=0.)
 function compute_dense_hamiltonian(n::Integer; a=1., b=0.55, d=0.4)
     N = Int(n * (n + 1) / 2)
     H = Matrix{Float64}(N, N)
-    idx = Matrix{Int64}(2, N)
-    # Compute index
-    k = 0
-    for i = 0:(n - 1), j = 0:(n - i - 1)
-        k += 1
-        idx[1, k] = i
-        idx[2, k] = j
-    end
+    idx = index(n)
     # Compute Hamiltonian
     for i = 1:N, j = 1:N
         m1 = idx[1, j]
