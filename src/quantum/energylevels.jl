@@ -128,8 +128,8 @@ cpmputations. If there is no previous computation, the compute them.
 See also [`diagonalize`](@ref).
 
 ## Arguments
-- `n::Integer`: the dimension of the harmonic oscillator basis
-in one of the directions.
+- `n::Integer`: the dimension of the harmonic oscillator basis in one of
+the directions.
 - `f = 0.075`: the fraction of the number of eigenvalues to be computed.
 For a given value, `Int(floor(f*N))` eigenvalues will be computed,
 where `N = n*(n+1)/2`.
@@ -184,16 +184,45 @@ function δ(df::AbstractDataFrame)
         d=df[i,:][:d][1])) for i=1:size(df, 1)]
 end
 
+function filter_symmetric(E, egiv, n; ϵ=1e-6)
+    N=Int(n*(n+1)/2)
+    idx = Hamiltonian.index(n)
+
+    U = Diagonal([(-1)^(idx[2, i]) for i=1:N])
+
+    Δ = abs.(U * eigv - eigv)
+    symm = BitArray(all(Δ[:,i] .< ϵ) for i=1:size(Δ, 2))
+    return symm, [maximum(Δ[:,i]) for i=1:size(Δ, 2)]
+end
+
+function filter_bidimensional(E; ε=1e-9)
+    ΔE = diff(E) .< ε
+    bd = falses(length(E))
+
+    k = 0
+    for i=1:length(E)-1
+        k = ΔE[i] ? k+1 : 0
+        if k == 2
+            diff(E)[i] > diff(E)[i-1] ? ΔE[i] = false : ΔE[i-1] = false
+        end
+        bd[i] = bd[i] || ΔE[i]
+        bd[i+1] = ΔE[i]
+    end
+    return ΔE, bd
+end
+
 """
-    irreducible_reps(E, ket, ε=1e-8)
+    irreducible_reps(E, eigv, n, δ=1e-6, ε=1e-9)
 
 Separate the energy levels according to the 3 irreducible
 representations of the ``C_{3v}`` group.
 
 ## Arguments
 - `E`: energy levels
-- `ket`: the states in the number operator representation
+- `eigv`: the corresponding eigenvectors
+- `n`: the dimension of the harmonic oscillator basis in one of the directions.
 - `ε`: the maximum difference between two degenerate levels
+- `ϵ`: the maximum error for the separation of the symmetric representation
 """
 function irreducible_reps(E, ket, ε=1e-8)
 
