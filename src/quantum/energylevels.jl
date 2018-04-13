@@ -184,7 +184,7 @@ function δ(df::AbstractDataFrame)
         d=df[i,:][:d][1])) for i=1:size(df, 1)]
 end
 
-function filter_symmetric(E, egiv, n; ϵ=1e-6)
+function filter_symmetric(E, eigv, n; ϵ=1e-6)
     N=Int(n*(n+1)/2)
     idx = Hamiltonian.index(n)
 
