@@ -2,7 +2,7 @@
 
 module EnergyLevels
 
-export diagonalize, elvls, nlvls, δ
+export diagonalize, elvls, nlvls, δ, irreducible_reps
 
 include("hamiltonian.jl")
 using .Hamiltonian
@@ -157,13 +157,17 @@ function elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     end
 end
 
+function resize(r_E, E)
+    E1, E2 = length(r_E) > length(E) ? (r_E[1:length(E)], E) : (r_E, E[1:length(r_E)])
+end
+
 """
     δ(r_E, E)
 
 Compute the maximum energy difference between two sets of energy levels.
 """
 function δ(r_E, E)
-    E1, E2 = length(r_E) > length(E) ? (r_E[1:length(E)], E) : (r_E, E[1:length(r_E)])
+    E1, E2 = resize(r_E, E)
     maximum(abs.(E1 - E2))
 end
 
@@ -211,8 +215,22 @@ function filter_bidimensional(E; ε=1e-9)
     return ΔE, bd
 end
 
+function verify_reps(ΔE, symm, bd)
+    longest_seq = 0
+    k = 0
+    idx = 0
+    for i=1:length(ΔE)
+        k = ΔE[i] ? k+1 : 0
+        k > longest_seq && (longest_seq = k; idx = i)
+    end
+    longest_seq != 1 &&
+        warn("Found a sequence of $longest_seq equal differences at $idx")
+    !all(.!(symm .& bd)) && warn("The intersection of the symmetric "*
+        "representation and the bidimensional one is not void")
+end
+
 """
-    irreducible_reps(E, eigv, n, δ=1e-6, ε=1e-9)
+    irreducible_reps(E, eigv, n, ϵ=1e-6, ε=1e-9)
 
 Separate the energy levels according to the 3 irreducible
 representations of the ``C_{3v}`` group.
@@ -224,8 +242,13 @@ representations of the ``C_{3v}`` group.
 - `ε`: the maximum difference between two degenerate levels
 - `ϵ`: the maximum error for the separation of the symmetric representation
 """
-function irreducible_reps(E, ket, ε=1e-8)
+function irreducible_reps(E, eigv, n, ϵ=1e-6, ε=1e-9)
+    symm, Δ = filter_symmetric(E, eigv, n, ϵ=ϵ)
+    ΔE, bd = filter_bidimensional(E, ε=ε)
 
+    verify_reps(ΔE, symm, bd)
+
+    E[1:length(E)-1][ΔE], E[symm], E[.!(symm .| bd)]
 end
 
 end  # module EnergyLevels

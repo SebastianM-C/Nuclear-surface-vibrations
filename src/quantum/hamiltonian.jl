@@ -109,7 +109,6 @@ julia> compute_dense_hamiltonian(3)
 
 julia> compute_dense_hamiltonian(3, b=0., d=0.)
 6×6 Array{Float64,2}:
-6×6 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  1.0  0.0  0.0  0.0  0.0
  0.0  0.0  2.0  0.0  0.0  0.0
