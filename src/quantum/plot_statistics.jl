@@ -4,11 +4,11 @@ using StatsBase
 # pyplot()
 pgfplots()
 
-include("input.jl")
+# include("input.jl")
 include("regions.jl")
 include("dataio.jl")
 include("statistics.jl")
-include("random_data.jl")
+# include("random_data.jl")
 
 using Regions, DataIO, Statistics
 
@@ -44,7 +44,7 @@ function plot_P_fit(Γ, bin_size)
 end
 
 function main(prefix, bin_size, slices)
-    Γs = read_Γ(prefix)
+    # Γs = read_Γ(prefix)
     Γ_regs = regions(Γs, slices)
 
     αs = [α.param[1] for α in fit_α(Γ_regs, bin_size)]
@@ -58,18 +58,18 @@ function main(prefix, bin_size, slices)
     # The errors for `α` and `η` are given by the standard deviation
     # of the values taken by `α` and `η` on the `f` corresponding
     # ensambles of random values
-    rand_regs = RandomData.rand_spacings(Γ_regs, f, αs)
-    ε_αs = Vector{eltype(αs)}(length(Γ_regs[1]))
-    ε_ηs = Vector{eltype(αs)}(length(Γ_regs[1]))
-    for i=1:length(Γ_regs[1])
-        ensambles = regions(Γ_regs_i(rand_regs, i), f)
-        rand_αs = [α.param[1] for α in RandomData.fit_α(ensambles, bin_size)]
-        rand_ηs = RandomData.η(ensambles)
-        ε_αs[i] = std(rand_αs)
-        ε_ηs[i] = std(rand_ηs)
-    end
+    # rand_regs = RandomData.rand_spacings(Γ_regs, f, αs)
+    # ε_αs = Vector{eltype(αs)}(length(Γ_regs[1]))
+    # ε_ηs = Vector{eltype(αs)}(length(Γ_regs[1]))
+    # for i=1:length(Γ_regs[1])
+    #     ensambles = regions(Γ_regs_i(rand_regs, i), f)
+    #     rand_αs = [α.param[1] for α in RandomData.fit_α(ensambles, bin_size)]
+    #     rand_ηs = RandomData.η(ensambles)
+    #     ε_αs[i] = std(rand_αs)
+    #     ε_ηs[i] = std(rand_ηs)
+    # end
 
-    add(prefix, Γ_regs, αs, ηs, avg_ηs, ε_αs, ε_ηs, γ1, kurt)
+    # add(prefix, Γ_regs, αs, ηs, avg_ηs, ε_αs, ε_ηs, γ1, kurt)
 
     for i=1:length(Γ_regs[1])
         plt = plot_P_fit(Γ_regs_i(Γ_regs, i), bin_size)
@@ -77,15 +77,15 @@ function main(prefix, bin_size, slices)
     end
 end
 
-function main()
-    B, D, N, δ, ϵ, bin_size, slices = input_param()
-
-    for δᵢ in δ
-        for b in B
-            prefix = "../output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
-            main(prefix, bin_size, slices)
-        end
-    end
-end
-
-main()
+# function main()
+#     B, D, N, δ, ϵ, bin_size, slices = input_param()
+#
+#     for δᵢ in δ
+#         for b in B
+#             prefix = "../output/B$b D$D N$N/delta_st_$δᵢ epsilon_$ϵ"
+#             main(prefix, bin_size, slices)
+#         end
+#     end
+# end
+#
+# main()
