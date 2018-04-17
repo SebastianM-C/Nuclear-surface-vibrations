@@ -51,12 +51,15 @@ end
 
 plt = scatter(E_list, α, xlabel=L"$E(A)$", ylabel=L"$R$", legend=nothing,
     framestyle=:box, ylims=(0., 1.));
-savefig(plt, "$prefix/B$B D$D/ratio-t$tmax.pdf");
+# savefig(plt, "$prefix/B$B D$D/ratio-t$tmax.pdf");
+savefig(plt, "$prefix/B$B D$D/ratio-t$tmax.tex");
 
 plt = scatter(E_list, λ, yerr=λ_err, xlabel=L"$E(A)$", ylabel=L"$\lambda$",
     legend=nothing, framestyle=:box, ylims=(0., 0.4));
-savefig(plt, "$prefix/B$B D$D/median_lyapunov_std-t$tmax.pdf");
+# savefig(plt, "$prefix/B$B D$D/median_lyapunov_std-t$tmax.pdf");
+savefig(plt, "$prefix/B$B D$D/median_lyapunov_std-t$tmax.tex");
 
 plt = scatter(E_list, λ, yerr=λ_minmax, xlabel=L"$E(A)$", ylabel=L"median $\lambda$",
     legend=nothing, framestyle=:box, ylims=(0., 0.4));
-savefig(plt, "$prefix/B$B D$D/median_lyapunov-t$tmax.pdf");
+# savefig(plt, "$prefix/B$B D$D/median_lyapunov-t$tmax.pdf");
+savefig(plt, "$prefix/B$B D$D/median_lyapunov-t$tmax.tex");
