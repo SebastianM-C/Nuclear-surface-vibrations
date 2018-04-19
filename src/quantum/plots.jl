@@ -31,7 +31,7 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
         fail_count < 100 && plot_hist(Γ_regs, prefix, bin_size=bin_size)
     end
 
-    fail_count == 0 && info("Failed $fail_count times.")
+    fail_count != 0 && info("Failed $fail_count times.")
 
     return nothing
 end
@@ -47,7 +47,7 @@ function saveparams(prefix, x, data, Γ_regs, i)
     ηs = η.(Γ_regs_i(Γ_regs, i))
     γ1 = skewness.(data)
     κ = kurtosis.(data)
-    if !isfile("$prefix/fit_data.csv")
+    if !isfile("$prefix/../fit_data.csv")
         df = DataFrame()
         df[:n] = [n]
         df[:b] = [b]
@@ -67,14 +67,14 @@ function saveparams(prefix, x, data, Γ_regs, i)
         df[:κₛ] = [κ[2]]
         df[:κₐ] = [κ[3]]
     else
-        df = CSV.read("$prefix/fit_data.csv")
+        df = CSV.read("$prefix/../fit_data.csv")
         push!(df, [n, b, d, ϵ, ε,
             "$(Γ_regs_idx(Γ_regs, i))", fit_histogram(x, data, model).param[1],
             ηs..., η(Γ_regs_i(Γ_regs, i)),
             γ1..., κ...])
-        df |> unique!
+        unique!(df, :region)
     end
-    CSV.write("$prefix/fit_data.csv", df)
+    CSV.write("$prefix/../fit_data.csv", df)
 end
 
 function plot_hist(Γ_regs, prefix; bin_size=0.2)
