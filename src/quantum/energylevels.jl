@@ -2,7 +2,7 @@
 
 module EnergyLevels
 
-export diagonalize, elvls, nlvls, δ, irreducible_reps
+export diagonalize, elvls, nlvls, add_max_δ, irreducible_reps
 
 include("hamiltonian.jl")
 using .Hamiltonian
@@ -188,6 +188,45 @@ function δ(df::AbstractDataFrame)
         d=df[i,:][:d][1])) for i=1:size(df, 1)]
 end
 
+"""
+    add_max_δ(df::AbstractDataFrame)
+
+Add a column corresponding to the maximum energy difference for a `DataFrame`
+taking as reference the the row with the greatest diagonalization basis `n`.
+See also [`δ`](@ref).
+"""
+function add_max_δ(df::AbstractDataFrame)
+    td = by(df, [:b,:d]) do df
+        DataFrame(t=df[:t], max_δ=δ(df))
+    end |> @map({_.t,_.max_δ}) |> DataFrame
+    data = join(df, td, on=:t, kind=:inner) |>
+        @map({_.cores,_.n,_.f,levels=nlvls.(_.n,_.f),_.b,t=_.t/3600,_.max_δ}) |>
+        DataFrame
+end
+
+"""
+    filter_symmetric(E, eigv, n; ϵ=1e-6)
+
+Filter the levels corresponding to the symmetric representation of
+the ``C_{3v}`` group by considering the reflection with respect to the
+``y`` axis. If ``R_y`` is the unitary operator corresponding to the
+reflection, then the eigenvectors ``|\\Psi\\rangle_s`` belonging to the symmetric
+representation are invariant to the reflections mentioned earlier, that
+is
+```math
+R_y |\\Psi\\rangle_s = |\\Psi\\rangle_s.
+```
+
+The function returns a `BitArray` for the levels belonging to the
+symmetric representations and the maximum difference on each column
+for each eigenvector ``R_y |\\Psi\\rangle - |\\Psi\\rangle``.
+
+## Arguments
+- `E`: energy levels
+- `eigv`: the corresponding eigenvectors
+- `n`: the dimension of the harmonic oscillator basis in one of the directions
+- `ϵ = 1e-6`: the maximum error for the separation of the symmetric representation
+"""
 function filter_symmetric(E, eigv, n; ϵ=1e-6)
     N=Int(n*(n+1)/2)
     idx = Hamiltonian.index(n)
@@ -199,6 +238,24 @@ function filter_symmetric(E, eigv, n; ϵ=1e-6)
     return symm, [maximum(Δ[:,i]) for i=1:size(Δ, 2)]
 end
 
+"""
+    filter_bidimensional(E; ε=1e-9)
+
+Filter the energy levels corresponding to the bidimensional representation
+of the ``C_{3v}``. The levels are filtered using the fact that they are doublby
+degenerate. Thus we select the levels for which
+```math
+E_{n+1} - E_n < \\varepsilon
+```
+In case of 2 consecutive differences, both below ``\\varepsilon``, we choose
+the smaller one. The function returns a `BitArray` for the unique levels
+belonging to the bidimensional representations and a `BitArray` with all
+the selected ones.
+
+## Arguments
+- `E`: energy levels
+- `ε = 1e-9`: the maximum difference between two degenerate levels
+"""
 function filter_bidimensional(E; ε=1e-9)
     ΔE = diff(E) .< ε
     bd = falses(length(E))
@@ -233,14 +290,15 @@ end
     irreducible_reps(E, eigv, n, ϵ=1e-6, ε=1e-9)
 
 Separate the energy levels according to the 3 irreducible
-representations of the ``C_{3v}`` group.
+representations of the ``C_{3v}`` group. See also [`filter_symmetric`](@ref)
+and [`filter_bidimensional`](@ref).
 
 ## Arguments
 - `E`: energy levels
 - `eigv`: the corresponding eigenvectors
-- `n`: the dimension of the harmonic oscillator basis in one of the directions.
-- `ε`: the maximum difference between two degenerate levels
-- `ϵ`: the maximum error for the separation of the symmetric representation
+- `n`: the dimension of the harmonic oscillator basis in one of the directions
+- `ϵ = 1e-6`: the maximum error for the separation of the symmetric representation
+- `ε = 1e-9`: the maximum difference between two degenerate levels
 """
 function irreducible_reps(E, eigv, n; ϵ=1e-6, ε=1e-9)
     symm, Δ = filter_symmetric(E, eigv, n, ϵ=ϵ)
