@@ -1,9 +1,11 @@
 include("regions.jl")
 include("statistics.jl")
 include("recipes.jl")
+include("dataio.jl")
+
 
 using Plots, LaTeXStrings
-using Regions, Statistics
+using Regions, DataIO, Statistics
 using Recipes
 
 function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
@@ -40,7 +42,7 @@ function saveparams(prefix, x, data, Γ_regs, i)
         df[:η₂] = [ηs[1]]
         df[:ηₛ] = [ηs[2]]
         df[:ηₐ] = [ηs[3]]
-        df[:̅η] = [η(Γ_regs_i(Γs, i))]
+        df[:avg_η] = [η(Γ_regs_i(Γs, i))]
         df[:γ1] = [skewness.(data)]
         df[:κ] = [kurtosis.(data)]
     else
