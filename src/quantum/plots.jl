@@ -31,11 +31,34 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     return nothing
 end
 
+function saveparams(prefix, x, data, Γ_regs, i)
+    ηs = η.(Γ_regs_i(Γ_regs, i))
+    if !isfile("$prefix/fit_data.csv")
+        df = DataFrame()
+        df[:region] = [Γ_regs_idx(Γ_regs, i)]
+        df[:α] = [fit_histogram(x, data, model).params[1]]
+        df[:η₂] = [ηs[1]]
+        df[:ηₛ] = [ηs[2]]
+        df[:ηₐ] = [ηs[3]]
+        df[:̅η] = [η(Γ_regs_i(Γs, i))]
+        df[:γ1] = [skewness.(data)]
+        df[:κ] = [kurtosis.(data)]
+    else
+        df = CSV.read("$prefix/fit_data.csv")
+        push!(df, [Γ_regs_idx(Γ_regs, i), fit_histogram(x, data, model).params[1],
+            ηs[1], ηs[2], ηs[3], η(Γ_regs_i(Γs, i)),
+            skewness.(data), kurtosis.(data)])
+    end
+    CSV.write("$prefix/fit_data.csv", df)
+end
+
 function plot_hist(Γ_regs, prefix; bin_size=0.2)
     for i=1:length(Γ_regs[1])
-        plt = fithistogram(0:bin_size:4, rel_spacing.(Γ_regs_i(Γ_regs, 1)), model,
+        data = rel_spacing.(Γ_regs_i(Γ_regs, i))
+        saveparams(prefix, 0:bin_size:4, data, Γ_regs, i)
+        plt = fithistogram(0:bin_size:4, data, model,
             xlabel=L"$s$", ylabel=L"$P(s)$")
-        fn = replace("$(Γ_regs_idx(Γ_regs, 1))", r":", s"-")
+        fn = replace("$(Γ_regs_idx(Γ_regs, i))", r":", s"-")
         replace(fn, r", ", s"_")
         fn = "$prefix/P(s)_$fn.pdf"
         savefig(plt, fn)

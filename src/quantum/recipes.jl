@@ -2,7 +2,7 @@ module Recipes
 
 export StackedHist, FitHistogram, fit_histogram, fithistogram
 
-using PlotRecipes, RecipesBase
+using PlotRecipes, RecipesBase, LaTeXStrings
 using StatsBase, QuadGK, LsqFit
 using Requires
 
@@ -11,15 +11,13 @@ using Requires
 
 @require StatPlots begin
     @recipe function f(h::StackedHist)
-        x, y, ws, hists = h.args
+        x, y, hists = h.args
         n = length(y)
         nbins = length(x) - 1
         bin_size = (last(x) - first(x)) / nbins
-        if ws == nothing
-            ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
-        end
 
         if hists == nothing
+            ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
             hists = [fit(Histogram, i, w, x, closed=:left)
                 for (i, w) in zip(y, ws)]
         end
@@ -37,14 +35,22 @@ using Requires
     end
 end
 
-function fit_histogram(x, hists, model)
+function fit_histogram(x, hists, model, nbins)
+    y = sum(h.weights for h in hists)
+    p0 = rand(1,)
+    c_fit = curve_fit(model, x, y, ones(nbins), p0;
+        lower=[0.], upper=[1.])
+end
+
+function fit_histogram(x, y, model)
     nbins = lenght(x) - 1
     bin_size = (last(x) - first(x)) / nbins
-    x_data = linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins)
-    y_data = sum(h.weights for h in hists)
-    p0 = rand(1,)
-    c_fit = curve_fit(model, x_data, y_data, ones(nbins), p0;
-        lower=[0.], upper=[1.])
+
+    ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
+    hists = [fit(Histogram, i, w, x, closed=:left)
+        for (i, w) in zip(y, ws)]
+    fit_histogram(linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
+        hists, model, bin_size, nbins)
 end
 
 @recipe function f(fh::FitHistogram)
@@ -52,15 +58,16 @@ end
     nbins = length(x) - 1
     n = length(y)
     bin_size = (last(x) - first(x)) / nbins
+
     ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
 
-    c_fit = fit_histogram(x, hists)
+    c_fit = fit_histogram(x, hists, model, nbins)
 
     @series begin
         label --> ""
-        StackedHist((x, y, ws, hists))
+        StackedHist((x, y, hists))
     end
 
     α = c_fit.param[1]
