@@ -2,15 +2,17 @@ include("regions.jl")
 include("statistics.jl")
 include("recipes.jl")
 
+using Plots, LaTeXStrings
+using Regions, Statistics
 using Recipes
 
 function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     E, eigv = diagonalize(n, b=b, d=d)
-    Γs = irreducible_reps(E, eigv, ϵ=ϵ, ε=ε)
+    Γs = irreducible_reps(E, eigv, n, ϵ=ϵ, ε=ε)
 
     prefix = "../../output/quantum/n$n-b$b-d$d/"
 
-    plot_err(E, eigv, n, prefix)
+    plot_err(E, eigv, n, prefix);
 
     Γ_regs = regions(Γs, slices)
     prefix *= "eps$ϵ-veps$ε"

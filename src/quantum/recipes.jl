@@ -1,6 +1,6 @@
 module Recipes
 
-export StackedHist, FitHistogram, fit_histogram
+export StackedHist, FitHistogram, fit_histogram, fithistogram
 
 using PlotRecipes, RecipesBase
 using StatsBase, QuadGK, LsqFit

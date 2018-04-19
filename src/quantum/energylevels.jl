@@ -242,7 +242,7 @@ representations of the ``C_{3v}`` group.
 - `ε`: the maximum difference between two degenerate levels
 - `ϵ`: the maximum error for the separation of the symmetric representation
 """
-function irreducible_reps(E, eigv, n, ϵ=1e-6, ε=1e-9)
+function irreducible_reps(E, eigv, n; ϵ=1e-6, ε=1e-9)
     symm, Δ = filter_symmetric(E, eigv, n, ϵ=ϵ)
     ΔE, bd = filter_bidimensional(E, ε=ε)
 
