@@ -84,7 +84,7 @@ function plot_hist(Γ_regs, prefix; bin_size=0.2)
         plt = fithistogram(0:bin_size:4, data, model,
             xlabel=L"$s$", ylabel=L"$P(s)$")
         fn = replace("$(Γ_regs_idx(Γ_regs, i))", r":", s"-")
-        replace(fn, r", ", s"_")
+        fn = replace(fn, r", ", s"_")
         fn = "$prefix/P(s)_$fn.pdf"
         savefig(plt, fn)
     end

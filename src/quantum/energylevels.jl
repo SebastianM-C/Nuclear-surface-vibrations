@@ -8,7 +8,7 @@ include("hamiltonian.jl")
 using .Hamiltonian
 using TimerOutputs
 using JLD
-using DataFrames, CSV
+using DataFrames, Query, CSV
 
 """
     sortlvl!(E, eigv)
