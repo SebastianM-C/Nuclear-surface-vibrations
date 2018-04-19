@@ -1,13 +1,13 @@
-using PlotRecipes, RecipesBase
-using StatsBase, QuadGK
+module Recipes
 
+export StackedHist, FitHistogram, fit_histogram
+
+using PlotRecipes, RecipesBase
+using StatsBase, QuadGK, LsqFit
 using Requires
 
 @userplot StackedHist
 @userplot FitHistogram
-
-struct StackedHist
-    hists
 
 @require StatPlots begin
     @recipe function f(h::StackedHist)
@@ -37,6 +37,16 @@ struct StackedHist
     end
 end
 
+function fit_histogram(x, hists, model)
+    nbins = lenght(x) - 1
+    bin_size = (last(x) - first(x)) / nbins
+    x_data = linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins)
+    y_data = sum(h.weights for h in hists)
+    p0 = rand(1,)
+    c_fit = curve_fit(model, x_data, y_data, ones(nbins), p0;
+        lower=[0.], upper=[1.])
+end
+
 @recipe function f(fh::FitHistogram)
     x, y, model = fh.args
     nbins = length(x) - 1
@@ -46,11 +56,7 @@ end
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
 
-    x_data = linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins)
-    y_data = sum(h.weights for h in hists)
-    p0 = rand(1,)
-    c_fit = curve_fit(model, x_data, y_data, ones(nbins), p0;
-        lower=[0.], upper=[1.])
+    c_fit = fit_histogram(x, hists)
 
     @series begin
         label --> ""
@@ -79,3 +85,5 @@ end
         x, model_hist
     end
 end
+
+end  # module Recipes
