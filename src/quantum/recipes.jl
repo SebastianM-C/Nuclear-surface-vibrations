@@ -43,27 +43,30 @@ function fit_histogram(x, hists, model, nbins)
 end
 
 function fit_histogram(x, y, model)
-    nbins = lenght(x) - 1
+    n = length(y)
+    nbins = length(x) - 1
     bin_size = (last(x) - first(x)) / nbins
 
     ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
     fit_histogram(linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
-        hists, model, bin_size, nbins)
+        hists, model, nbins)
 end
 
 @recipe function f(fh::FitHistogram)
     x, y, model = fh.args
-    nbins = length(x) - 1
     n = length(y)
+    nbins = length(x) - 1
     bin_size = (last(x) - first(x)) / nbins
 
     ws = @. weights(fill(1 / (n * length(y) * bin_size), length(y)))
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
 
-    c_fit = fit_histogram(x, hists, model, nbins)
+    c_fit = fit_histogram(
+        linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
+        hists, model, nbins)
 
     @series begin
         label --> ""

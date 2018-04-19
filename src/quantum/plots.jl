@@ -18,6 +18,9 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
 
     Γ_regs = regions(Γs, slices)
     prefix *= "eps$ϵ-veps$ε"
+    if !isdir(prefix)
+        mkpath(prefix)
+    end
 
     # HACK: Workaround for https://github.com/JuliaStats/StatsBase.jl/issues/315
     fail_count = 0
@@ -33,23 +36,43 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     return nothing
 end
 
+function parse_prefix(prefix)
+    re = r"n([0-9]+)-b([0-9]+\.?[0-9]+)-d([0-9]+\.?[0-9]+)/eps([0-9]+\.?[0-9]*(?:e-?[0-9]+)?)-veps([0-9]+\.?[0-9]*(?:e-?[0-9]+)?)"
+    n, b, d, ϵ, ε = match(re, prefix).captures
+    parse(Int, n), float.((b, d, ϵ, ε))...
+end
+
 function saveparams(prefix, x, data, Γ_regs, i)
+    n, b, d, ϵ, ε = parse_prefix(prefix)
     ηs = η.(Γ_regs_i(Γ_regs, i))
+    γ1 = skewness.(data)
+    κ = kurtosis.(data)
     if !isfile("$prefix/fit_data.csv")
         df = DataFrame()
+        df[:n] = [n]
+        df[:b] = [b]
+        df[:d] = [d]
+        df[:ϵ] = [ϵ]
+        df[:ε] = [ε]
         df[:region] = [Γ_regs_idx(Γ_regs, i)]
-        df[:α] = [fit_histogram(x, data, model).params[1]]
+        df[:α] = [fit_histogram(x, data, model).param[1]]
         df[:η₂] = [ηs[1]]
         df[:ηₛ] = [ηs[2]]
         df[:ηₐ] = [ηs[3]]
-        df[:avg_η] = [η(Γ_regs_i(Γs, i))]
-        df[:γ1] = [skewness.(data)]
-        df[:κ] = [kurtosis.(data)]
+        df[:avg_η] = [η(Γ_regs_i(Γ_regs, i))]
+        df[:γ1₂] = [γ1[1]]
+        df[:γ1ₛ] = [γ1[2]]
+        df[:γ1ₐ] = [γ1[3]]
+        df[:κ₂] = [κ[1]]
+        df[:κₛ] = [κ[2]]
+        df[:κₐ] = [κ[3]]
     else
         df = CSV.read("$prefix/fit_data.csv")
-        push!(df, [Γ_regs_idx(Γ_regs, i), fit_histogram(x, data, model).params[1],
-            ηs[1], ηs[2], ηs[3], η(Γ_regs_i(Γs, i)),
-            skewness.(data), kurtosis.(data)])
+        push!(df, [n, b, d, ϵ, ε,
+            "$(Γ_regs_idx(Γ_regs, i))", fit_histogram(x, data, model).param[1],
+            ηs..., η(Γ_regs_i(Γ_regs, i)),
+            γ1..., κ...])
+        df |> unique!
     end
     CSV.write("$prefix/fit_data.csv", df)
 end
@@ -65,7 +88,6 @@ function plot_hist(Γ_regs, prefix; bin_size=0.2)
         fn = "$prefix/P(s)_$fn.pdf"
         savefig(plt, fn)
     end
-    plt
 end
 
 function plot_err(E, eigv, n, prefix)
