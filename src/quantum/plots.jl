@@ -25,10 +25,10 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     # HACK: Workaround for https://github.com/JuliaStats/StatsBase.jl/issues/315
     fail_count = 0
     try
-        plot_hist(Γ_regs, prefix, bin_size=bin_size)
+        plot_hist(Γ_regs, slices, prefix, bin_size=bin_size)
     catch InexactError()
         fail_count += 1
-        fail_count < 100 && plot_hist(Γ_regs, prefix, bin_size=bin_size)
+        fail_count < 100 && plot_hist(Γ_regs, slices, prefix, bin_size=bin_size)
     end
 
     fail_count != 0 && info("Failed $fail_count times.")
@@ -42,7 +42,7 @@ function parse_prefix(prefix)
     parse(Int, n), float.((b, d, ϵ, ε))...
 end
 
-function saveparams(prefix, x, data, Γ_regs, i)
+function saveparams(prefix, x, data, Γ_regs, slices, i)
     n, b, d, ϵ, ε = parse_prefix(prefix)
     ηs = η.(Γ_regs_i(Γ_regs, i))
     γ1 = skewness.(data)
@@ -54,7 +54,8 @@ function saveparams(prefix, x, data, Γ_regs, i)
         df[:d] = [d]
         df[:ϵ] = [ϵ]
         df[:ε] = [ε]
-        df[:region] = [Γ_regs_idx(Γ_regs, i)]
+        df[:region] = ["$slices#$i"]
+        df[:slices] = [slices]
         df[:slice_idx] = [i]
         df[:E0_Γ₂] = [Γ_regs_i(Γ_regs, i)[1][1]]
         df[:E_Γ₂] = [Γ_regs_i(Γ_regs, i)[1][end]]
@@ -76,7 +77,7 @@ function saveparams(prefix, x, data, Γ_regs, i)
     else
         df = CSV.read("$prefix/../fit_data.csv")
         push!(df, [n, b, d, ϵ, ε,
-            "$(Γ_regs_idx(Γ_regs, i))", i,
+            "$slices#$i", slices, i,
             fit_histogram(x, data, model).param[1], Γ_regs_i(Γ_regs, i)[1][1],
             Γ_regs_i(Γ_regs, i)[1][end], Γ_regs_i(Γ_regs, i)[2][1],
             Γ_regs_i(Γ_regs, i)[2][end], Γ_regs_i(Γ_regs, i)[3][1],
@@ -88,15 +89,13 @@ function saveparams(prefix, x, data, Γ_regs, i)
     CSV.write("$prefix/../fit_data.csv", df)
 end
 
-function plot_hist(Γ_regs, prefix; bin_size=0.2)
+function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
     for i=1:length(Γ_regs[1])
         data = rel_spacing.(Γ_regs_i(Γ_regs, i))
-        saveparams(prefix, 0:bin_size:4, data, Γ_regs, i)
+        saveparams(prefix, 0:bin_size:4, data, Γ_regs, slices, i)
         plt = fithistogram(0:bin_size:4, data, model,
             xlabel=L"$s$", ylabel=L"$P(s)$")
-        fn = replace("$(Γ_regs_idx(Γ_regs, i))", r":", s"-")
-        fn = replace(fn, r", ", s"_")
-        fn = "$prefix/P(s)_$fn.pdf"
+        fn = "$prefix/P(s)_slice_$i-of-$slices.pdf"
         savefig(plt, fn)
     end
 end

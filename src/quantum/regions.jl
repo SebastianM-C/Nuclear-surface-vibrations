@@ -56,7 +56,7 @@ function count_to_index(Γ::AbstractArray, n::Integer)
 end
 
 function energy_to_index(Γ::AbstractArray{T}, endpoints::Vector{T}) where {T}
-    n = size(endpoints, 1)
+    n = length(endpoints)
     @assert n ≥ 2 "There must be at least 2 endpoints."
     idx = [indmin(abs.(Γ .- i)) - 1 for i in endpoints]
     idx[end] = indmin(abs.(Γ .- endpoints[end]))
