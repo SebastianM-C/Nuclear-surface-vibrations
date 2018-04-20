@@ -14,7 +14,7 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
 
     prefix = "../../output/quantum/n$n-b$b-d$d/"
 
-    plot_err(E, eigv, n, prefix);
+    plot_err(E, eigv, n, prefix)
 
     Γ_regs = regions(Γs, slices)
     prefix *= "eps$ϵ-veps$ε"

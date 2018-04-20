@@ -9,16 +9,21 @@ function regions(Γ::AbstractArray, endpoints::AbstractVector{Int})
     [@view Γ[endpoints[i]+1:endpoints[i+1]] for i in 1:n-1]
 end
 
-function regions(Γ::AbstractArray, n::Integer)
-    regions(Γ, count_to_index(Γ, n))
+function regions(Γ::AbstractArray, n::Integer; byindex::Bool=false)
+    if byindex
+        return regions(Γ, count_to_index(Γ, n))
+    else
+        ΔE = (Γ[end] - Γ[1]) / n
+        return [@view Γ[(Γ .>= Γ[1] + (i-1) * ΔE) .& (Γ .<= Γ[1] + i * ΔE)] for i=1:n]
+    end
 end
 
 function regions(Γ::AbstractArray{T}, E_list::Vector{T}) where {T}
     regions(Γ, energy_to_index(Γ, E_list))
 end
 
-function regions(Γs::NTuple{N, T}, slices) where {N, T}
-    ntuple(i->regions(Γs[i], slices), length(Γs))
+function regions(Γs::NTuple{N, T}, slices; byindex::Bool=false) where {N, T}
+    ntuple(i->regions(Γs[i], slices, byindex=byindex), length(Γs))
 end
 
 function cumulative_regions(Γ::AbstractArray{T}, ΔE::T) where {T}
