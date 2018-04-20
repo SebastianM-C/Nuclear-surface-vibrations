@@ -55,6 +55,13 @@ function saveparams(prefix, x, data, Γ_regs, i)
         df[:ϵ] = [ϵ]
         df[:ε] = [ε]
         df[:region] = [Γ_regs_idx(Γ_regs, i)]
+        df[:slice_idx] = [i]
+        df[:E0_Γ₂] = [Γ_regs_i(Γ_regs, i)[1][1]]
+        df[:E_Γ₂] = [Γ_regs_i(Γ_regs, i)[1][end]]
+        df[:E0_Γₛ] = [Γ_regs_i(Γ_regs, i)[2][1]]
+        df[:E_Γₛ] = [Γ_regs_i(Γ_regs, i)[2][end]]
+        df[:E0_Γₐ] = [Γ_regs_i(Γ_regs, i)[3][1]]
+        df[:E_Γₐ] = [Γ_regs_i(Γ_regs, i)[3][end]]
         df[:α] = [fit_histogram(x, data, model).param[1]]
         df[:η₂] = [ηs[1]]
         df[:ηₛ] = [ηs[2]]
@@ -69,7 +76,11 @@ function saveparams(prefix, x, data, Γ_regs, i)
     else
         df = CSV.read("$prefix/../fit_data.csv")
         push!(df, [n, b, d, ϵ, ε,
-            "$(Γ_regs_idx(Γ_regs, i))", fit_histogram(x, data, model).param[1],
+            "$(Γ_regs_idx(Γ_regs, i))", i,
+            fit_histogram(x, data, model).param[1], Γ_regs_i(Γ_regs, i)[1][1],
+            Γ_regs_i(Γ_regs, i)[1][end], Γ_regs_i(Γ_regs, i)[2][1],
+            Γ_regs_i(Γ_regs, i)[2][end], Γ_regs_i(Γ_regs, i)[3][1],
+            Γ_regs_i(Γ_regs, i)[3][end],
             ηs..., η(Γ_regs_i(Γ_regs, i)),
             γ1..., κ...])
         unique!(df, :region)
