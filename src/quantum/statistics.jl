@@ -25,9 +25,9 @@ function lwd(s, w)
     @. (a(w) + b(w) * s) * exp(-a(w) * s - b(w) / 2 * s^2)
 end
 
-function berry1(s, q)
+function berry(s, z)
     R(z) = 1 - exp(π*z^2/4) * erfc(√(π)*z/2)
-    @. exp(-(1-q)s - π/4 * q^2 * s^2) * (1-q^2+π/2 * q^3 * s - (1-q)^2 * R(q*s))
+    @. exp(-(1-z)s - π/4 * z^2 * s^2) * (1-z^2+π/2 * z^3 * s - (1-z)^2 * R(z*s))
 end
 
 function brody(s, q)

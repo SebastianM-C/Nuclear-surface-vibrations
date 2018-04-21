@@ -42,7 +42,7 @@ function fit_histogram(x, hists, model, lu=([0.], [1.]), nbins)
         lower=lu[1], upper=lu[2])
 end
 
-function fit_histogram(x, y, model)
+function fit_histogram(x, y, model, lu=([0.], [1.]))
     n = length(y)
     nbins = length(x) - 1
     bin_size = (last(x) - first(x)) / nbins
@@ -51,7 +51,7 @@ function fit_histogram(x, y, model)
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
     fit_histogram(linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
-        hists, model, nbins)
+        hists, model, lu, nbins)
 end
 
 @recipe function f(fh::FitHistogram)
@@ -80,7 +80,20 @@ end
         p = fit_histogram(x_data, hists, models, lus, nbins).param
         fs = x->models(x, α)
         lab = L"$"*pnames*" = "*@sprintf("%.2f", p)*L"$"
+
+        model_hist = [1 / bin_size * quadgk(fs, x[i], x[i+1])[1]
+                     for i in 1:nbins]
+
+         @series begin
+             seriestype := :bar
+             color := :transparent
+             bar_width := bin_size
+             label := ""
+             x, model_hist
+         end
     end
+
+    ylims --> (0., 1.)
 
     @series begin
         seriestype := :path
@@ -88,18 +101,6 @@ end
         x, fs
     end
 
-    model_hist = [1 / bin_size * quadgk(f, x[i], x[i+1])[1]
-                 for i in 1:nbins]
-
-    ylims --> (0., 1.)
-
-    @series begin
-        seriestype := :bar
-        color := :transparent
-        bar_width := bin_size
-        label := ""
-        x, model_hist
-    end
 end
 
 end  # module Recipes

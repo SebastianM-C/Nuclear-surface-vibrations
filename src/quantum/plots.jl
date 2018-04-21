@@ -40,12 +40,16 @@ function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
     for i=1:length(Γ_regs[1])
         data = rel_spacing.(Γ_regs_i(Γ_regs, i))
         saveparams(prefix, 0:bin_size:4, data, Γ_regs, slices, i)
-        plt = fithistogram(0:bin_size:4, data, [model, brody],
-            [([0.],[1.]), ([0.],[1.])],
-            [L"\alpha", "q"],
+        plt = fithistogram(0:bin_size:4, data, model, ([0.],[1.]), L"\alpha",
             xlabel=L"$s$", ylabel=L"$P(s)$")
-        fn = "$prefix/P(s)_slice_$i-of-$slices.pdf"
-        savefig(plt, fn)
+        cmp = fithistogram(0:bin_size:4, data, [model, brody, berry, lwd],
+            [([0.],[1.]), ([0.],[1.]), ([0.],[1.]), ([0.], [Inf])],
+            [L"\alpha", "q", "z", "w"],
+            xlabel=L"$s$", ylabel=L"$P(s)$")
+        fn1 = "$prefix/P(s)_slice_$i-of-$slices.pdf"
+        fn2 = "$prefix/P(s)_cmp_slice_$i-of-$slices.pdf"
+        savefig(plt, fn1)
+        savefig(cmp, fn2)
     end
 end
 
@@ -92,6 +96,9 @@ function saveparams(prefix, x, data, Γ_regs, slices, i)
         df[:E0_Γₐ] = [Γ_regs_i(Γ_regs, i)[3][1]]
         df[:E_Γₐ] = [Γ_regs_i(Γ_regs, i)[3][end]]
         df[:α] = [fit_histogram(x, data, model).param[1]]
+        df[:q] = [fit_histogram(x, data, brody).param[1]]
+        df[:z] = [fit_histogram(x, data, berry).param[1]]
+        df[:w] =[fit_histogram(x, data, lwd, ([0.],[Inf])).param[1]]
         df[:η₂] = [ηs[1]]
         df[:ηₛ] = [ηs[2]]
         df[:ηₐ] = [ηs[3]]
@@ -106,10 +113,13 @@ function saveparams(prefix, x, data, Γ_regs, slices, i)
         df = CSV.read("$prefix/../fit_data.csv")
         push!(df, [n, b, d, ϵ, ε,
             "$slices#$i", slices, i,
-            fit_histogram(x, data, model).param[1], Γ_regs_i(Γ_regs, i)[1][1],
-            Γ_regs_i(Γ_regs, i)[1][end], Γ_regs_i(Γ_regs, i)[2][1],
-            Γ_regs_i(Γ_regs, i)[2][end], Γ_regs_i(Γ_regs, i)[3][1],
-            Γ_regs_i(Γ_regs, i)[3][end],
+            fit_histogram(x, data, model).param[1],
+            fit_histogram(x, data, brody).param[1],
+            fit_histogram(x, data, berry).param[1],
+            fit_histogram(x, data, lwd, ([0.],[Inf])).param[1],
+            Γ_regs_i(Γ_regs, i)[1][1], Γ_regs_i(Γ_regs, i)[1][end],
+            Γ_regs_i(Γ_regs, i)[2][1], Γ_regs_i(Γ_regs, i)[2][end],
+            Γ_regs_i(Γ_regs, i)[3][1], Γ_regs_i(Γ_regs, i)[3][end],
             ηs..., η(Γ_regs_i(Γ_regs, i)),
             γ1..., κ...])
         unique!(df, :region)
