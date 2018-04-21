@@ -65,7 +65,6 @@ end
         for (i, w) in zip(y, ws)]
 
     @series begin
-        label --> ""
         StackedHist((x, y, hists))
     end
 
