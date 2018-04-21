@@ -40,11 +40,11 @@ function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
     for i=1:length(Γ_regs[1])
         data = rel_spacing.(Γ_regs_i(Γ_regs, i))
         saveparams(prefix, 0:bin_size:4, data, Γ_regs, slices, i)
-        plt = fithistogram(0:bin_size:4, data, model, ([0.],[1.]), L"\alpha",
+        plt = fithistogram(0:bin_size:4, data, model, ([0.],[1.]), "\\alpha",
             xlabel=L"$s$", ylabel=L"$P(s)$")
         cmp = fithistogram(0:bin_size:4, data, [model, brody, berry, lwd],
             [([0.],[1.]), ([0.],[1.]), ([0.],[1.]), ([0.], [Inf])],
-            [L"\alpha", "q", "z", "w"],
+            ["\\alpha", "q", "z", "w"],
             xlabel=L"$s$", ylabel=L"$P(s)$")
         fn1 = "$prefix/P(s)_slice_$i-of-$slices.pdf"
         fn2 = "$prefix/P(s)_cmp_slice_$i-of-$slices.pdf"

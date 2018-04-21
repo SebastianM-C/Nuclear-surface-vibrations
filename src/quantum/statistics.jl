@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 module Statistics
 
-export rel_spacing, hist_P, fit_α, η, model, staircase
+export rel_spacing, hist_P, fit_α, η, model, brody, berry, lwd, staircase
 
 using StatsBase
 using Plots, LaTeXStrings
@@ -19,18 +19,21 @@ wigner(s) = π / 2 * s * exp(-π / 4 * s^2)
 poisson(s) = exp(-s)
 model(s, α) = @. α[1] * poisson(s) + (1 - α[1]) * wigner(s)
 
-function lwd(s, w)
+function lwd(s, p)
+    w = p[1]
     a(w) = √(π) * w * exp(w^2) * erfc(w)
     b(w) = π/2  * exp(2*w^2) * erfc(w)^2
     @. (a(w) + b(w) * s) * exp(-a(w) * s - b(w) / 2 * s^2)
 end
 
-function berry(s, z)
+function berry(s, p)
+    z = p[1]
     R(z) = 1 - exp(π*z^2/4) * erfc(√(π)*z/2)
     @. exp(-(1-z)s - π/4 * z^2 * s^2) * (1-z^2+π/2 * z^3 * s - (1-z)^2 * R(z*s))
 end
 
-function brody(s, q)
+function brody(s, p)
+    q = p[1]
     b(q) = gamma((2+q)/(1+q))^(q+1)
     @. b(q) * (1+q) * s^q * exp(-b(q) * s^(q+1))
 end

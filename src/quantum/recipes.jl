@@ -35,7 +35,7 @@ using Requires
     end
 end
 
-function fit_histogram(x, hists, model, nbins, lu=([0.], [1.]))
+function fit_histogram(x, hists, model, nbins, lu)
     y = sum(h.weights for h in hists)
     p0 = rand(1,)
     c_fit = curve_fit(model, x, y, ones(nbins), p0;
@@ -74,23 +74,14 @@ end
         ps = [fit_histogram(x_data, hists, model, nbins, lu).param
             for (model, lu) in zip(models, lus)]
         fs = [x->model(x, p) for (model, p) in zip(models, ps)]
-        lab = [L"$"*name*" = "@sprintf("%.2f", p)*L"$"
+        lab = [L"$"*name*" = "@sprintf("%.2f", length(p)>1 ? p : p[1])*L"$"
             for (p, name) in zip(ps, pnames)]
     else
         p = fit_histogram(x_data, hists, models, nbins, lus).param
-        fs = x->models(x, α)
-        lab = L"$"*pnames*" = "*@sprintf("%.2f", p)*L"$"
-
+        fs = x->models(x, p)
+        lab = L"$"*pnames*" = "*@sprintf("%.2f", length(p)>1 ? p : p[1])*L"$"
         model_hist = [1 / bin_size * quadgk(fs, x[i], x[i+1])[1]
                      for i in 1:nbins]
-
-         @series begin
-             seriestype := :bar
-             color := :transparent
-             bar_width := bin_size
-             label := ""
-             x, model_hist
-         end
     end
 
     ylims --> (0., 1.)
@@ -98,7 +89,17 @@ end
     @series begin
         seriestype := :path
         label --> lab
-        x, fs
+        x_data, fs
+    end
+
+    if !(typeof(models) <: AbstractArray)
+        @series begin
+            seriestype := :bar
+            color := :transparent
+            bar_width := bin_size
+            label := ""
+            x, model_hist
+        end
     end
 
 end
