@@ -35,7 +35,7 @@ using Requires
     end
 end
 
-function fit_histogram(x, hists, model, lu=([0.], [1.]), nbins)
+function fit_histogram(x, hists, model, nbins, lu=([0.], [1.]))
     y = sum(h.weights for h in hists)
     p0 = rand(1,)
     c_fit = curve_fit(model, x, y, ones(nbins), p0;
@@ -51,7 +51,7 @@ function fit_histogram(x, y, model, lu=([0.], [1.]))
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
     fit_histogram(linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
-        hists, model, lu, nbins)
+        hists, model, nbins, lu)
 end
 
 @recipe function f(fh::FitHistogram)
@@ -71,13 +71,13 @@ end
 
     x_data = linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins)
     if typeof(models) <: AbstractArray
-        ps = [fit_histogram(x_data, hists, model, lu, nbins).param
+        ps = [fit_histogram(x_data, hists, model, nbins, lu).param
             for (model, lu) in zip(models, lus)]
         fs = [x->model(x, p) for (model, p) in zip(models, ps)]
         lab = [L"$"*name*" = "@sprintf("%.2f", p)*L"$"
             for (p, name) in zip(ps, pnames)]
     else
-        p = fit_histogram(x_data, hists, models, lus, nbins).param
+        p = fit_histogram(x_data, hists, models, nbins, lus).param
         fs = x->models(x, α)
         lab = L"$"*pnames*" = "*@sprintf("%.2f", p)*L"$"
 
