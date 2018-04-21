@@ -74,7 +74,7 @@ end
         ps = [fit_histogram(x_data, hists, model, lu, nbins).param
             for (model, lu) in zip(models, lus)]
         fs = [x->model(x, p) for (model, p) in zip(models, ps)]
-        lab = ["L$"*name*" = "@sprintf("%.2f", p)*L"$"
+        lab = [L"$"*name*" = "@sprintf("%.2f", p)*L"$"
             for (p, name) in zip(ps, pnames)]
     else
         p = fit_histogram(x_data, hists, models, lus, nbins).param
