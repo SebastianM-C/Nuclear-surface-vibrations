@@ -19,6 +19,22 @@ wigner(s) = π / 2 * s * exp(-π / 4 * s^2)
 poisson(s) = exp(-s)
 model(s, α) = @. α[1] * poisson(s) + (1 - α[1]) * wigner(s)
 
+function lwd(s, w)
+    a(w) = √(π) * w * exp(w^2) * erfc(w)
+    b(w) = π/2  * exp(2*w^2) * erfc(w)^2
+    @. (a(w) + b(w) * s) * exp(-a(w) * s - b(w) / 2 * s^2)
+end
+
+function berry1(s, q)
+    R(z) = 1 - exp(π*z^2/4) * erfc(√(π)*z/2)
+    @. exp(-(1-q)s - π/4 * q^2 * s^2) * (1-q^2+π/2 * q^3 * s - (1-q)^2 * R(q*s))
+end
+
+function brody(s, q)
+    b(q) = gamma((2+q)/(1+q))^(q+1)
+    @. b(q) * (1+q) * s^q * exp(-b(q) * s^(q+1))
+end
+
 function hist_P(Γ, bin_size)
     data = rel_spacing.(Γ)
     ws = @. weights(ones(Γ) / (3 * length(Γ) * bin_size))

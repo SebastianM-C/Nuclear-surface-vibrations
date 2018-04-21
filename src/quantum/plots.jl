@@ -36,6 +36,34 @@ function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     return nothing
 end
 
+function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
+    for i=1:length(Γ_regs[1])
+        data = rel_spacing.(Γ_regs_i(Γ_regs, i))
+        saveparams(prefix, 0:bin_size:4, data, Γ_regs, slices, i)
+        plt = fithistogram(0:bin_size:4, data, [model, brody],
+            [([0.],[1.]), ([0.],[1.])],
+            [L"\alpha", "q"],
+            xlabel=L"$s$", ylabel=L"$P(s)$")
+        fn = "$prefix/P(s)_slice_$i-of-$slices.pdf"
+        savefig(plt, fn)
+    end
+end
+
+function plot_err(E, eigv, n, prefix)
+    symm, Δ = EnergyLevels.filter_symmetric(E, eigv, n)
+    s = diff(E)
+
+    plt1 = histogram(s, bins=logspace(-14, 1, 16), xscale=:log10,
+        xlims=(1e-14, 10), xlabel=L"E_{n+1} - E_n", ylabel=L"N")
+    plt2 = histogram(Δ, bins=logspace(-14, 1, 16), xscale=:log10,
+        xlims=(1e-14, 10), xlabel=L"R_y |\Psi\rangle - |\Psi\rangle",
+        ylabel=L"N")
+    savefig(plt1, "$prefix/bd_err.pdf")
+    savefig(plt2, "$prefix/symm_err.pdf")
+
+    plt1, plt2
+end
+
 function parse_prefix(prefix)
     re = r"n([0-9]+)-b([0-9]+\.?[0-9]+)-d([0-9]+\.?[0-9]+)/eps([0-9]+\.?[0-9]*(?:e-?[0-9]+)?)-veps([0-9]+\.?[0-9]*(?:e-?[0-9]+)?)"
     n, b, d, ϵ, ε = match(re, prefix).captures
@@ -87,30 +115,4 @@ function saveparams(prefix, x, data, Γ_regs, slices, i)
         unique!(df, :region)
     end
     CSV.write("$prefix/../fit_data.csv", df)
-end
-
-function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
-    for i=1:length(Γ_regs[1])
-        data = rel_spacing.(Γ_regs_i(Γ_regs, i))
-        saveparams(prefix, 0:bin_size:4, data, Γ_regs, slices, i)
-        plt = fithistogram(0:bin_size:4, data, model,
-            xlabel=L"$s$", ylabel=L"$P(s)$")
-        fn = "$prefix/P(s)_slice_$i-of-$slices.pdf"
-        savefig(plt, fn)
-    end
-end
-
-function plot_err(E, eigv, n, prefix)
-    symm, Δ = EnergyLevels.filter_symmetric(E, eigv, n)
-    s = diff(E)
-
-    plt1 = histogram(s, bins=logspace(-14, 1, 16), xscale=:log10,
-        xlims=(1e-14, 10), xlabel=L"E_{n+1} - E_n", ylabel=L"N")
-    plt2 = histogram(Δ, bins=logspace(-14, 1, 16), xscale=:log10,
-        xlims=(1e-14, 10), xlabel=L"R_y |\Psi\rangle - |\Psi\rangle",
-        ylabel=L"N")
-    savefig(plt1, "$prefix/bd_err.pdf")
-    savefig(plt2, "$prefix/symm_err.pdf")
-
-    plt1, plt2
 end

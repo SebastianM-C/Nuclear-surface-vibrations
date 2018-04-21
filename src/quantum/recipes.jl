@@ -35,11 +35,11 @@ using Requires
     end
 end
 
-function fit_histogram(x, hists, model, nbins)
+function fit_histogram(x, hists, model, lu=([0.], [1.]), nbins)
     y = sum(h.weights for h in hists)
     p0 = rand(1,)
     c_fit = curve_fit(model, x, y, ones(nbins), p0;
-        lower=[0.], upper=[1.])
+        lower=lu[1], upper=lu[2])
 end
 
 function fit_histogram(x, y, model)
@@ -55,7 +55,7 @@ function fit_histogram(x, y, model)
 end
 
 @recipe function f(fh::FitHistogram)
-    x, y, model = fh.args
+    x, y, models, lus, pnames = fh.args
     n = length(y)
     nbins = length(x) - 1
     bin_size = (last(x) - first(x)) / nbins
@@ -64,22 +64,28 @@ end
     hists = [fit(Histogram, i, w, x, closed=:left)
         for (i, w) in zip(y, ws)]
 
-    c_fit = fit_histogram(
-        linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins),
-        hists, model, nbins)
-
     @series begin
         label --> ""
         StackedHist((x, y, hists))
     end
 
-    α = c_fit.param[1]
-    f(x) = model(x, α)
+    x_data = linspace(first(x) + bin_size / 2, last(x) - bin_size / 2, nbins)
+    if typeof(models) <: AbstractArray
+        ps = [fit_histogram(x_data, hists, model, lu, nbins).param
+            for (model, lu) in zip(models, lus)]
+        fs = [x->model(x, p) for (model, p) in zip(models, ps)]
+        lab = ["L$"*name*" = "@sprintf("%.2f", p)*L"$"
+            for (p, name) in zip(ps, pnames)]
+    else
+        p = fit_histogram(x_data, hists, models, lus, nbins).param
+        fs = x->models(x, α)
+        lab = L"$"*pnames*" = "*@sprintf("%.2f", p)*L"$"
+    end
 
     @series begin
         seriestype := :path
-        label --> L"$\alpha = "*@sprintf("%.2f", α)*L"$"
-        x, f
+        label --> lab
+        x, fs
     end
 
     model_hist = [1 / bin_size * quadgk(f, x[i], x[i+1])[1]

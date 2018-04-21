@@ -65,7 +65,7 @@ function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     end
     # Use already computed values when available
     if isfile("$prefix/eigensystem-f$f.jld")
-        info("Loading previously computed values.")
+        info("Loading previously computed values for n $n b $b d $d.")
         E, eigv, nconv, niter = load("$prefix/eigensystem-f$f.jld",
             "E", "eigv", "nconv", "niter")
     else
