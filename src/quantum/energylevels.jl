@@ -222,13 +222,12 @@ symmetric representations and the maximum difference on each column
 for each eigenvector ``R_y |\\Psi\\rangle - |\\Psi\\rangle``.
 
 ## Arguments
-- `E`: energy levels
 - `eigv`: the corresponding eigenvectors
 - `n`: the dimension of the harmonic oscillator basis in one of the directions
 - `ϵ = 1e-6`: the maximum error for the separation of the symmetric representation
 """
-function filter_symmetric(E, eigv, n; ϵ=1e-6)
-    N=Int(n*(n+1)/2)
+function filter_symmetric(eigv, n; ϵ=1e-6)
+    N = Int(n*(n+1)/2)
     idx = Hamiltonian.index(n)
 
     U = Diagonal([(-1)^(idx[2, i]) for i=1:N])
@@ -283,7 +282,8 @@ function verify_reps(ΔE, symm, bd)
     longest_seq != 1 &&
         warn("Found a sequence of $longest_seq equal differences at $idx")
     !all(.!(symm .& bd)) && warn("The intersection of the symmetric "*
-        "representation and the bidimensional one is not void")
+        "representation and the bidimensional one has $(count(symm .& bd)) "*
+        "elements")
 end
 
 """
@@ -301,8 +301,8 @@ and [`filter_bidimensional`](@ref).
 - `ε = 1e-9`: the maximum difference between two degenerate levels
 """
 function irreducible_reps(E, eigv, n; ϵ=1e-6, ε=1e-9)
-    symm, Δ = filter_symmetric(E, eigv, n, ϵ=ϵ)
     ΔE, bd = filter_bidimensional(E, ε=ε)
+    symm, Δ = filter_symmetric(eigv, n, ϵ=ϵ)
 
     verify_reps(ΔE, symm, bd)
 
