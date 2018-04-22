@@ -20,8 +20,8 @@ function plot_P(hists, bin_size)
     end
     plt = groupedbar(linspace(0 + bin_size / 2, 4 - bin_size / 2, nbins),
         bars, bar_position=:stack, bar_width=bin_size, framestyle=:box,
-        ylims=(0., 1.), xlabel=L"$s$", ylabel=L"$P(s)$", label=""
-        # label=[L"$\Gamma_a$", L"$\Gamma_s$", L"$\Gamma_b$"]
+        ylims=(0., 1.), xlabel=L"$s$", ylabel=L"$P(s)$", #label=""
+        label=[L"$\Gamma_b$" L"$\Gamma_s$" L"$\Gamma_a$"]
         );
     return plt
 end

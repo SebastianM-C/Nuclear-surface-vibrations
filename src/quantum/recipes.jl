@@ -87,7 +87,7 @@ end
 
     @series begin
         seriestype := :path
-        label --> lab
+        label := lab
         x_data, fs
     end
 
