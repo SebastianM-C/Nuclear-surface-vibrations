@@ -7,14 +7,18 @@ include("dataio.jl")
 using Plots, LaTeXStrings
 using Regions, DataIO, Statistics
 using Recipes
+using JLD
 
 function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
-    E, eigv = diagonalize(n, b=b, d=d)
-    Γs = irreducible_reps(E, eigv, n, ϵ=ϵ, ε=ε)
-
     prefix = "../../output/quantum/n$n-b$b-d$d/"
-
-    plot_err(E, eigv, n, prefix, ϵ=ϵ, ε=ε)
+    if isfile("$prefix/levels.jld") && (ϵ, ε) == load("$prefix/levels.jld", "ϵ", "ε")
+        Γs = load("$prefix/levels.jld", "Γs")
+    else
+        E, eigv = diagonalize(n, b=b, d=d)
+        Γs = irreducible_reps(E, eigv, n, ϵ=ϵ, ε=ε)
+        plot_err(E, eigv, n, prefix, ϵ=ϵ, ε=ε)
+        save("$prefix/levels.jld", "Γs", Γs, "ϵ", ϵ, "ε", ε)
+    end
 
     Γ_regs = regions(Γs, slices)
     prefix *= "eps$ϵ-veps$ε"

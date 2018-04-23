@@ -72,6 +72,7 @@ function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
         @timeit "Hamiltonian computation for n$n b$b d$d" begin
             H = compute_hamiltonian(n, a=a, b=b, d=d)
         end
+        free()
         label = "Diagonalisation for n$n f$f b$b d$d"
         @timeit label begin
             E, eigv, nconv, niter, nmult, resid = eigs(H, nev=nev, which=:SM)
