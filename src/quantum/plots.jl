@@ -9,7 +9,7 @@ using Regions, DataIO, Statistics
 using Recipes
 using JLD
 
-function makeplots(n, b=0.55, d=0.4; ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
+function makeplots(n; b=0.55, d=0.4, ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
     prefix = "../../output/quantum/n$n-b$b-d$d/"
     if isfile("$prefix/levels.jld") && (ϵ, ε) == load("$prefix/levels.jld", "ϵ", "ε")
         Γs = load("$prefix/levels.jld", "Γs")
@@ -60,14 +60,23 @@ function plot_hist(Γ_regs, slices, prefix; bin_size=0.2)
 end
 
 function plot_err(E, eigv, n, prefix; ϵ=1e-6, ε=1e-9)
+    ΔE, bd = EnergyLevels.filter_bidimensional(E, ε=ε)
     symm, Δ = EnergyLevels.filter_symmetric(eigv, n, ϵ=ϵ)
     s = diff(E)
 
     plt1 = histogram(s, bins=logspace(-14, 1, 16), xscale=:log10,
-        xlims=(1e-14, 10), xlabel=L"E_{n+1} - E_n", ylabel=L"N")
-    plt2 = histogram(Δ, bins=logspace(-14, 1, 16), xscale=:log10,
-        xlims=(1e-14, 10), xlabel=L"R_y |\Psi\rangle - |\Psi\rangle",
-        ylabel=L"N")
+        xlims=(1e-14, 10), xlabel=L"$E_{n+1} - E_n$", ylabel=L"$N$", label="")
+    histogram!(plt1, s[ΔE], bins=logspace(-14, 1, 16), xscale=:log10,
+        label=L"$\Gamma_b$")
+    plt2 = histogram(Δ[symm .& .!bd], bins=logspace(-14, 1, 16), xscale=:log10,
+        xlims=(1e-14, 10), xlabel=L"$R_y |\Psi\rangle - |\Psi\rangle$",
+        ylabel=L"$N$", label=L"$\Gamma_s \cap \neg\Gamma_b$", legend=:topleft)
+    histogram!(plt2, Δ[.!symm .& .!bd], bins=logspace(-14, 1, 16), xscale=:log10,
+        label=L"$\Gamma_a$")
+    histogram!(plt2, Δ[bd], bins=logspace(-14, 1, 16), xscale=:log10,
+        label=L"$\Gamma_b$", ylims=(0, 1.2*ylims(plt2)[2]), α=0.4)
+    histogram!(plt2, Δ, bins=logspace(-14, 1, 16), xscale=:log10,
+        label="", color=:transparent)
     savefig(plt1, "$prefix/bd_err.pdf")
     savefig(plt2, "$prefix/symm_err.pdf")
 
