@@ -12,10 +12,10 @@ function objective(q::Vector, grad::Vector)
     sqrt.(sum(q.^2))
 end
 
-function generateInscribed(E, n)
+function generateInscribed(E, n, params)
 
     function constraint(q::Vector, grad::Vector)
-        V(q) - E
+        V(q, params) - E
     end
 
     opt = Opt(:LN_COBYLA, 2)
@@ -36,18 +36,19 @@ function generateInscribed(E, n)
     hcat(x, y)
 end
 
-function findQs(E, n)
+function findQs(E, n, params)
 
-    function f!(q, F)
-        F[1] = V(q) - E
+    function f!(F, q)
+        F[1] = V(q, params) - E
+        F[2] = 0.
     end
 
     q0 = zeros(n, 2)
-    qs = generateInscribed(E, n)
+    qs = generateInscribed(E, n, params)
 
     for i=1:n
-        result = nlsolve(f!, qs[i,:], autodiff=true, method=:newton, ftol=1e-13)
-#         !converged(result) && warn("Did not converge for $i")
+        result = nlsolve(f!, qs[i,:], autodiff=:forward, method=:trust_region, ftol=1e-13)
+        # !converged(result) && warn("Did not converge for $i")
         q0[i,:] = result.zero
     end
 
@@ -70,7 +71,7 @@ end
 pUpperLimit(E, p) = √(2 * E - p^2)
 
 # TODO: Don't forget to set use_cache=true
-function generateInitialConditions(E, n, m, use_cache=false)
+function generateInitialConditions(E, n, m, A=1, B=0.55, D=0.4, use_cache=false)
     T_range = linspace(0, E, m)
 
     q0 = zeros(n*m, 2)
@@ -81,29 +82,31 @@ function generateInitialConditions(E, n, m, use_cache=false)
         p0[idx, 1] = linspace(0, √(2 * T_range[i]), n)
         p0[idx, 2] = real(pUpperLimit.(T_range[i]+0im, p0[idx, 1]))
 
-        q0[idx, :] = findQs(E - T_range[i], n)
+        q0[idx, :] = findQs(E - T_range[i], n, (A, B, D))
     end
 
-    A, B, D = readdlm("param.dat")
-    prefix = "../output/B$B D$D E$E"
+    prefix = "../../output/classical/B$B-D$D/E$E"
+    if !isdir(prefix)
+        mkpath(prefix)
+    end
     if use_cache
         if !isfile("$prefix/z0.jld")
             info("Initial conditions file not found. Generating new conditions.")
-            q0, p0, N = generateInitialConditions(E, n, m, use_cache=false)
+            q0, p0, N = generateInitialConditions(E, n, m, A, B, D, false)
         else
             q0, p0 = load("$prefix/z0.jld", "q0", "p0")
             N = size(q0, 1)
         end
     else
         q0, p0, N = filter_NaNs!(q0, p0, n, m)
-        plt = plot(1:N, i->H(q0[i,:], p0[i,:]) - E, xlabel="index",
+        plt = plot(1:N, i->H(p0[i,:], q0[i,:], (A, B, D)) - E, xlabel="index",
             ylabel="Energy error", lab="")
         # TODO: enable cache
         # savefig(plt, "$prefix/initial_energy_err.pdf")
         # save("$prefix/z0.jld", q0, "q0", p0, "p0")
     end
-    info("The maximum error for the initial conditions is "*
-        "$(maximum(abs(H(q0[i,:], p0[i,:]) - E) for i = 1:N))")
+    maxerr = maximum(abs(H(p0[i,:], q0[i,:], (A, B, D)) - E) for i = 1:N)
+    info("The maximum error for the initial conditions is $maxerr")
     return q0, p0, N
 end
 

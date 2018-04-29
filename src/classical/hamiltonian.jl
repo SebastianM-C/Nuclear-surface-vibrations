@@ -1,7 +1,9 @@
 #!/usr/bin/env julia
 module Hamiltonian
 
-export H, T, V, q̇, ṗ
+export H, T, V, ż
+
+using StaticArrays
 
 function T(p, params)
   A = params
@@ -13,16 +15,29 @@ function V(q, params)
   A / 2 * (q[1]^2 + q[2]^2) + B / √2 * q[1] * (3 * q[2]^2 - q[1]^2) + D / 4 * (q[1]^2 + q[2]^2)^2;
 end
 
-H(p, q, params=(1, 0.55, 0.4)) = T(p, params=params[1]) + V(q, params=params[2:3])
+H(p, q, params=(1, 0.55, 0.4)) = T(p, params[1]) + V(q, params)
 
-function q̇(dq, p, q, params=1., t)
+function ż(z, p, t)
+  A, B, D = p
+  p₀, p₂ = z[1:2]
+  q₀, q₂ = z[3:4]
+
+  return SVector(
+    -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2),
+    -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2)),
+    A * p₀,
+    A * p₂
+  )
+end
+
+function q̇(dq, p, q, params, t)
   A = params
   p₀, p₂ = p
   dq[1] = A * p₀
   dq[2] = A * p₂
 end
 
-function ṗ(dq, p, q, params=(1, 0.55, 0.4), t)
+function ṗ(dq, p, q, params, t)
   A, B, D = params
   q₀, q₂ = q
   dp[1] = -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2)
