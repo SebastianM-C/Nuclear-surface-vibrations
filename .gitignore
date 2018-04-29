@@ -5,4 +5,4 @@ notebooks/
 *.problems/
 *legacy/
 julia.simg
-src/quantum/analyze.jl
+analyze.jl
