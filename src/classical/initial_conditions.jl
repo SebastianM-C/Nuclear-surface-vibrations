@@ -4,7 +4,9 @@ using NLsolve
 using NLopt
 using JLD
 using Plots
-using Hamiltonian
+
+include("hamiltonian.jl")
+using .Hamiltonian
 
 export generateInitialConditions
 

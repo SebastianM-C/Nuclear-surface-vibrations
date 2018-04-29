@@ -1,12 +1,13 @@
 #!/usr/bin/env julia
-addprocs(4)
+addprocs(20)
 using DifferentialEquations
 using Plots
 # using ArgParse
 using ParallelDataTransfer
 
 include("initial_conditions.jl")
-using Hamiltonian, InitialConditions
+@everywhere include("hamiltonian.jl")
+using .Hamiltonian, .InitialConditions
 
 # pyplot()
 #
@@ -40,12 +41,12 @@ using Hamiltonian, InitialConditions
 #     E, n, m, t
 # end
 
-# @everywhere begin
-condition(u, t, integrator) = u
-affect!(integrator) = nothing
-PoincareCb(idx) = ContinuousCallback(condition, affect!, nothing,
-    save_positions=(false, true), idxs=idx)
-# end
+@everywhere begin
+    condition(u, t, integrator) = u
+    affect!(integrator) = nothing
+    PoincareCb(idx) = DifferentialEquations.ContinuousCallback(condition, affect!, nothing,
+        save_positions=(false, true), idxs=idx)
+end
 # function g(u, resid)
 #     resid[1,1] = H(u[1,:], u[2,:]) - E
 #     resid[1,2] = 0
@@ -68,12 +69,13 @@ end
 A, B, D = 1, 0.55, 0.4
 E, n, m = 30., 10, 10
 tspan = (0., 500.)
-q0, p0, N = generateInitialConditions(E, n, m, A, B, D)
+q0, p0, N = InitialConditions.generateInitialConditions(E, n, m, A, B, D)
 z0 = hcat(p0, q0)
+@everywhere cb = PoincareCb(3)
 # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
 # prob = DynamicalODEProblem(q̇, ṗ, q0[1,:], p0[1,:], tspan)
 prob = ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb)
-@everywhere cb = PoincareCb(3)
+
 sendto(workers(), prob=prob, z0=z0)
 
 @everywhere function prob_func(prob, i, repeat)
@@ -87,7 +89,7 @@ monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
 
 sim = solve(monte_prob, Vern9(), abstol=1e-14, reltol=1e-14,
     save_everystep=false, save_start=false, save_end=false,
-    save_everystep=false, num_monte=30, parallel_type=:threads)
+    save_everystep=false, num_monte=30, parallel_type=:pmap)
 # N = 21:   120s  serial vs 128s threaded (20)
 # N = 211:  1271s serial vs 549s pmap     (2)
 # N = 211:  1271s serial vs 124s,118s,102s pmap     (20)
