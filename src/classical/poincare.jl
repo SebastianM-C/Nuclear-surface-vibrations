@@ -4,7 +4,7 @@ module Poincare
 export poincare
 
 addprocs(Int(Sys.CPU_CORES / 2))
-using DiffBase, OrdinaryDiffEq, DiffEqMonteCarlo
+using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
 using ParallelDataTransfer
 
 include("initial_conditions.jl")

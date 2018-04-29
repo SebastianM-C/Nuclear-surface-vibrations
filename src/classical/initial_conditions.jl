@@ -1,13 +1,14 @@
 #!/usr/bin/env julia
 module InitialConditions
+
+export generateInitialConditions
+
 using NLsolve
 using NLopt
 using Plots
 
 include("hamiltonian.jl")
 using .Hamiltonian
-
-export generateInitialConditions
 
 function objective(q::Vector, grad::Vector)
     sqrt.(sum(q.^2))
@@ -94,7 +95,7 @@ function generateInitialConditions(E, n=10, m=10; params=(1, 0.55, 0.4))
     plt = plot(1:N, i->H(p0[i,:], q0[i,:], params) - E, xlabel="index",
         ylabel="Energy error", lab="")
     savefig(plt, "$prefix/initial_energy_err.pdf")
-    end
+
     maxerr = maximum(abs(H(p0[i,:], q0[i,:], params) - E) for i = 1:N)
     info("The maximum error for the initial conditions is $maxerr")
     return q0, p0, N
