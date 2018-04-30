@@ -1,3 +1,7 @@
+module CustomPlots
+
+export energy_error
+
 using RecipesBase
 using Plots
 
@@ -15,3 +19,5 @@ function energy_error(sim, E, params)
     plt = plot(ylabel="Energy error", legend=false)
     plot!(plt, sim, vars=(energy_err, 0,1,2,3,4), msc=nothing, ms=2)
 end
+
+end  # module CustomPlots

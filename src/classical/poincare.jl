@@ -5,9 +5,8 @@ addprocs(Int(Sys.CPU_CORES / 2))
 @everywhere begin
     using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
 
-    condition(u, t, integrator) = u
-    affect!(integrator) = nothing
-    cb(idx) = DiffEqBase.ContinuousCallback(condition, affect!, nothing,
+    cb(idx, s) = DiffEqBase.ContinuousCallback((u, t, integrator)->s*u, 
+        (integrator)->nothing, nothing,
         save_positions=(false, true), idxs=idx)
 
 end
@@ -30,8 +29,9 @@ a Monte Carlo simulation.
 - `D = 1`: Hamiltonian D parameter
 - `t = 100`: Simulation duration
 - `axis = 3`: Axis for the Poincare section
+- `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3)
+function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3, sgn=1)
     tspan = (0., t)
     prefix = "../../output/classical/B$B-D$D/E$E"
     if !isdir(prefix)
@@ -42,12 +42,10 @@ function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3)
 
     # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
     # prob = DynamicalODEProblem(q̇, ṗ, q0[1,:], p0[1,:], tspan)
-    prob = DiffEqBase.ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb(axis))
-
-    #sendto(workers(), prob=prob, z0=z0, axis=axis)
+    prob = DiffEqBase.ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb(axis, sgn))
 
     function prob_func(prob, i, repeat)
-        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb(axis))
+        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb(axis, sgn))
     end
 
     monte_prob = DiffEqBase.MonteCarloProblem(prob, prob_func=prob_func)
@@ -56,4 +54,3 @@ function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3)
         save_everystep=false, save_start=false, save_end=false,
         save_everystep=false, num_monte=N, parallel_type=:pmap)
 end
-
