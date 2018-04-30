@@ -1,22 +1,19 @@
 #!/usr/bin/env julia
-module Poincare
-
-export poincare
 
 addprocs(Int(Sys.CPU_CORES / 2))
-using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
-using ParallelDataTransfer
-
-include("initial_conditions.jl")
-@everywhere include("hamiltonian.jl")
-using .Hamiltonian, .InitialConditions
 
 @everywhere begin
+    using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
+
     condition(u, t, integrator) = u
     affect!(integrator) = nothing
-    PoincareCb(idx) = DiffEqBase.ContinuousCallback(condition, affect!, nothing,
+    cb(idx) = DiffEqBase.ContinuousCallback(condition, affect!, nothing,
         save_positions=(false, true), idxs=idx)
+
 end
+
+@everywhere include("hamiltonian.jl")
+using .Hamiltonian
 
 """
     poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
@@ -34,30 +31,29 @@ a Monte Carlo simulation.
 - `t = 100`: Simulation duration
 - `axis = 3`: Axis for the Poincare section
 """
-function poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
+function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3)
     tspan = (0., t)
     prefix = "../../output/classical/B$B-D$D/E$E"
     if !isdir(prefix)
         mkpath(prefix)
     end
-    q0, p0, N = @time generateInitialConditions(E, n, m, params=(A, B, D))
+
     z0 = hcat(p0, q0)
-    @everywhere cb = PoincareCb(axis)
+
     # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
     # prob = DynamicalODEProblem(q̇, ṗ, q0[1,:], p0[1,:], tspan)
-    prob = ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb)
+    prob = DiffEqBase.ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb(axis))
 
-    sendto(workers(), prob=prob, z0=z0)
+    #sendto(workers(), prob=prob, z0=z0, axis=axis)
 
-    @everywhere function prob_func(prob, i, repeat)
-        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb)
+    function prob_func(prob, i, repeat)
+        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb(axis))
     end
 
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
+    monte_prob = DiffEqBase.MonteCarloProblem(prob, prob_func=prob_func)
 
-    sim = solve(monte_prob, Vern9(), abstol=1e-14, reltol=1e-14,
+    sim = DiffEqBase.solve(monte_prob, OrdinaryDiffEq.Vern9(), abstol=1e-14, reltol=1e-14,
         save_everystep=false, save_start=false, save_end=false,
         save_everystep=false, num_monte=N, parallel_type=:pmap)
 end
 
-end  # module Poincare
