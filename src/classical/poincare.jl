@@ -5,9 +5,10 @@ addprocs(Int(Sys.CPU_CORES / 2))
 @everywhere begin
     using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
 
-    cb(idx, s) = DiffEqBase.ContinuousCallback((u, t, integrator)->s*u, 
-        (integrator)->nothing, nothing,
-        save_positions=(false, true), idxs=idx)
+    condition(u, t, integrator) = u
+    affect!(integrator) = nothing
+    cb(idx) = DiffEqBase.ContinuousCallback(condition, 
+        affect!, nothing, save_positions=(false, true), idxs=idx)
 
 end
 
@@ -42,10 +43,10 @@ function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3, sgn=1)
 
     # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
     # prob = DynamicalODEProblem(q̇, ṗ, q0[1,:], p0[1,:], tspan)
-    prob = DiffEqBase.ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb(axis, sgn))
+    prob = DiffEqBase.ODEProblem(ż, z0[1, :], tspan, (A, B, D), callback=cb(axis))
 
     function prob_func(prob, i, repeat)
-        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb(axis, sgn))
+        DiffEqBase.ODEProblem(prob.f, z0[i, :], prob.tspan, prob.p, callback=cb(axis))
     end
 
     monte_prob = DiffEqBase.MonteCarloProblem(prob, prob_func=prob_func)
