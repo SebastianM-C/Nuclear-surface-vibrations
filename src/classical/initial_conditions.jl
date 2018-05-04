@@ -6,6 +6,7 @@ export generateInitialConditions
 using NLsolve
 using NLopt
 using Plots
+using DataFrames, CSV
 
 include("hamiltonian.jl")
 using .Hamiltonian
@@ -72,7 +73,7 @@ end
 
 pUpperLimit(E, p) = √(2 * E - p^2)
 
-function generateInitialConditions(E, n=10, m=10; params=(1, 0.55, 0.4))
+function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4), use_cache=true)
     T_range = linspace(0, E, m)
 
     q0 = zeros(n*m, 2)
@@ -91,10 +92,29 @@ function generateInitialConditions(E, n=10, m=10; params=(1, 0.55, 0.4))
     if !isdir(prefix)
         mkpath(prefix)
     end
-    q0, p0, N = filter_NaNs!(q0, p0, n, m)
-    plt = plot(1:N, i->H(p0[i,:], q0[i,:], params) - E, xlabel="index",
-        ylabel="Energy error", lab="")
-    savefig(plt, "$prefix/initial_energy_err.pdf")
+
+    if use_cache
+        if !isfile("$prefix/z0.csv")
+            info("Initial conditions file not found. Generating new conditions.")
+            q0, p0, N = generateInitialConditions(E, n, m, params=params, use_cache=false)
+        else
+            df = CSV.read("$prefix/z0.csv", allowmissing=:none)
+            q0 = hcat(df[:q0₁], df[:q0₂])
+            p0 = hcat(df[:p0₁], df[:p0₂])
+            N = size(q0, 1)
+        end
+    else
+        q0, p0, N = filter_NaNs!(q0, p0, n, m)
+        plt = plot(1:N, i->H(p0[i,:], q0[i,:], params) - E, xlabel="index",
+            ylabel="Energy error", lab="")
+        df = DataFrame()
+        df[:q0₁] = q0[:,1]
+        df[:q0₂] = q0[:,2]
+        df[:p0₁] = p0[:,1]
+        df[:p0₂] = p0[:,2]
+        CSV.write("$prefix/z0.csv", df)
+        savefig(plt, "$prefix/initial_energy_err.pdf")
+    end
 
     maxerr = maximum(abs(H(p0[i,:], q0[i,:], params) - E) for i = 1:N)
     info("The maximum error for the initial conditions is $maxerr")
