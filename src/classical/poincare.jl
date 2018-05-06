@@ -1,10 +1,7 @@
-#!/usr/bin/env julia
-
 nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
 
 @everywhere begin
     using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
-    using StaticArrays
 
     condition(u, t, integrator) = u
     affect!(integrator) = nothing
@@ -13,8 +10,11 @@ nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
 
 end
 
-@everywhere include("hamiltonian.jl")
-using .Hamiltonian
+!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
+!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
+
+using Hamiltonian, InitialConditions
+using StaticArrays
 
 """
     poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
@@ -33,7 +33,7 @@ a Monte Carlo simulation.
 - `axis = 3`: Axis for the Poincare section
 - `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3, sgn=1)
+function poincaremap(q0, p0, N; A=1, B=0.55, D=0.4, t=500, axis=3, sgn=1)
     tspan = (0., t)
     prefix = "../../output/classical/B$B-D$D/E$E"
     if !isdir(prefix)
@@ -55,4 +55,16 @@ function poincaremap(E, q0, p0, N; A=1, B=0.55, D=0.4, t=100, axis=3, sgn=1)
     sim = DiffEqBase.solve(monte_prob, OrdinaryDiffEq.Vern9(), abstol=1e-14, reltol=1e-14,
         save_everystep=false, save_start=false, save_end=false,
         save_everystep=false, num_monte=N, parallel_type=:pmap)
+end
+
+function coloredpoincare(E, colors;
+        name="", A=1, B=0.55, D=0.4, n=15, m=15, t=500, axis=3, sgn=1)
+    prefix = "../../output/classical/B$B-D$D/E$E"
+    q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
+    sim = poincaremap(q0, p0, N, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
+    zcs = [fill(c, length(sim[i].u)) for (i,c) in enumerate(colors)]
+
+    vars = axis == 3 ? (4, 2) : (3, 1)
+    plt = scatter(sim, vars=vars, msc=nothing, ms=2., zcolors=zcs)
+    savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end

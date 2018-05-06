@@ -74,6 +74,11 @@ end
 pUpperLimit(E, p) = √(2 * E - p^2)
 
 function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
+    B, D = params[2:3]
+    prefix = "../../output/classical/B$B-D$D/E$E"
+    if !isdir(prefix)
+        mkpath(prefix)
+    end
     if !isfile("$prefix/z0.csv")
         info("Initial conditions file not found. Generating new conditions.")
         q0, p0, N = _generateInitialConditions(E, n, m, params=params)
