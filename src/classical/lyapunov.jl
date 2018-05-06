@@ -1,48 +1,56 @@
-#!/usr/bin/env julia
-module Lyapunov
-include("problem.jl")
+nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
 
-using OrdinaryDiffEq, DynamicalSystems
+!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
+!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
 
-export compute_lyapunov, lyapunov_timeseries
+using Hamiltonian, InitialConditions
+@everywhere using DynamicalSystemsBase, ChaosTools
+using StaticArrays
+using DataFrames, CSV
+using PmapProgressMeter
 
-function initialize(prob::ODEProblem, d0, threshold, diff_eq_kwargs)
-
-    threshold <= d0 && throw(ArgumentError("Threshold must be bigger than d0!"))
-
-    if haskey(diff_eq_kwargs, :solver)
-        solver = diff_eq_kwargs[:solver]
-    else
-        println("Using DPRKN12 as default solver")
-        solver = DPRKN12()
+function λmap(E; A=1, B=0.55, D=0.4, n=15, m=15, T=500., Ttr=0, d0=1e-9,
+               upper_threshold=1e-6, lower_threshold=1e-12,
+               inittest = ChaosTools.inittest_default(4),
+               dt=1, diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
+    prefix = "../../output/classical/B$B-D$D/E$E"
+    if !isfile("$prefix/z0.csv")
+        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
     end
-    # Initialize
-    integ1 = init(prob, solver; diff_eq_kwargs..., save_first=false, save_everystep=false)
-    integ1.opts.advance_to_tstop = true
-
-    q0, p0 = prob.u0 .+ d0 / √2
-
-    prob2 = HamiltonEqs.defineProblem(q0, p0, prob.tspan)
-    integ2 = init(prob2, solver; diff_eq_kwargs..., save_first=false, save_everystep=false)
-    integ2.opts.advance_to_tstop = true
-
-    return integ1, integ2
+    df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
+    # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
+    if !haskey(df, :λs)
+        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
+        λs = _λmap(q0, p0, N; A=A, B=B, D=D, T=T, Ttr=Ttr,
+           d0=d0, upper_threshold=upper_threshold, lower_threshold=lower_threshold,
+           inittest=inittest, dt=dt, diff_eq_kwargs=diff_eq_kwargs)
+        df[:λs] = λs
+        CSV.write("$prefix/z0.csv", df)
+    else
+        df = CSV.read("$prefix/z0.csv", allowmissing=:none)
+        λs = df[:λs]
+    end
+    return λs
 end
 
-function compute_lyapunov(prob::ODEProblem; d0=1e-9, threshold=10^4*d0, dt = 0.1,
-    diff_eq_kwargs = Dict(:abstol=>d0, :reltol=>d0))
+function _λmap(q0, p0, N; A=1, B=0.55, D=0.4, T=5000., Ttr=100., d0=1e-9,
+               upper_threshold=1e-6, lower_threshold=1e-12,
+               inittest = ChaosTools.inittest_default(4),
+               dt=10., diff_eq_kwargs=Dict(:abstol=>d0, :reltol=>d0))
+    z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
+    ds = DynamicalSystemsBase.ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
 
-    integ1, integ2 = initialize(prob, d0, threshold, diff_eq_kwargs)
-    DynamicalSystems.lyapunov_final(integ1, integ2, prob.tspan[2],
-        d0, threshold, dt)
-end
+    pinteg = DynamicalSystemsBase.parallel_integrator(ds,
+            [deepcopy(DynamicalSystemsBase.get_state(ds)),
+            inittest(DynamicalSystemsBase.get_state(ds), d0)];
+            diff_eq_kwargs=diff_eq_kwargs)
+    λs = SharedArray{Float64}(N)
 
-function lyapunov_timeseries(prob::ODEProblem; d0=1e-9, threshold=10^4*d0, dt = 0.1,
-    diff_eq_kwargs = Dict(:abstol=>d0, :reltol=>d0))
+    pmap(i->(set_state!(pinteg, z0[i]);
+            reinit!(pinteg, pinteg.u);
+            λs[i] = ChaosTools._lyapunov(pinteg, T, Ttr, dt, d0,
+                upper_threshold, lower_threshold)),
+        PmapProgressMeter.Progress(N), 1:N)
 
-    integ1, integ2 = initialize(prob, d0, threshold, diff_eq_kwargs)
-    DynamicalSystems.lyapunov_full(integ1, integ2, prob.tspan[2],
-        d0, threshold, dt)
-end
-
+    return Array(λs)
 end
