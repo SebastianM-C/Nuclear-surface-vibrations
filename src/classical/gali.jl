@@ -10,7 +10,8 @@ using DynamicalSystems
 using StaticArrays
 using DataFrames, CSV
 
-function galimap(E; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12)
+function galimap(E; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12,
+                 diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
     prefix = "../../output/classical/B$B-D$D/E$E"
     if !isfile("$prefix/z0.csv")
         q0, p0, N = generateInitialConditions(E, params=(A,B,D))
@@ -18,7 +19,8 @@ function galimap(E; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12)
     df = CSV.read("$prefix/z0.csv", allowmissing=:none)
     if !haskey(df, :gali)
         q0, p0, N = generateInitialConditions(E, params=(A,B,D))
-        chaoticity = _galimap(q0, p0, N; A=A, B=B, D=D, tmax=tmax, dt=dt, threshold=1e-12)
+        chaoticity = _galimap(q0, p0, N; A=A, B=B, D=D, tmax=tmax, dt=dt,
+            threshold=threshold, diff_eq_kwargs=diff_eq_kwargs)
         df[:gali] = chaoticity
         CSV.write("$prefix/z0.csv", df)
     else
@@ -28,11 +30,11 @@ function galimap(E; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12)
     return chaoticity
 end
 
-function _galimap(q0, p0, N; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12)
-
+function _galimap(q0, p0, N; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12,
+                  diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
     z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
     ds = ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
-    tinteg = tangent_integrator(ds, 2)
+    tinteg = tangent_integrator(ds, 2, diff_eq_kwargs=diff_eq_kwargs)
     chaoticity = Vector{Float64}(N)
 
     for i=1:N
