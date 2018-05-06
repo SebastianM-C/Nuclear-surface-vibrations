@@ -10,15 +10,16 @@ using DynamicalSystems
 using StaticArrays
 using DataFrames, CSV
 
-function galimap(E; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12,
+function galimap(E; A=1, B=0.55, D=0.4, n=15, m=15, tmax=500, dt=1, threshold=1e-12,
                  diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
     prefix = "../../output/classical/B$B-D$D/E$E"
     if !isfile("$prefix/z0.csv")
-        q0, p0, N = generateInitialConditions(E, params=(A,B,D))
+        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
     end
-    df = CSV.read("$prefix/z0.csv", allowmissing=:none)
+    df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
+    # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
     if !haskey(df, :gali)
-        q0, p0, N = generateInitialConditions(E, params=(A,B,D))
+        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
         chaoticity = _galimap(q0, p0, N; A=A, B=B, D=D, tmax=tmax, dt=dt,
             threshold=threshold, diff_eq_kwargs=diff_eq_kwargs)
         df[:gali] = chaoticity
