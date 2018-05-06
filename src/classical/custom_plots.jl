@@ -21,20 +21,4 @@ function energy_error(sim, E, params)
     plot!(plt, sim, vars=(energy_err, 0,1,2,3,4), msc=nothing, ms=2)
 end
 
-@recipe function f(sim::AbstractMonteCarloSolution;
-                   zcolors = typeof(sim.u)<:AbstractArray ? fill(nothing, length(sim.u)) : nothing,
-                   idxs = typeof(sim.u)<:AbstractArray ? eachindex(sim.u) : 1)
-  for i in idxs
-    size(sim[i].u, 1) == 0 && continue
-    @series begin
-      legend := false
-      xlims --> (-Inf,Inf)
-      ylims --> (-Inf,Inf)
-      zlims --> (-Inf,Inf)
-      zcolor --> zcolors[i]
-      sim[i]
-    end
-  end
-end
-
 end  # module CustomPlots
