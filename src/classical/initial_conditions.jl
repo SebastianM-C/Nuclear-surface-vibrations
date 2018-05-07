@@ -80,13 +80,18 @@ function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
         mkpath(prefix)
     end
     if !isfile("$prefix/z0.csv")
-        info("Initial conditions file not found. Generating new conditions.")
+        info("No initial conditions file found. Generating new conditions.")
         q0, p0, N = _generateInitialConditions(E, n, m, params=params)
     else
-        df = CSV.read("$prefix/z0.csv", allowmissing=:none)
-        q0 = hcat(df[:q0₁], df[:q0₂])
-        p0 = hcat(df[:p0₁], df[:p0₂])
-        N = size(q0, 1)
+        df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
+        if df[:n][1] != n || df[:m][1] != m
+            info("Incompatible initial conditions. Generating new conditions.")
+            q0, p0, N = _generateInitialConditions(E, n, m, params=params)
+        else
+            q0 = hcat(df[:q0₁], df[:q0₂])
+            p0 = hcat(df[:p0₁], df[:p0₂])
+            N = size(q0, 1)
+        end
     end
     return q0, p0, N
 end
@@ -119,6 +124,9 @@ function _generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
     df[:q0₂] = q0[:,2]
     df[:p0₁] = p0[:,1]
     df[:p0₂] = p0[:,2]
+    df[:n] = fill(n, N)
+    df[:m] = fill(m, N)
+    df[:E] = fill(E, N)
     CSV.write("$prefix/z0.csv", df)
     savefig(plt, "$prefix/initial_energy_err.pdf")
 

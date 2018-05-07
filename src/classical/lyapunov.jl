@@ -14,13 +14,10 @@ function λmap(E; A=1, B=0.55, D=0.4, n=15, m=15, T=500., Ttr=0, d0=1e-9,
                inittest = ChaosTools.inittest_default(4),
                dt=1, diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
     prefix = "../../output/classical/B$B-D$D/E$E"
-    if !isfile("$prefix/z0.csv")
-        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
-    end
+    q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
     df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
     # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
     if !haskey(df, :λs)
-        q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
         λs = _λmap(q0, p0, N; A=A, B=B, D=D, T=T, Ttr=Ttr,
            d0=d0, upper_threshold=upper_threshold, lower_threshold=lower_threshold,
            inittest=inittest, dt=dt, diff_eq_kwargs=diff_eq_kwargs)
