@@ -20,7 +20,8 @@ have the given `name`. Optionally specify the Regex for the output folders.
 folders
 
 """
-function files(name::Regex; location="quantum", re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+")
+function files(name::Regex; location="quantum",
+               re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+")
     prefix = "../../output/$location/"
     match_list(f) = ismatch.(name, readdir(joinpath(prefix, f)))
     folders = filter(f->ismatch(re, f) && any(match_list(f)), readdir(prefix))
@@ -43,11 +44,13 @@ and return a `DataFrame` containing all the data. See also [`files`](@ref).
 folders
 
 """
-function concat(name::Regex; location="quantum", re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+")
+function concat(name::Regex; location="quantum",
+                re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+", filter=:)
     filenames = files(name; location=location, re=re)
-    df = CSV.read(filenames[1], allowmissing=:none)
+    df = CSV.read(filenames[1], allowmissing=:none)[filter]
     for i=2:length(filenames)
-        append!(df, CSV.read(filenames[i], allowmissing=:none)[names(df)])
+        append!(df,
+            CSV.read(filenames[i], allowmissing=:none)[names(df)][filter])
     end
 
     return df

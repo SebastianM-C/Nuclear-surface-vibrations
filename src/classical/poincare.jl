@@ -33,9 +33,8 @@ a Monte Carlo simulation.
 - `axis = 3`: Axis for the Poincare section
 - `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(q0, p0, N; A=1, B=0.55, D=0.4, t=500, axis=3, sgn=1)
+function poincaremap(q0, p0, N, prefix; A=1, B=0.55, D=0.4, t=500, axis=3, sgn=1)
     tspan = (0., t)
-    prefix = "../../output/classical/B$B-D$D/E$E"
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -61,7 +60,7 @@ function coloredpoincare(E, colors;
         name="", A=1, B=0.55, D=0.4, n=15, m=15, t=500, axis=3, sgn=1)
     prefix = "../../output/classical/B$B-D$D/E$E"
     q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
-    sim = poincaremap(q0, p0, N, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
+    sim = poincaremap(q0, p0, N, prefix, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
     zcs = [fill(c, length(sim[i].u)) for (i,c) in enumerate(colors)]
 
     vars = axis == 3 ? (4, 2) : (3, 1)
