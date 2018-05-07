@@ -14,8 +14,8 @@ have the given `name`. Optionally specify the Regex for the output folders.
 
 ## Arguments
 - `name::Regex`: the name of the files
-- `location="quantum"`: the location in the output folder. Can be `"classical"`
-or `"qunatum"`
+- `location="quantum"`: the location in the output folder. For example
+`"classical"` or `"qunatum"`
 - `re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+"`: the Regex for the output
 folders
 
@@ -37,15 +37,17 @@ and return a `DataFrame` containing all the data. See also [`files`](@ref).
 
 ## Arguments
 - `name::Regex`: the name of the files
-- `location="quantum"`: the location in the output folder. Can be `"classical"`
-or `"qunatum"`
+- `location="quantum"`: the location in the output folder. For example
+`"classical"` or `"qunatum"`
+- `re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+"`: the Regex for the output
+folders
 
 """
-function concat(name::Regex; location="quantum")
-    filenames = files(name; location=location)
+function concat(name::Regex; location="quantum", re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+")
+    filenames = files(name; location=location, re=re)
     df = CSV.read(filenames[1], allowmissing=:none)
     for i=2:length(filenames)
-        append!(df, CSV.read(filenames[i], allowmissing=:none))
+        append!(df, CSV.read(filenames[i], allowmissing=:none)[names(df)])
     end
 
     return df
