@@ -10,6 +10,7 @@ using Query, StatPlots
 using ProgressMeter
 using IntervalArithmetic
 using Gali
+using Utils
 using PmapProgressMeter
 # using Juno
 gr()
@@ -26,7 +27,7 @@ function energy_error(sim, E, params)
     plot!(plt, sim, vars=(energy_err, 0,1,2,3,4), msc=nothing, ms=2)
 end
 
-function integrate(x, y)
+function average(x, y)
     int = 0
     for i = 1:length(y) - 1
         int += (y[i+1] + y[i]) * (x[i+1] - x[i]) / 2
@@ -67,7 +68,7 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     end
 
     by(df_λ |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(λ = integrate(df[:E], df[:λ]))) |>
+        df->DataFrame(λ = average(df[:E], df[:λ]))) |>
             @orderby(_.B) |>
             @df plot!(plt, :B, :λ, m=4, xlabel="B", ylabel="\\lambda",
                 label="E in $Einterval")
