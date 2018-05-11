@@ -74,6 +74,13 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
                 label="E in $Einterval")
 end
 
+function λBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
+    for i=1:N
+        plt = λBlist(B, Eintervals[i], plt)
+    end
+    plt
+end
+
 function galilist(Elist, Blist=0.55, Dlist=0.4)
     for B in Blist, D in Dlist
         pmap((i)->(chaoticity = Gali.galimap(Elist[i], B=B, D=D);
