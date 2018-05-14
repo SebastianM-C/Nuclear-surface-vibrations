@@ -10,12 +10,12 @@ using DataFrames, CSV
 using PmapProgressMeter
 
 function galimap(E; A=1, B=0.55, D=0.4, n=15, m=15, tmax=500, dt=1, threshold=1e-12,
-                 diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
+                 diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14), recompute=false)
     prefix = "../../output/classical/B$B-D$D/E$E"
     q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
     df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
     # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
-    if !haskey(df, :gali)
+    if !haskey(df, :gali) || recompute
         chaoticity = _galimap(q0, p0, N; A=A, B=B, D=D, tmax=tmax, dt=dt,
             threshold=threshold, diff_eq_kwargs=diff_eq_kwargs)
         df[:gali] = chaoticity
@@ -34,7 +34,7 @@ function _galimap(q0, p0, N; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12
     tinteg = DynamicalSystemsBase.tangent_integrator(ds, 2, diff_eq_kwargs=diff_eq_kwargs)
     chaoticity = SharedArray{Float64}(N)
 
-    pmap(i->(set_state!(pinteg, z0[i]);
+    pmap(i->(set_state!(tinteg, z0[i]);
             set_deviations!(tinteg, orthonormal(4, 2));
             reinit!(tinteg, tinteg.u);
             chaoticity[i] = ChaosTools._gali(tinteg, tmax, dt, threshold)[2][end]),

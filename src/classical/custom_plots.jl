@@ -9,9 +9,9 @@ using Plots
 using Query, StatPlots
 using ProgressMeter
 using IntervalArithmetic
-using Gali
 using Utils
 using PmapProgressMeter
+using LaTeXStrings
 # using Juno
 gr()
 
@@ -35,13 +35,15 @@ function average(x, y)
     int / (x[end] - x[1])
 end
 
-function λlist(Elist, Blist=0.55, Dlist=0.4)
+function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
     for D in Dlist
         @showprogress "B" for i = 1:length(Blist)
             @showprogress "λs" for j = 1:length(Elist)
                 prefix = "../../output/classical/B$(Blist[i])-D$D/E$(Elist[j])"
-                λs = λmap(Elist[j], B=Blist[i], D=D)
-                plt = histogram(λs, nbins=50)
+                λs = λmap(Elist[j], B=Blist[i], D=D, T=T, Ttr=Ttr,
+                    recompute=recompute)
+                plt = histogram(λs, nbins=50, xlabel="\\lambda", ylabel="N",
+                    label="T = $T")
                 savefig(plt, "$prefix/lyapunov_hist.pdf")
                 if !any(ismatch.(r"poincare_lyapunov.*pdf", readdir(prefix)))
                     coloredpoincare(Elist[j], λs, name="lyapunov", B=Blist[i], D=D)
@@ -61,7 +63,7 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
             re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
-        df_ = by(df, :E, df->DataFrame(λ = median(df[:λs]))) |>
+        df_ = by(df, :E, df->DataFrame(λ = maximum(df[:λs]))) |>
             @orderby(_.E) |> DataFrame
         df_[:B] = fill(B[i], size(df_, 1))
         append!(df_λ, df_[names(df_λ)])
@@ -81,15 +83,17 @@ function λBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
     plt
 end
 
-function galilist(Elist, Blist=0.55, Dlist=0.4)
+function galilist(Elist, Blist=0.55, Dlist=0.4; tmax=500, recompute=false)
     for D in Dlist
         @showprogress "B" for i = 1:length(Blist)
             @showprogress "GALI_2s" for j = 1:length(Elist)
                 prefix = "../../output/classical/B$(Blist[i])-D$D/E$(Elist[j])"
-                galis = galimap(Elist[j], B=Blist[i], D=D)
-                plt = histogram(galis, nbins=50)
+                galis = galimap(Elist[j], B=Blist[i], D=D, tmax=tmax,
+                    recompute=recompute)
+                plt = histogram(galis, nbins=50, xlabel=L"$t_{th} GALI_2$",
+                    ylabel="N")
                 savefig(plt, "$prefix/gali_hist.pdf")
-                if !any(ismatch.(r"poincare_lyapunov.*pdf", readdir(prefix)))
+                if !any(ismatch.(r"poincare_gali.*pdf", readdir(prefix)))
                     coloredpoincare(Elist[j], galis, name="gali", B=Blist[i], D=D)
                 end
             end
@@ -97,26 +101,27 @@ function galilist(Elist, Blist=0.55, Dlist=0.4)
     end
 end
 
-function galiBlist(B, Einterval::Interval=0..Inf, plt=plot())
+function galiBlist(B, Einterval::Interval=0..Inf, plt=plot(); tmax=500)
+    ratio(v) = count(v .< tmax) / length(v)
     df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
         re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
-    df_g = by(df, :E, df->DataFrame(gali = median(df[:gali]))) |>
+    df_g = by(df, :E, df->DataFrame(f = ratio(df[:gali]))) |>
         @orderby(_.E) |> DataFrame
     df_g[:B] = fill(B[1], size(df_g, 1))
 
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
             re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
-        df_ = by(df, :E, df->DataFrame(gali = median(df[:gali]))) |>
+        df_ = by(df, :E, df->DataFrame(f = ratio(df[:gali]))) |>
             @orderby(_.E) |> DataFrame
         df_[:B] = fill(B[i], size(df_, 1))
         append!(df_g, df_[names(df_g)])
     end
 
     by(df_g |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(gali = average(df[:E], df[:gali]))) |>
+        df->DataFrame(gali = average(df[:E], df[:f]))) |>
             @orderby(_.B) |>
-            @df plot!(plt, :B, :gali, m=4, xlabel="B", ylabel="t_{th} GALI_2",
+            @df plot!(plt, :B, :f, m=4, xlabel="B", ylabel=L"$f_{chaotic}$",
                 label="E in $Einterval")
 end
 
