@@ -1,14 +1,13 @@
-module Gali
+nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
 
-export galimap
+!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
+!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
 
-include("hamiltonian.jl")
-include("initial_conditions.jl")
-
-using .Hamiltonian, .InitialConditions
-using DynamicalSystems
+using Hamiltonian, InitialConditions
+@everywhere using DynamicalSystemsBase, ChaosTools
 using StaticArrays
 using DataFrames, CSV
+using PmapProgressMeter
 
 function galimap(E; A=1, B=0.55, D=0.4, n=15, m=15, tmax=500, dt=1, threshold=1e-12,
                  diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
@@ -31,17 +30,15 @@ end
 function _galimap(q0, p0, N; A=1, B=0.55, D=0.4, tmax=500, dt=1, threshold=1e-12,
                   diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14))
     z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
-    ds = ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
-    tinteg = tangent_integrator(ds, 2, diff_eq_kwargs=diff_eq_kwargs)
-    chaoticity = Vector{Float64}(N)
+    ds = DynamicalSystemsBase.ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
+    tinteg = DynamicalSystemsBase.tangent_integrator(ds, 2, diff_eq_kwargs=diff_eq_kwargs)
+    chaoticity = SharedArray{Float64}(N)
 
-    for i=1:N
-        set_state!(tinteg, z0[i])
-        set_deviations!(tinteg, orthonormal(4, 2))
-        reinit!(tinteg, tinteg.u)
-        chaoticity[i] = ChaosTools._gali(tinteg, tmax, dt, threshold)[2][end]
-    end
-    return chaoticity
+    pmap(i->(set_state!(pinteg, z0[i]);
+            set_deviations!(tinteg, orthonormal(4, 2));
+            reinit!(tinteg, tinteg.u);
+            chaoticity[i] = ChaosTools._gali(tinteg, tmax, dt, threshold)[2][end]),
+        PmapProgressMeter.Progress(N), 1:N)
+
+    return Array(chaoticity)
 end
-
-end  # module Gali

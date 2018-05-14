@@ -54,14 +54,14 @@ end
 function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
         re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
-    df_λ = by(df, :E, df->DataFrame(λ = maximum(df[:λs]))) |>
+    df_λ = by(df, :E, df->DataFrame(λ = median(df[:λs]))) |>
         @orderby(_.E) |> DataFrame
     df_λ[:B] = fill(B[1], size(df_λ, 1))
 
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
             re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
-        df_ = by(df, :E, df->DataFrame(λ = maximum(df[:λs]))) |>
+        df_ = by(df, :E, df->DataFrame(λ = median(df[:λs]))) |>
             @orderby(_.E) |> DataFrame
         df_[:B] = fill(B[i], size(df_, 1))
         append!(df_λ, df_[names(df_λ)])
@@ -82,15 +82,47 @@ function λBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
 end
 
 function galilist(Elist, Blist=0.55, Dlist=0.4)
-    for B in Blist, D in Dlist
-        pmap((i)->(chaoticity = Gali.galimap(Elist[i], B=B, D=D);
-            prefix = "../../output/classical/B$B-D$D/E$(Elist[i])";
-            plt = histogram(chaoticity, nbins=50);
-            savefig(plt, "$prefix/gali_hist.pdf")),
-            PmapProgressMeter.Progress(length(Elist)), 1:length(Elist))
-        @showprogress "poincare gali" for i in 1:length(Elist)
-            chaoticity = Gali.galimap(Elist[i], B=B, D=D)
-            plt = coloredpoincare(Elist[i], chaoticity, name="gali", B=B, D=D)
+    for D in Dlist
+        @showprogress "B" for i = 1:length(Blist)
+            @showprogress "GALI_2s" for j = 1:length(Elist)
+                prefix = "../../output/classical/B$(Blist[i])-D$D/E$(Elist[j])"
+                galis = galimap(Elist[j], B=Blist[i], D=D)
+                plt = histogram(galis, nbins=50)
+                savefig(plt, "$prefix/gali_hist.pdf")
+                if !any(ismatch.(r"poincare_lyapunov.*pdf", readdir(prefix)))
+                    coloredpoincare(Elist[j], galis, name="gali", B=Blist[i], D=D)
+                end
+            end
         end
     end
+end
+
+function galiBlist(B, Einterval::Interval=0..Inf, plt=plot())
+    df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
+        re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
+    df_g = by(df, :E, df->DataFrame(gali = median(df[:gali]))) |>
+        @orderby(_.E) |> DataFrame
+    df_g[:B] = fill(B[1], size(df_g, 1))
+
+    for i in 2:length(B)
+        df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
+            re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
+        df_ = by(df, :E, df->DataFrame(gali = median(df[:gali]))) |>
+            @orderby(_.E) |> DataFrame
+        df_[:B] = fill(B[i], size(df_, 1))
+        append!(df_g, df_[names(df_g)])
+    end
+
+    by(df_g |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
+        df->DataFrame(gali = average(df[:E], df[:gali]))) |>
+            @orderby(_.B) |>
+            @df plot!(plt, :B, :gali, m=4, xlabel="B", ylabel="t_{th} GALI_2",
+                label="E in $Einterval")
+end
+
+function galiBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
+    for i=1:N
+        plt = galiBlist(B, Eintervals[i], plt)
+    end
+    plt
 end
