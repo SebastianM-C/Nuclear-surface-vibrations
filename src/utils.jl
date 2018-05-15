@@ -47,10 +47,17 @@ folders
 function concat(name::Regex; location="quantum",
                 re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+", filter=:)
     filenames = files(name; location=location, re=re)
-    df = CSV.read(filenames[1], allowmissing=:none)[filter]
-    for i=2:length(filenames)
-        append!(df,
-            CSV.read(filenames[i], allowmissing=:none)[names(df)][filter])
+    i = 0
+    df = DataFrame()
+    while !all(haskey.(df, filter))
+        i += 1
+        df = CSV.read(filenames[i], allowmissing=:none)[filter]
+    end
+    for j=i+1:length(filenames)
+        df_ = CSV.read(filenames[j], allowmissing=:none)
+        if all(haskey.(df_, filter))
+            append!(df, df_[names(df)][filter])
+        end
     end
 
     return df

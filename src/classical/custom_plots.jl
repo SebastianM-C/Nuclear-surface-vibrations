@@ -45,7 +45,7 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
                 plt = histogram(λs, nbins=50, xlabel="\\lambda", ylabel="N",
                     label="T = $T")
                 savefig(plt, "$prefix/lyapunov_hist.pdf")
-                if !any(ismatch.(r"poincare_lyapunov.*pdf", readdir(prefix)))
+                if !any(ismatch.(r"poincare_lyapunov.*pdf", readdir(prefix))) || recompute
                     coloredpoincare(Elist[j], λs, name="lyapunov", B=Blist[i], D=D)
                 end
             end
@@ -91,9 +91,9 @@ function galilist(Elist, Blist=0.55, Dlist=0.4; tmax=500, recompute=false)
                 galis = galimap(Elist[j], B=Blist[i], D=D, tmax=tmax,
                     recompute=recompute)
                 plt = histogram(galis, nbins=50, xlabel=L"$t_{th} GALI_2$",
-                    ylabel="N")
+                    ylabel="N", label="ratio = $(count(galis .< tmax) / length(galis))")
                 savefig(plt, "$prefix/gali_hist.pdf")
-                if !any(ismatch.(r"poincare_gali.*pdf", readdir(prefix)))
+                if !any(ismatch.(r"poincare_gali.*pdf", readdir(prefix))) || recompute
                     coloredpoincare(Elist[j], galis, name="gali", B=Blist[i], D=D)
                 end
             end
@@ -119,7 +119,7 @@ function galiBlist(B, Einterval::Interval=0..Inf, plt=plot(); tmax=500)
     end
 
     by(df_g |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(gali = average(df[:E], df[:f]))) |>
+        df->DataFrame(f = average(df[:E], df[:f]))) |>
             @orderby(_.B) |>
             @df plot!(plt, :B, :f, m=4, xlabel="B", ylabel=L"$f_{chaotic}$",
                 label="E in $Einterval")
