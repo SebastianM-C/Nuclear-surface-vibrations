@@ -1,7 +1,7 @@
 include("poincare.jl")
 include("lyapunov.jl")
 include("../utils.jl")
-!contains(==, names(Main), :Gali) && @everywhere include("gali.jl")
+include("gali.jl")
 
 using RecipesBase
 using DiffEqBase

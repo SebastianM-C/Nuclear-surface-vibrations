@@ -51,8 +51,9 @@ function concat(name::Regex; location="quantum",
     df = DataFrame()
     while !all(haskey.(df, filter))
         i += 1
-        df = CSV.read(filenames[i], allowmissing=:none)[filter]
+        df = CSV.read(filenames[i], allowmissing=:none)
     end
+    df = df[filter]
     for j=i+1:length(filenames)
         df_ = CSV.read(filenames[j], allowmissing=:none)
         if all(haskey.(df_, filter))
