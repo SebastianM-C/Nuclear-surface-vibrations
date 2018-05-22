@@ -54,17 +54,28 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
 end
 
 function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
+    function ch_max(v)
+        sorted = sort(v)
+        Δ = length(v) * diff(sorted) / (sorted[end] - sorted[1])
+        sorted[2:end][Δ .< 10][end]
+    end
+
     df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
         re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
-    df_λ = by(df, :E, df->DataFrame(λ = median(df[:λs]))) |>
+    df_λ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
         @orderby(_.E) |> DataFrame
     df_λ[:B] = fill(B[1], size(df_λ, 1))
+
+    df_λ |> @df plot(:E, :λ, m=4, xlabel="E", ylabel="\\lambda", label="B = $(B[1])")
+    savefig("../../output/classical/B$(B[1])-D0.4/lambda(E).pdf")
 
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
             re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
-        df_ = by(df, :E, df->DataFrame(λ = maximum(df[:λs]))) |>
+        df_ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
             @orderby(_.E) |> DataFrame
+        df_λ |> @df plot(:E, :λ, m=4, xlabel="E", ylabel="\\lambda", label="B = $(B[i])")
+        savefig("../../output/classical/B$(B[i])-D0.4/lambda(E).pdf")
         df_[:B] = fill(B[i], size(df_, 1))
         append!(df_λ, df_[names(df_λ)])
     end
@@ -85,8 +96,8 @@ end
 
 function galilist(Elist, Blist=0.55, Dlist=0.4; tmax=500, recompute=false)
     for D in Dlist
-        @showprogress "B" for i = 1:length(Blist)
-            @showprogress "GALI_2s" for j = 1:length(Elist)
+        @progress "B" for i = 1:length(Blist)
+            @progress "GALI_2s" for j = 1:length(Elist)
                 prefix = "../../output/classical/B$(Blist[i])-D$D/E$(Elist[j])"
                 galis = galimap(Elist[j], B=Blist[i], D=D, tmax=tmax,
                     recompute=recompute)

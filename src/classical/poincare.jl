@@ -63,7 +63,16 @@ function coloredpoincare(E, colors;
     sim = poincaremap(q0, p0, N, prefix, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
     zcs = [fill(c, length(sim[i].u)) for (i,c) in enumerate(colors)]
 
-    vars = axis == 3 ? (4, 2) : (3, 1)
-    plt = scatter(sim, vars=vars, msc=nothing, ms=2., zcolors=zcs)
+    if axis == 3
+        vars = (4, 2)
+        xlabel =  L"$q_2$"
+        ylabel =  L"$p_2$"
+    else
+        vars =  (3, 1)
+        xlabel = L"$q_1$"
+        ylabel = L"$p_1$"
+    end
+    plt = scatter(sim, vars=vars, msc=nothing, ms=1.2, zcolors=zcs,
+        xlabel=xlabel, ylabel=ylabel)
     savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end
