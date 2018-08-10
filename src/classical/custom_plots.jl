@@ -83,8 +83,8 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     by(df_λ |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
         df->DataFrame(λ = average(df[:E], df[:λ]))) |>
             @orderby(_.B) |>
-            @df plot!(plt, :B, :λ, m=4, xlabel="B", ylabel="\\lambda",
-                label="E in $Einterval")
+            @df plot!(plt, :B, :λ, m=4, xlabel=L"$B$", ylabel=L"\lambda",
+                label=L"$E \in "*"$Einterval\$")
 end
 
 function λBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N

@@ -15,6 +15,7 @@ end
 
 using Hamiltonian, InitialConditions
 using StaticArrays
+using LaTeXStrings
 
 """
     poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
@@ -72,7 +73,7 @@ function coloredpoincare(E, colors;
         xlabel = L"$q_1$"
         ylabel = L"$p_1$"
     end
-    plt = scatter(sim, vars=vars, msc=nothing, ms=1.2, zcolors=zcs,
-        xlabel=xlabel, ylabel=ylabel)
+    plt = scatter(sim, vars=vars, msc=nothing, ms=1.2, zcolors=zcs)#,
+        #xlabel=xlabel, ylabel=ylabel)
     savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end
