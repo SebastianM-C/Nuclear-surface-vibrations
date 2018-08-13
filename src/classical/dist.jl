@@ -77,13 +77,34 @@ function d∞(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t=500.;
     sim = solve(monte_prob, DPRKN12(); kwargs..., save_start=false, save_everystep=false,
         num_monte=n, parallel_type=parallel_type)
 
-    return mean(sim)
+    return sim
 end
 
-function d∞(E, p, d0, T=500.; parallel_type=:pmap, kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9))
+function d∞(E, p, d0=1e-8, T=500.; parallel_type=:pmap,
+        kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9),
+        recompute=false)
     q0, p0, n = generateInitialConditions(E, params=p)
     q0 = [SVector{2}(q0[i,1], q0[i,2]) for i=1:n]
     p0 = [SVector{2}(p0[i,1], p0[i,2]) for i=1:n]
 
-    d∞(p, p0, q0, d0, T, parallel_type=parallel_type)
+    A, B, D = p
+    prefix = "../../output/classical/B$B-D$D/E$E"
+    df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
+    # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
+    if !haskey(df, :d∞) || recompute
+        d = d∞(p, p0, q0, d0, T, parallel_type=parallel_type)
+        df[:d∞] = d
+        CSV.write("$prefix/z0.csv", df)
+    else
+        d = df[:d∞]
+    end
+    return d
+end
+
+function Γ(E_max, reduction, d0, p, label)
+    B = p[2]
+    λs = λElist(E_max, B, reduction)
+    d_inf(E) = d∞(E, p, d0)
+    plot(λs[:E], (exp.(λs[:λ]) - 1)./d_inf.(λs[:E]), m=2, label=label,
+        xlabel=L"E", ylabel=L"\Gamma", framestyle=:box)
 end
