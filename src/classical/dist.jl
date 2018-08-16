@@ -104,5 +104,7 @@ end
 function Γ(E, reduction, d0, p)
     λ(E) = reduction(λmap(E, B=p[2], d0=d0))
     d_inf(E) = mean(d∞(E, p, d0))
-    (exp(λ(E)) - 1)/d_inf(E)
+    Γ(λ(E), d_inf(E))
 end
+
+Γ(λ, d∞) = (exp(λ) - 1) / d∞

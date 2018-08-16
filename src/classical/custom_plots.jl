@@ -7,10 +7,11 @@ using RecipesBase
 using DiffEqBase
 using Plots
 using Query, StatPlots
+using StatsBase
 using ProgressMeter
 using IntervalArithmetic
 using Utils
-using PmapProgressMeter
+# using PmapProgressMeter
 using LaTeXStrings
 # using Juno
 gr()
@@ -35,6 +36,28 @@ function average(x, y)
     int / (x[end] - x[1])
 end
 
+function ch_max(v)
+    sorted = sort(v)
+    Δ = length(v) * diff(sorted) / (sorted[end] - sorted[1])
+    sorted[2:end][Δ .< 10][end]
+end
+
+function hist_avg(v, t=3)
+    hist = fit(Histogram, v, nbins=50, closed=:right)
+    threshold = hist.edges[1][t]
+    mean(v[v.>threshold])
+end
+
+function hist_max(v, t=3)
+    hist = fit(Histogram, v, nbins=50, closed=:right)
+    threshold = hist.edges[1][t]
+    v = v[v.>threshold]
+    idx = indmax(hist.weights[t+1:end])
+    a = hist.edges[1][t+1:end][idx]
+    b = hist.edges[1][t+1:end][idx+1]
+    maximum(v[(v.>a) .& (v.<=b)])
+end
+
 function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
     for D in Dlist
         @showprogress "B" for i = 1:length(Blist)
@@ -53,50 +76,58 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
     end
 end
 
-function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
-    function ch_max(v)
-        sorted = sort(v)
-        Δ = length(v) * diff(sorted) / (sorted[end] - sorted[1])
-        sorted[2:end][Δ .< 10][end]
-    end
 
+"""
+    mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
+           reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
+           width=800, height=600, filename="val(E)")
+
+Compute the mean of a stored `value` as a funciton of `B` considering the
+given energy interval `Einterval`. Return the corresponding `DataFrame`
+"""
+function mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
+        reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
+        width=800, height=600, filename="val(E)")
     df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
-        re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs]) |> @filter(_.E ∈ Einterval) |> DataFrame
-    df_λ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
+        re=r"E[0-9]+\.[0-9]+", filter=[:E, value]) |> @filter(_.E ∈ Einterval) |> DataFrame
+    df_v = by(df, :E, df->DataFrame(val = reduction(df[value]))) |>
         @orderby(_.E) |> DataFrame
-    df_λ[:B] = fill(B[1], size(df_λ, 1))
+    df_v[:B] = fill(B[1], size(df_v, 1))
 
-    fnt = font(12, "Times")
-    df_λ |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+    df_v |> @df plot(:E, :val, m=2, xlabel=L"E", ylabel=ylabel,
         framestyle=:box, legend=false,
         size=(width,height),
         guidefont=fnt, tickfont=fnt)
-    savefig("../../output/classical/B$(B[1])-D0.4/lambda(E).pdf")
+    savefig("../../output/classical/B$(B[1])-D0.4/$filename.pdf")
 
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
-            re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs]) |> @filter(_.E ∈ Einterval) |> DataFrame
-        df_ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
+            re=r"E[0-9]+\.[0-9]+", filter=[:E, value]) |> @filter(_.E ∈ Einterval) |> DataFrame
+        df_ = by(df, :E, df->DataFrame(val = reduction(df[value]))) |>
             @orderby(_.E) |> DataFrame
-        df_ |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        df_ |> @df plot(:E, :val, m=2, xlabel=L"E", ylabel=ylabel,
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
-        savefig("../../output/classical/B$(B[i])-D0.4/lambda(E).pdf")
+        savefig("../../output/classical/B$(B[i])-D0.4/$filename.pdf")
         df_[:B] = fill(B[i], size(df_, 1))
-        append!(df_λ, df_[names(df_λ)])
+        append!(df_v, df_[names(df_v)])
     end
 
-    by(df_λ |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(λ = average(df[:E], df[:λ]))) |>
-            @orderby(_.B) |>
-            @df plot!(plt, :B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda",
-                label=L"$E \in "*"$Einterval\$")
+    by(df_v |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
+        df->DataFrame(v = average(df[:E], df[:val]))) |>
+            @orderby(_.B) |> DataFrame
+            # @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
+                # label=L"$E \in "*"$Einterval\$")
 end
 
-function λBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
+function mean_as_function_of_B(value::Symbol, B, Eintervals::NTuple{N, Interval};
+        reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
+        width=800, height=600, filename="val(E)") where N
     for i=1:N
-        plt = λBlist(B, Eintervals[i], plt)
+        plt = mean_as_function_of_B(value, B, Eintervals[i], reduction=reduction,
+            plt=plt, ylabel=ylabel, fnt=fnt, width=width, height=height,
+            filename=filename)
     end
     plt
 end
@@ -117,35 +148,4 @@ function galilist(Elist, Blist=0.55, Dlist=0.4; tmax=500, recompute=false)
             end
         end
     end
-end
-
-function galiBlist(B, Einterval::Interval=0..Inf, plt=plot(); tmax=500)
-    ratio(v) = count(v .< tmax) / length(v)
-    df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
-        re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
-    df_g = by(df, :E, df->DataFrame(f = ratio(df[:gali]))) |>
-        @orderby(_.E) |> DataFrame
-    df_g[:B] = fill(B[1], size(df_g, 1))
-
-    for i in 2:length(B)
-        df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
-            re=r"E[0-9]+\.[0-9]+", filter=[:E, :gali])
-        df_ = by(df, :E, df->DataFrame(f = ratio(df[:gali]))) |>
-            @orderby(_.E) |> DataFrame
-        df_[:B] = fill(B[i], size(df_, 1))
-        append!(df_g, df_[names(df_g)])
-    end
-
-    by(df_g |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(f = average(df[:E], df[:f]))) |>
-            @orderby(_.B) |>
-            @df plot!(plt, :B, :f, m=4, xlabel="B", ylabel=L"$f_{chaotic}$",
-                label="E in $Einterval")
-end
-
-function galiBlist(B, Eintervals::NTuple{N, Interval}, plt=plot()) where N
-    for i=1:N
-        plt = galiBlist(B, Eintervals[i], plt)
-    end
-    plt
 end
