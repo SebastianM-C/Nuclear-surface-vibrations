@@ -101,10 +101,8 @@ function d∞(E, p, d0=1e-8, T=500.; parallel_type=:pmap,
     return d
 end
 
-function Γ(E_max, reduction, d0, p, label)
-    B = p[2]
-    λs = λElist(E_max, B, reduction)
-    d_inf(E) = d∞(E, p, d0)
-    plot(λs[:E], (exp.(λs[:λ]) - 1)./d_inf.(λs[:E]), m=2, label=label,
-        xlabel=L"E", ylabel=L"\Gamma", framestyle=:box)
+function Γ(E, reduction, d0, p)
+    λ(E) = reduction(λmap(E, B=p[2], d0=d0))
+    d_inf(E) = mean(d∞(E, p, d0))
+    (exp(λ(E)) - 1)/d_inf(E)
 end

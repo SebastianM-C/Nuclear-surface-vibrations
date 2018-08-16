@@ -61,20 +61,27 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     end
 
     df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
-        re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
+        re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs]) |> @filter(_.E ∈ Einterval) |> DataFrame
     df_λ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
         @orderby(_.E) |> DataFrame
     df_λ[:B] = fill(B[1], size(df_λ, 1))
 
-    df_λ |> @df plot(:E, :λ, m=4, xlabel="E", ylabel="\\lambda", label="B = $(B[1])")
+    fnt = font(12, "Times")
+    df_λ |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        framestyle=:box, legend=false,
+        size=(width,height),
+        guidefont=fnt, tickfont=fnt)
     savefig("../../output/classical/B$(B[1])-D0.4/lambda(E).pdf")
 
     for i in 2:length(B)
         df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
-            re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs])
+            re=r"E[0-9]+\.[0-9]+", filter=[:E, :λs]) |> @filter(_.E ∈ Einterval) |> DataFrame
         df_ = by(df, :E, df->DataFrame(λ = ch_max(df[:λs]))) |>
             @orderby(_.E) |> DataFrame
-        df_λ |> @df plot(:E, :λ, m=4, xlabel="E", ylabel="\\lambda", label="B = $(B[i])")
+        df_ |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+            framestyle=:box, legend=false,
+            size=(width,height),
+            guidefont=fnt, tickfont=fnt)
         savefig("../../output/classical/B$(B[i])-D0.4/lambda(E).pdf")
         df_[:B] = fill(B[i], size(df_, 1))
         append!(df_λ, df_[names(df_λ)])
@@ -83,7 +90,7 @@ function λBlist(B, Einterval::Interval=0..Inf, plt=plot())
     by(df_λ |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
         df->DataFrame(λ = average(df[:E], df[:λ]))) |>
             @orderby(_.B) |>
-            @df plot!(plt, :B, :λ, m=4, xlabel=L"$B$", ylabel=L"\lambda",
+            @df plot!(plt, :B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda",
                 label=L"$E \in "*"$Einterval\$")
 end
 
