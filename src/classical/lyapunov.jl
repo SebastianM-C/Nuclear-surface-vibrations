@@ -1,5 +1,3 @@
-nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
-
 !contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
 !contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
 

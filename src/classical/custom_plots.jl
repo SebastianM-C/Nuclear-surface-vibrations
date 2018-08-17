@@ -11,7 +11,6 @@ using StatsBase
 using ProgressMeter
 using IntervalArithmetic
 using Utils
-# using PmapProgressMeter
 using LaTeXStrings
 # using Juno
 gr()
@@ -117,17 +116,19 @@ function mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
     by(df_v |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
         df->DataFrame(v = average(df[:E], df[:val]))) |>
             @orderby(_.B) |> DataFrame
-            # @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
-                # label=L"$E \in "*"$Einterval\$")
 end
 
 function mean_as_function_of_B(value::Symbol, B, Eintervals::NTuple{N, Interval};
         reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
         width=800, height=600, filename="val(E)") where N
     for i=1:N
-        plt = mean_as_function_of_B(value, B, Eintervals[i], reduction=reduction,
+        df = mean_as_function_of_B(value, B, Eintervals[i], reduction=reduction,
             plt=plt, ylabel=ylabel, fnt=fnt, width=width, height=height,
             filename=filename)
+        plt = @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
+            label=L"$E \in "*"$Einterval\$", framestyle=:box,
+            size=(width,height),
+            guidefont=fnt, tickfont=fnt)
     end
     plt
 end
