@@ -10,7 +10,7 @@ using Query, StatPlots
 using StatsBase
 using ProgressMeter
 using IntervalArithmetic
-using Utils
+using .Utils
 using LaTeXStrings
 # using Juno
 gr()
@@ -75,6 +75,17 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
     end
 end
 
+function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::Interval=0..Inf;
+        reductions=(ch_max,mean))
+    dfs = [concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
+        re=r"E[0-9]+\.[0-9]+", filter=[:E, v]) |>
+        @filter(_.E ∈ Einterval && _.E % 10 .== 0) |> DataFrame for v in values]
+    df_vs = [by(dfs[i], :E, df->DataFrame(val = reductions[i](df[values[i]]))) |>
+        @orderby(_.E) |> DataFrame for i in eachindex(dfs)]
+    df_f = @join(df_vs[1], df_vs[2], _.E, _.E, {val = f(_.val, __.val)}) |> DataFrame
+    df_f[:E] = df_vs[1][:E]
+    return df_f
+end
 
 """
     mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
