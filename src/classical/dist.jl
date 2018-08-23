@@ -1,3 +1,4 @@
+using Distributed
 @everywhere begin
     using OrdinaryDiffEq
     using DiffEqMonteCarlo
@@ -6,12 +7,12 @@
     using StaticArrays
 end
 
-!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
+!any(x->x==:InitialConditions, names(Main)) && @everywhere include("initial_conditions.jl")
 include("parallel.jl")
 
 
 using DataFrames, CSV
-using InitialConditions
+using .InitialConditions
 
 function monte_dist(f, p, u0::Array{SVector{N, T}}, d0, t, dt=0.01;
     parallel_type=:none,

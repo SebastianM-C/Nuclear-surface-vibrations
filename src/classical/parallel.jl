@@ -1,7 +1,8 @@
-!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
+using Distributed
+!any(x->x==:Hamiltonian, names(Main)) && @everywhere include("hamiltonian.jl")
 
 @everywhere begin
-    using Hamiltonian
+    using .Hamiltonian
     using StaticArrays
     using OrdinaryDiffEq
 end

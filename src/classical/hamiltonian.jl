@@ -15,7 +15,7 @@ function V(q, params)
   A / 2 * (q[1]^2 + q[2]^2) + B / √2 * q[1] * (3 * q[2]^2 - q[1]^2) + D / 4 * (q[1]^2 + q[2]^2)^2
 end
 
-H(p, q, params=(1, 0.55, 0.4)) = T(p, params[1]) + V(q, params)
+H(p, q, params=(A=1, B=0.55, D=0.4)) = T(p, params.A) + V(q, params)
 
 @inbounds @inline function ż(z, p, t)
   A, B, D = p
