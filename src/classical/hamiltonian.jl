@@ -4,15 +4,21 @@ module Hamiltonian
 export H, T, V, ż, ṗ, q̇
 
 using StaticArrays
+using Parameters
 
-function T(p, params)
-  A = params
+function T(p, A)
   A / 2 * norm(p)^2
 end
 # V(q) = 1/2 * (q[1]^2 + q[2]^2 + 2q[1]^2 * q[2]- 2/3 * q[2]^3)
 function V(q, params)
-  A, B, D = params
+  @unpack A, B, D = params
   A / 2 * (q[1]^2 + q[2]^2) + B / √2 * q[1] * (3 * q[2]^2 - q[1]^2) + D / 4 * (q[1]^2 + q[2]^2)^2
+end
+
+function Vjac!(J, q, params)
+  @unpack A, B, D = params
+  J[1,1] = A * q[1] + B / √2 * (3 * q[2]^2 - q[1]^2) -  B * √2 * q[1]^2 + D * q[1] * (q[1]^2 + q[2]^2)
+  J[1,2] = A * q[2] + 3*√2 * q[1]* q[2] + D * q[2] * (q[1]^2 + q[2]^2)
 end
 
 H(p, q, params=(A=1, B=0.55, D=0.4)) = T(p, params.A) + V(q, params)

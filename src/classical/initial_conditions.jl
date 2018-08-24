@@ -3,6 +3,7 @@ module InitialConditions
 
 export generateInitialConditions
 
+using Logging
 using NLsolve
 using NLopt
 using Plots
@@ -30,8 +31,9 @@ function generateInscribed(E, n, params)
     equality_constraint!(opt, constraint, 1e-13)
 
     r, q_min, ret_code = optimize(opt, [0., 0.])
+    @debug "Inscribed circle" r q_min ret_code
 
-    θ = linspace(0, 2π, n)
+    θ = range(0, stop=2π, length=n)
 
     x = r.*cos.(θ)
     y = r.*sin.(θ)
@@ -46,12 +48,19 @@ function findQs(E, n, params)
         F[2] = 0.
     end
 
+    function j!(J, x)
+        Hamiltonian.Vjac!(J, x, params)
+        J[2,1] = 0
+        J[2,2] = 0
+    end
+
     q0 = zeros(n, 2)
     qs = generateInscribed(E, n, params)
 
     for i=1:n
-        result = nlsolve(f!, qs[i,:], autodiff=:forward, method=:trust_region, ftol=1e-13)
-        # !converged(result) && warn("Did not converge for $i")
+        result = nlsolve(f!, j!, qs[i,:], method=:trust_region, iterations=50000, ftol=1e-13)
+        @debug "root $i" result
+        !converged(result) && @warn "Did not converge for $i"
         q0[i,:] = result.zero
     end
 
@@ -60,13 +69,13 @@ end
 
 function filter_NaNs!(q0, p0, n, m)
     nan_no = count(isnan.(q0))
-    nan_no % 2 != 0 && error("Can't remove NaN lines")
+    nan_no % 2 != 0 && @error "Can't remove NaN lines"
     bad = .!isnan.(q0)
     q0 = reshape(q0[bad], (n*m - Int(nan_no / 2), 2))
     p0 = reshape(p0[bad], (n*m - Int(nan_no / 2), 2))
     N = n*m - Int(nan_no / 2)
-    nan_no != 0 && info("Found $nan_no NaNs and removed $(n*m-N) initial conditions.")
-    N == 0 && error("All initial conditions are invalid!")
+    nan_no != 0 && @info "Found $nan_no NaNs and removed $(n*m-N) initial conditions."
+    N == 0 && @error "All initial conditions are invalid!"
 
     return q0, p0, N
 end
@@ -80,12 +89,12 @@ function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
         mkpath(prefix)
     end
     if !isfile("$prefix/z0.csv")
-        info("No initial conditions file found. Generating new conditions.")
+        @info "No initial conditions file found. Generating new conditions."
         q0, p0, N = _generateInitialConditions(E, n, m, params=params)
     else
         df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
         if df[:n][1] != n || df[:m][1] != m
-            info("Incompatible initial conditions. Generating new conditions.")
+            @info "Incompatible initial conditions. Generating new conditions."
             q0, p0, N = _generateInitialConditions(E, n, m, params=params)
         else
             q0 = hcat(df[:q0₁], df[:q0₂])
@@ -131,7 +140,7 @@ function _generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
     savefig(plt, "$prefix/initial_energy_err.pdf")
 
     maxerr = maximum(abs(H(p0[i,:], q0[i,:], params) - E) for i = 1:N)
-    info("The maximum error for the initial conditions is $maxerr")
+    @info "The maximum error for the initial conditions is $maxerr"
     return q0, p0, N
 end
 

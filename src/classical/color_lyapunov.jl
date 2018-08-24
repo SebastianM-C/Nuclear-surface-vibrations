@@ -64,13 +64,13 @@ function main()
         if isfile("$prefix/z0.jld")
             q0list, p0list = load("$prefix/z0.jld", "q0list", "p0list")
         else
-            error("$prefix/z0.jld not found! Generate the initial conditions.")
+            @error("$prefix/z0.jld not found! Generate the initial conditions.")
         end
         if isfile("$prefix/lyapunov.jld")
             λs, d0, dt, tr, tmax, n =
                 load("$prefix/lyapunov.jld", "λs", "d0", "dt", "tr", "tmax", "n")
         else
-            error("$prefix/lyapunov.jld not found! Generate Lyapunov coefficients.")
+            @error("$prefix/lyapunov.jld not found! Generate Lyapunov coefficients.")
         end
         println("Ploting the previous results with:")
         println("d0: $d0\ndt: $dt\ntr: $tr\ntmax: $tmax\nn: $n")

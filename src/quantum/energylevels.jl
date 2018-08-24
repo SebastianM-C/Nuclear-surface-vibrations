@@ -65,7 +65,7 @@ function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     end
     # Use already computed values when available
     if isfile("$prefix/eigensystem-f$f.jld")
-        info("Loading previously computed values for n $n b $b d $d.")
+        @info("Loading previously computed values for n $n b $b d $d.")
         E, eigv, nconv, niter = load("$prefix/eigensystem-f$f.jld",
             "E", "eigv", "nconv", "niter")
     else
@@ -81,8 +81,8 @@ function diagonalize(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
             nconv, "niter", niter, "nmult", nmult, "resid", resid)
         saveperf(prefix, label)
     end
-    nconv != nev && warn("Not all eigenvalues converged.")
-    niter >= 300 && warn("Reached maximum number of iterations.")
+    nconv != nev && @warn("Not all eigenvalues converged.")
+    niter >= 300 && @warn("Reached maximum number of iterations.")
 
     E, eigv = sortlvl!(E, eigv)
 
@@ -150,8 +150,8 @@ function elvls(n::Integer, f=0.075; a=1., b=0.55, d=0.4)
     if isfile("$prefix/eigensystem-f$f.jld")
         E, nconv, niter = load("$prefix/eigensystem-f$f.jld",
             "E", "nconv", "niter")
-        nconv != nev && warn("Not all eigenvalues converged.")
-        niter >= 300 && warn("Reached maximum number of iterations.")
+        nconv != nev && @warn("Not all eigenvalues converged.")
+        niter >= 300 && @warn("Reached maximum number of iterations.")
         return sort(real(E))
     else
         return diagonalize(n, f, a=a, b=b, d=d)[1]
@@ -182,7 +182,7 @@ should have a single value for Hamiltonian parameters (given by the
 """
 function δ(df::AbstractDataFrame)
     allsame(v) = isempty(v) || all(isequal(first(v)), v)
-    allsame(df[:b]) && allsame(df[:d]) || error("The parameters are not the same.")
+    allsame(df[:b]) && allsame(df[:d]) || @error("The parameters are not the same.")
     ref = df[indmax(df[:n]), :]
     r_E = elvls(ref[:n][1], ref[:f][1], b=ref[:b][1], d=ref[:d][1])
     [δ(r_E, elvls(df[i,:][:n][1], df[i,:][:f][1], b=df[i,:][:b][1],
@@ -281,8 +281,8 @@ function verify_reps(ΔE, symm, bd)
         k > longest_seq && (longest_seq = k; idx = i)
     end
     longest_seq != 1 &&
-        warn("Found a sequence of $longest_seq equal differences at $idx")
-    !all(.!(symm .& bd)) && warn("The intersection of the symmetric "*
+        @warn("Found a sequence of $longest_seq equal differences at $idx")
+    !all(.!(symm .& bd)) && @warn("The intersection of the symmetric "*
         "representation and the bidimensional one has $(count(symm .& bd)) "*
         "elements")
 end

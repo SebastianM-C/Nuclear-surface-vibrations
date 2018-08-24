@@ -20,7 +20,7 @@ function energy_error(sim, E, params)
     energy_err(sol) = size(sol.u,1) > 0 ?
         [abs.(H([sol[1,j], sol[2,j]], [sol[3,j], sol[4,j]], params) - E)
         for j=1:size(sol,2)] : 0
-    info("The maximum energy error during time evolution was "*
+    @info("The maximum energy error during time evolution was "*
         "$(maximum(map(i->maximum(energy_err(i)), sim.u)))")
 
     plt = plot(ylabel="Energy error", legend=false)

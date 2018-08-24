@@ -35,7 +35,7 @@ function makeplots(n; b=0.55, d=0.4, ϵ=1e-6, ε=1e-9, slices=1, bin_size=0.2)
         fail_count < 100 && plot_hist(Γ_regs, slices, prefix, bin_size=bin_size)
     end
 
-    fail_count != 0 && info("Failed $fail_count times.")
+    fail_count != 0 && @info("Failed $fail_count times.")
 
     return nothing
 end
