@@ -136,8 +136,8 @@ function mean_as_function_of_B(value::Symbol, B, Eintervals::NTuple{N, Interval}
         df = mean_as_function_of_B(value, B, Eintervals[i], reduction=reduction,
             plt=plt, ylabel=ylabel, fnt=fnt, width=width, height=height,
             filename=filename)
-        plt = @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
-            label=L"$E \in "*"$Einterval\$", framestyle=:box,
+        plt = df |> @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
+            label=L"$E \in "*"$(Eintervals[i])\$", framestyle=:box,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
     end
