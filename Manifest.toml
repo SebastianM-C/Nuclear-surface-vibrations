@@ -382,6 +382,13 @@ git-tree-sha1 = "c6f411fee94d3e2f1121d635f5a7ab7eec200eea"
 uuid = "01680d73-4ee2-5a08-a1aa-533608c188bb"
 version = "0.2.0"
 
+[[GeometricalPredicates]]
+git-tree-sha1 = "be01682b018306500944d4da76a6ebde03f80fa2"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaGeometry/GeometricalPredicates.jl.git"
+uuid = "fd0ad045-b25c-564e-8f9c-8ef5c5f21267"
+version = "0.1.0+"
+
 [[InteractiveUtils]]
 deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"

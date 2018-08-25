@@ -33,7 +33,7 @@ function generateInscribed(E, n, params)
     r, q_min, ret_code = optimize(opt, [0., 0.])
     @debug "Inscribed circle" r q_min ret_code
 
-    θ = range(0, stop=2π, length=n)
+    θ = range(0+0.1, stop=2π+0.1, length=n)
 
     x = r.*cos.(θ)
     y = r.*sin.(θ)
@@ -48,19 +48,12 @@ function findQs(E, n, params)
         F[2] = 0.
     end
 
-    function j!(J, x)
-        Hamiltonian.Vjac!(J, x, params)
-        J[2,1] = 0
-        J[2,2] = 0
-    end
-
     q0 = zeros(n, 2)
     qs = generateInscribed(E, n, params)
 
     for i=1:n
-        result = nlsolve(f!, j!, qs[i,:], method=:trust_region, iterations=50000, ftol=1e-13)
-        @debug "root $i" result
-        !converged(result) && @warn "Did not converge for $i"
+        result = nlsolve(f!, j!, qs[i,:], method=:trust_region, ftol=1e-13)
+        !converged(result) && @debug "Did not converge for $i" result
         q0[i,:] = result.zero
     end
 
@@ -70,9 +63,9 @@ end
 function filter_NaNs!(q0, p0, n, m)
     nan_no = count(isnan.(q0))
     nan_no % 2 != 0 && @error "Can't remove NaN lines"
-    bad = .!isnan.(q0)
-    q0 = reshape(q0[bad], (n*m - Int(nan_no / 2), 2))
-    p0 = reshape(p0[bad], (n*m - Int(nan_no / 2), 2))
+    not_NaN = .!isnan.(q0)
+    q0 = reshape(q0[not_NaN], (n*m - Int(nan_no / 2), 2))
+    p0 = reshape(p0[not_NaN], (n*m - Int(nan_no / 2), 2))
     N = n*m - Int(nan_no / 2)
     nan_no != 0 && @info "Found $nan_no NaNs and removed $(n*m-N) initial conditions."
     N == 0 && @error "All initial conditions are invalid!"
@@ -105,7 +98,8 @@ function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
     return q0, p0, N
 end
 
-function _generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
+function _generateInitialConditions(E, n=15, m=15; params=(A=1, B=0.55, D=0.4);
+        alg::Val{:inscribed_circle})
     T_range = linspace(0, E, m)
 
     q0 = zeros(n*m, 2)

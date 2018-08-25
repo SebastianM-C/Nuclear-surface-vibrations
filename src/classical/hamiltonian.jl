@@ -5,6 +5,7 @@ export H, T, V, ż, ṗ, q̇
 
 using StaticArrays
 using Parameters
+using LinearAlgebra
 
 function T(p, A)
   A / 2 * norm(p)^2
