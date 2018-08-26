@@ -12,7 +12,7 @@ using PmapProgressMeter
 function galimap(E; A=1, B=0.55, D=0.4, n=15, m=15, tmax=500, dt=1, threshold=1e-12,
                  diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14), recompute=false)
     prefix = "../../output/classical/B$B-D$D/E$E"
-    q0, p0, N = generateInitialConditions(E, n, m, params=(A,B,D))
+    q0, p0, N = initial_conditions(E, n, m, params=(A,B,D))
     df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
     # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
     if !haskey(df, :gali) || recompute

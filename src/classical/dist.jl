@@ -84,7 +84,7 @@ end
 function d∞(E, p, d0=1e-8, T=500.; parallel_type=:pmap,
         kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9),
         recompute=false)
-    q0, p0, n = generateInitialConditions(E, params=p)
+    q0, p0, n = initial_conditions(E, params=p)
     q0 = [SVector{2}(q0[i,1], q0[i,2]) for i=1:n]
     p0 = [SVector{2}(p0[i,1], p0[i,2]) for i=1:n]
 
