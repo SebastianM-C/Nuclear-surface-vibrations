@@ -103,8 +103,8 @@ function generateInitialConditions(E, n=15, m=15; params=(1, 0.55, 0.4))
     return q0, p0, N
 end
 
-function _generateInitialConditions(E, n=15, m=15; params=(A=1, B=0.55, D=0.4);
-        alg::Val{:inscribed_circle})
+function _generateInitialConditions(E, n, m, alg::Val{:inscribed_circle};
+        params=(A=1, B=0.55, D=0.4))
     T_range = linspace(0, E, m)
 
     q0 = zeros(n*m, 2)
@@ -171,7 +171,7 @@ function frominterval(points, ex, ey)
     [frominterval(p._x, ex) for p in points], [frominterval(p._y, ey) for p in points]
 end
 
-function phase_space_border(E, n=1000; param=(A=1, B=0.55, D=0.4))
+function phase_space_border(E, symmetric::Val{true}, n=1000; param=(A=1, B=0.55, D=0.4))
     p = range(0, stop=√(2 * param.A * E), length=n)
     q0 = E < 1e5 ? 0 : 10
     q = [find_zero(q->H([0,pᵢ], [0,q], param) - E, q0) for pᵢ in p]
@@ -182,11 +182,25 @@ function phase_space_border(E, n=1000; param=(A=1, B=0.55, D=0.4))
     Polygon(tointerval(points, ex, ey)...), ex, ey
 end
 
+function phase_space_border(E, symmetric::Val{false}, n=1000; param=(A=1, B=0.55, D=0.4))
+    p = range(0, stop=√(2 * param.A * E), length=n)
+    p = p[1:end-1]
+    q₊0 = E < 1e5 ? (0,100) : (0,10000)
+    q₋0 = E < 1e5 ? (-100,0) : (-10000,0)
+    q₊ = [find_zero(q->H([pᵢ,0], [q,0], param) - E, q₊0) for pᵢ in p]
+    q₋ = [find_zero(q->H([pᵢ,0], [q,0], param) - E, q₋0) for pᵢ in p]
+    points = Point.(q₊, p) ∪ Point.(q₋[end-1:-1:1], p[end-1:-1:1]) ∪
+        Point.(q₋[2:end], -p[2:end]) ∪ Point.(q₊[end-1:-1:2], -p[end-1:-1:2])
+    ex = extrema(p._x for p in points)
+    ey = extrema(p._y for p in points)
+    Polygon(tointerval(points, ex, ey)...), ex, ey
+end
+
 Random.rand(rng::AbstractRNG, ::Random.SamplerType{Point2D}) = Point((rand(rng) + 1), (rand(rng) + 1))
 
-function _generateInitialConditions(E, n; param=(A=1, B=0.55, D=0.4),
-        border_n=1000, alg::Val{:poincare_rand})
-    border, ex, ey = phase_space_border(E, border_n, param=param)
+function _generateInitialConditions(E, n, alg::Val{:poincare_rand},
+        symmetric=Val(true); param=(A=1, B=0.55, D=0.4), border_n=1000)
+    border, ex, ey = phase_space_border(E, symmetric, border_n, param=param)
     counter = 0
     points = Vector{Point2D}()
     while counter < n
@@ -196,9 +210,9 @@ function _generateInitialConditions(E, n; param=(A=1, B=0.55, D=0.4),
     frominterval(points, ex, ey)
 end
 
-function _generateInitialConditions(E, n, m; param=(A=1, B=0.55, D=0.4),
-        border_n=1000, alg::Val{:poincare_uniform})
-    border, ex, ey = phase_space_border(E, border_n, param=param)
+function _generateInitialConditions(E, n, m, alg::Val{:poincare_uniform},
+        symmetric=Val(true); param=(A=1, B=0.55, D=0.4), border_n=1000)
+    border, ex, ey = phase_space_border(E, symmetric, border_n, param=param)
     counter = 0
     points = Vector{Point2D}()
     it_grid = Iterators.product(range(1,stop=2-1e-14,length=n),
