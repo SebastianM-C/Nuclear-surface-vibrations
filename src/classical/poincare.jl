@@ -1,21 +1,14 @@
-nworkers() == 1 && addprocs(Int(Sys.CPU_CORES / 2))
-
 @everywhere begin
-    using DiffEqBase, OrdinaryDiffEq, DiffEqMonteCarlo
+    using OrdinaryDiffEq, DiffEqMonteCarlo
 
     condition(u, t, integrator) = u
     affect!(integrator) = nothing
-    cb(idx) = DiffEqBase.ContinuousCallback(condition,
+    cb(idx) = ContinuousCallback(condition,
         affect!, nothing, save_positions=(false, true), idxs=idx)
-
 end
 
-!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
-!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
-
-using Hamiltonian, InitialConditions
 using StaticArrays
-using LaTeXStrings
+using Plots, LaTeXStrings
 
 """
     poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
@@ -34,33 +27,32 @@ a Monte Carlo simulation.
 - `axis = 3`: Axis for the Poincare section
 - `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(q0, p0, N, prefix; A=1, B=0.55, D=0.4, t=500, axis=3, sgn=1)
+function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1)
     tspan = (0., t)
-    if !isdir(prefix)
-        mkpath(prefix)
-    end
-
-    z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
+    z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+    # q0 = [SVector{2}(q0[i,1], q0[i,2]) for i ∈ axes(q0, 1)]
+    # p0 = [SVector{2}(p0[i,1], p0[i,2]) for i ∈ axes(p0, 1)]
+    # @debug "done" typeof(z0)
 
     # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
-    # prob = DynamicalODEProblem(q̇, ṗ, q0[1,:], p0[1,:], tspan)
-    prob = DiffEqBase.ODEProblem(ż, z0[1], tspan, (A, B, D), callback=cb(axis))
+    # prob = DynamicalODEProblem(ṗ, q̇, p0[1], q0[1], tspan, params, callback=cb(axis))
+    prob = ODEProblem(ż, z0[1], tspan, params, callback=cb(axis))
 
     function prob_func(prob, i, repeat)
-        DiffEqBase.ODEProblem(prob.f, z0[i], prob.tspan, prob.p, callback=cb(axis))
+        ODEProblem(prob.f, z0[i], prob.tspan, prob.p, callback=cb(axis))
     end
 
-    monte_prob = DiffEqBase.MonteCarloProblem(prob, prob_func=prob_func)
+    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
 
-    sim = DiffEqBase.solve(monte_prob, OrdinaryDiffEq.Vern9(), abstol=1e-14, reltol=1e-14,
+    sim = solve(monte_prob, Vern9(), abstol=1e-13, reltol=1e-12, maxiters=1e10,
         save_everystep=false, save_start=false, save_end=false,
-        save_everystep=false, num_monte=N, parallel_type=:pmap)
+        num_monte=size(q0, 1), parallel_type=:pmap)
 end
 
 function coloredpoincare(E, colors;
         name="", A=1, B=0.55, D=0.4, n=15, m=15, t=500, axis=3, sgn=1)
     prefix = "../../output/classical/B$B-D$D/E$E"
-    q0, p0, N = initial_conditions(E, n, m, params=(A,B,D))
+    q0, p0 = initial_conditions(E, n, m, params=(A,B,D))
     sim = poincaremap(q0, p0, N, prefix, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
     zcs = [fill(c, length(sim[i].u)) for (i,c) in enumerate(colors)]
 

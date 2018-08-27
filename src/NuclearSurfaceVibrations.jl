@@ -8,6 +8,7 @@ using Reexport
 
 include("classical/hamiltonian.jl")
 include("classical/initial_conditions.jl")
+# include("classical/poincare.jl")
 
 @reexport using .Hamiltonian
 @reexport using .InitialConditions
