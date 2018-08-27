@@ -4,11 +4,13 @@ export Classical, Quantum
 
 module Classical
 
+using Reexport
+
 include("classical/hamiltonian.jl")
 include("classical/initial_conditions.jl")
 
-using .Hamiltonian
-using .InitialConditions
+@reexport using .Hamiltonian
+@reexport using .InitialConditions
 
 end  # module Classical
 

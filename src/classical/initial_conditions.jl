@@ -3,13 +3,11 @@ module InitialConditions
 
 export initial_conditions
 
-using Logging
-using Random
-using NLsolve
-using NLopt
-using Roots
-using Plots
+using Logging, Random
+using NLsolve, NLopt, Roots
+using Plots, LaTeXStrings
 using DataFrames, CSV
+using DataFramesMeta
 using GeometricalPredicates
 
 include("hamiltonian.jl")
@@ -34,7 +32,6 @@ function generate_inscribed(E, n, params)
     equality_constraint!(opt, constraint, 1e-13)
 
     r, q_min, ret_code = optimize(opt, [0., 0.])
-    @debug "Inscribed circle" r q_min ret_code
 
     θ = range(0+0.1, stop=2π+0.1, length=n)
 
@@ -57,7 +54,7 @@ function find_qs(E, n, params)
     for i=1:n
         result = nlsolve(f!, qs[i,:], method=:trust_region, ftol=1e-13)
         !converged(result) && @debug "Did not converge for $i" result
-        q0[i,:] = result.zero
+        q0[i,:] = converged(result) ? result.zero : NaN
     end
 
     q0
@@ -90,7 +87,7 @@ p2(T, p, A) = √(2 * A * T - p^2)
 
 Compute ``p_2`` (or ``p_0``) when the other is given at energy `E`.
 """
-p2(E, p, q, params) = √(2 * params.A * (E - V(q, params)) - p)
+p2(E, p, q, params) = √(2 * params.A * (E - V(q, params)) - p^2)
 
 function _initial_conditions(E, n, m, alg::Val{:inscribed_circle};
         params=(A=1, B=0.55, D=0.4))
@@ -172,7 +169,9 @@ function complete(q₂, p₂, E, symmetric::Val{true}, params)
     p = zeros(eltype(p₂), n, 2)
     q[:, 2] = q₂
     p[:, 2] = p₂
-    p[:, 1] = [real(p2(E+0im, p₂[i], q[i,:], params)) for i ∈ axes(q, 1)]
+    for i ∈ axes(q, 1)
+        p[i, 1] = real(p2(E+0im, p₂[i], q[i,:], params))
+    end
 
     q, p
 end
@@ -183,7 +182,9 @@ function complete(q₀, p₀, E, symmetric::Val{false}, params)
     p = zeros(eltype(p₀), n, 2)
     q[:, 1] = q₀
     p[:, 1] = p₀
-    p[:, 2] = [real(p2(E+0im, p₀[i], q[i,:], params)) for i ∈ axes(q, 1)]
+    for i ∈ axes(q, 1)
+        p[i, 2] = real(p2(E+0im, p₀[i], q[i,:], params))
+    end
 
     q, p
 end
@@ -211,54 +212,173 @@ function _initial_conditions(E, n, m, alg::Val{:poincare_uniform}, symmetric=Val
     for p in grid
         inpolygon(border, p) && (push!(points, p); counter += 1)
     end
-    @debug "Generated $count initial conditions."
+    @debug "Generated $counter initial conditions."
     complete(frominterval(points, ex, ey)..., E, symmetric, params)
 end
 
+function poincare_err(q, p, err, symmetric::Val{true})
+    scatter(q[:, 2], p[:, 2], marker_z=err, m=1.2, msa=0,
+        label="", xlabel=L"q_2", ylabel=L"p_2")
+end
+
+function poincare_err(q, p, err, symmetric::Val{false})
+    scatter(q[:, 1], p[:, 1], marker_z=err, m=1.2, msa=0,
+        label="", xlabel=L"q_0", ylabel=L"p_0")
+end
+
+function energy_err(q, p, E, alg, symmetric, params)
+    err = abs.([H(p[i,:], q[i,:], params) - E for i ∈ axes(q, 1)])
+    plt = histogram(err, nbins=10, xlabel=L"\Delta E", ylabel=L"N",
+        label="max err: $(maximum(err))")
+    maximum(err) > 1e-12 && @warn "max err: $(maximum(err))"
+    if !isa(alg, Val{:inscribed_circle})
+        plt = plot(plt, poincare_err(q, p, err, symmetric), layout=(2,1))
+    end
+
+    return plt
+end
+
+"""
+    val2str(v)
+
+Extrct a string from a value type based on a symbol.
+"""
+val2str(v) = match(r":(\w+)", "$v").captures[1]
+
+function replace_nothing(v)
+    [if x == "nothing"
+        x = nothing
+    elseif isa(x, AbstractString) && isa(Meta.parse("$x"), Int)
+        x = Meta.parse(x)
+    else
+        x
+    end for x in v]
+end
+
+function save_err(plt, alg, symmetric, prefix)
+    if isa(alg, Val{:inscribed_circle})
+        fn = val2str(alg)
+    elseif isa(symmetric, Val{true})
+        fn = val2str(alg)*"_symm"
+    else
+        fn = val2str(alg)*"_asymm"
+    end
+
+    if !isdir("$prefix/initial_energy_err")
+        mkpath("$prefix/initial_energy_err")
+    end
+    savefig(plt, "$prefix/initial_energy_err/$fn.pdf")
+end
+
+function build_df(q, p, m, n, E, alg, symmetric, border_n)
+    N = size(q, 1)
+    df = DataFrame()
+    df[:q₀] = categorical(q[:,1])
+    df[:q₂] = categorical(q[:,2])
+    df[:p₀] = categorical(p[:,1])
+    df[:p₂] = categorical(p[:,2])
+    df[:n] = categorical(fill(n, N))
+    df[:m] = categorical(Array{Union{Int, Nothing}, 1}(fill(m, N)))
+    df[:E] = categorical(fill(E, N))
+    df[:initial_cond_alg] = categorical(fill("$alg", N))
+    df[:symmetric] = categorical(Array{Union{String, Nothing}, 1}(fill("$symmetric", N)))
+    df[:border_n] = categorical(Array{Union{Int, Nothing}, 1}(fill(border_n, N)))
+    allowmissing!(df)
+
+    return df
+end
+
 function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
-        alg=Val(:poincare_rand), symmetric=Val(true))
-    prefix = "../../output/classical/B$(params.B)-D$(params.D)/E$E"
+        alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
+        recompute=false)
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     if !isdir(prefix)
         mkpath(prefix)
     end
-    if !isfile("$prefix/z0.csv")
-        @info "No initial conditions file found. Generating new conditions."
-        q0, p0, N = _initial_conditions(E, n, m, params=params)
+
+    if isa(alg, Val{:poincare_rand})
+        n_ = n
+        m = nothing
     else
-        df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
-        if df[:n][1] != n || df[:m][1] != m
-            @info "Incompatible initial conditions. Generating new conditions."
-            q0, p0, N = _initial_conditions(E, n, m, params=params)
+        n_ = (n, m)
+    end
+    if !isa(alg, Val{:inscribed_circle})
+        alg_ = (alg, symmetric)
+        params_ = Dict(:params=>params, :border_n=>border_n)
+    else
+        alg_ = (alg,)
+        params_ = Dict(:params=>params)
+        symmetric = nothing
+        border_n = nothing
+    end
+    typeof(alg) <: Union{Val{:poincare_uniform}, Val{:inscribed_circle}} &&
+        isa(m, Nothing) && @error "m not given"
+
+    if !isfile("$prefix/z0.csv")
+        @debug "No initial conditions file found. Generating new conditions."
+        q, p = _initial_conditions(E, n_..., alg_...; params_...)
+        df = build_df(q, p, m, n, E, alg, symmetric, border_n)
+
+        # TODO: Switch to JLD2 after https://github.com/simonster/JLD2.jl/issues/101 is fixed
+        CSV.write("$prefix/z0.csv", df)
+
+        plt = energy_err(q, p, E, alg, symmetric, params)
+        save_err(plt, alg, symmetric, prefix)
+    else
+        df = CSV.read("$prefix/z0.csv", use_mmap=!Sys.iswindows())
+        col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
+        any(.!haskey.(Ref(df), col_names)) && @error "Invalid DataFrame!" df
+        # restore types
+        for c in setdiff(names(df), [:m, :symmetric, :border_n])
+            categorical!(df, c)
+        end
+        types = [Int, String, Int]
+        for (i, c) in enumerate([:m, :symmetric, :border_n])
+            # @debug "b" df[c]
+            df[c] = replace_nothing(df[c])
+            # @debug "a" df[c]
+            df[c] = categorical(Array{Union{types[i], Nothing, Missing}, 1}(df[c]))
+        end
+        # TODO: change comparison to value types after switching from CSV
+        filtered_df = @linq df |> where(:n .== n) |> where(:m .== m) |>
+            where(:E .== E) |> where(:initial_cond_alg .== "$alg") |>
+            where(:symmetric .== (isa(symmetric, Nothing) ? symmetric : "$symmetric")) |>
+            where(:border_n .== border_n)
+        @debug "filter" size(filtered_df, 1) symmetric length(df[:symmetric] .== symmetric)
+        compatible = size(filtered_df, 1) > 0 && !recompute
+        if compatible
+            unique!(filtered_df)
+            @debug "total size" size(df) size(filtered_df)
+            q = hcat(filtered_df[:q₀], filtered_df[:q₂])
+            p = hcat(filtered_df[:p₀], filtered_df[:p₂])
         else
-            q0 = hcat(df[:q0₁], df[:q0₂])
-            p0 = hcat(df[:p0₁], df[:p0₂])
-            N = size(q0, 1)
+            @debug "Incompatible initial conditions. Generating new conditions."
+            q, p = _initial_conditions(E, n_..., alg_...; params_...)
+            df_ = build_df(q, p, m, n, E, alg, symmetric, border_n)
+
+            if recompute && size(filtered_df, 1) > 0
+                # delete the old values
+                # TODO: Try to find a better solution
+                idx = (df[:n] .== n) .& (df[:m] .== m) .& (df[:E] .== E) .&
+                    (df[:initial_cond_alg] .== "$alg") .&
+                    (df[:symmetric] .== (isa(symmetric, Nothing) ? symmetric : "$symmetric")) .&
+                    (df[:border_n] .== border_n)
+                @debug "Deleted" length(idx)
+                deleterows!(df, axes(df[:n], 1)[idx])
+            end
+            # add the new values
+            for c in setdiff(names(df), names(df_))
+                df_[c] = categorical(fill(missing, size(df_, 1)))
+            end
+            append!(df, df_[names(df)])
+            @debug "total size" size(df)
+            CSV.write("$prefix/z0.csv", df)
+
+            plt = energy_err(q, p, E, alg, symmetric, params)
+            save_err(plt, alg, symmetric, prefix)
         end
     end
-    return q0, p0, N
+    return q, p
 end
-#
-# B, D = params[2:3]
-# prefix = "../../output/classical/B$B-D$D/E$E"
-# if !isdir(prefix)
-#     mkpath(prefix)
-# end
-#     plt = plot(1:N, i->H(p0[i,:], q0[i,:], params) - E, xlabel="index",
-#         ylabel="Energy error", lab="")
-#     df = DataFrame()
-#     df[:q0₁] = q0[:,1]
-#     df[:q0₂] = q0[:,2]
-#     df[:p0₁] = p0[:,1]
-#     df[:p0₂] = p0[:,2]
-#     df[:n] = fill(n, N)
-#     df[:m] = fill(m, N)
-#     df[:E] = fill(E, N)
-#     CSV.write("$prefix/z0.csv", df)
-#     savefig(plt, "$prefix/initial_energy_err.pdf")
-#
-#     maxerr = maximum(abs(H(p0[i,:], q0[i,:], params) - E) for i = 1:N)
-#     @info "The maximum error for the initial conditions is $maxerr"
-#     return q0, p0, N
-# end
 
 end  # module InitialConditions
