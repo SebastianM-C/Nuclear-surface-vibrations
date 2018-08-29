@@ -157,6 +157,12 @@ git-tree-sha1 = "2afbbd0294306b0b74a753c196be50b35edb625c"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.11.1"
 
+[[DataValues]]
+deps = ["Dates", "InteractiveUtils", "LinearAlgebra", "Random", "Test"]
+git-tree-sha1 = "4fedccda7e5111354c7dcc832c7da83ff7258765"
+uuid = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
+version = "0.4.5"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -307,6 +313,18 @@ git-tree-sha1 = "c43dc10a52598ad76d61f8907b3b30f159ca146f"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.16.2"
 
+[[DocStringExtensions]]
+deps = ["Compat"]
+git-tree-sha1 = "a2ab006ff561a57eb858cee5314445b16c2fd2dd"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.4.6"
+
+[[Documenter]]
+deps = ["Compat", "DocStringExtensions", "Logging", "REPL"]
+git-tree-sha1 = "7534ff3c50333a69ae0778d4d869e6f5c9ec022a"
+uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+version = "0.19.6"
+
 [[DynamicalSystems]]
 deps = ["ChaosTools", "DelimitedFiles", "DynamicalSystemsBase", "LinearAlgebra", "Pkg", "Reexport", "StaticArrays"]
 git-tree-sha1 = "9620cee7b56b99ee01da6fca0850fc4b14e23106"
@@ -392,6 +410,12 @@ deps = ["Random", "Test"]
 git-tree-sha1 = "eb05b5625bc5d821b8075a77e4c421933e20c76b"
 uuid = "7d512f48-7fb1-5a58-b986-67e6dc259f01"
 version = "0.7.0"
+
+[[IterableTables]]
+deps = ["DataValues", "IteratorInterfaceExtensions", "Requires", "TableTraits", "TableTraitsUtils", "Test"]
+git-tree-sha1 = "6390a469cf0c28d475fdd43c6496a8c8614ef530"
+uuid = "1c8ee90f-4401-5389-894e-7a04a3dc0f4d"
+version = "0.8.3"
 
 [[IteratorInterfaceExtensions]]
 deps = ["Test"]
@@ -635,6 +659,20 @@ git-tree-sha1 = "7d61ca207f021be6574b365a1a077bea04935f19"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 version = "2.0.1"
 
+[[Query]]
+deps = ["DataValues", "Documenter", "IterableTables", "MacroTools", "QueryOperators", "Statistics", "TableTraits", "Test"]
+git-tree-sha1 = "299df1fd994996dd3e6089df6532d022ec1d7c98"
+repo-rev = "master"
+repo-url = "https://github.com/queryverse/Query.jl.git"
+uuid = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"
+version = "0.9.3+"
+
+[[QueryOperators]]
+deps = ["DataStructures", "IteratorInterfaceExtensions", "TableShowUtils", "Test"]
+git-tree-sha1 = "22cf30f1972da9936f7bc675d024280fcfe10f36"
+uuid = "2aef5ad7-51ca-5a8f-8e88-e75cf067b44b"
+version = "0.4.0"
+
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -782,11 +820,23 @@ git-tree-sha1 = "bd5ca0295542ad6967f3f837bb6bef6add0e4c33"
 uuid = "123dc426-2d89-5057-bbad-38513e3affd8"
 version = "0.4.3"
 
+[[TableShowUtils]]
+deps = ["Markdown", "Test"]
+git-tree-sha1 = "9646878d3e4a5e3be884d05b19ce15dbecd72b0a"
+uuid = "5e66a065-1f0a-5976-b372-e0b8c017ca10"
+version = "0.1.1"
+
 [[TableTraits]]
 deps = ["IteratorInterfaceExtensions", "Test"]
 git-tree-sha1 = "afee1fb3bc99c28eb4533ff0f22e33f6effcec18"
 uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
 version = "0.3.1"
+
+[[TableTraitsUtils]]
+deps = ["DataValues", "IteratorInterfaceExtensions", "Missings", "TableTraits", "Test"]
+git-tree-sha1 = "3955d1954124f3f81f28f9ed1cba4f691e03ef44"
+uuid = "382cd787-c1b6-5bf2-a167-d5b971a19bda"
+version = "0.2.1"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]

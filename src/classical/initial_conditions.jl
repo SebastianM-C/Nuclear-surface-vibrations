@@ -245,16 +245,6 @@ Extrct a string from a value type based on a symbol.
 """
 val2str(v) = match(r":(\w+)", "$v").captures[1]
 
-function replace_nothing(v)
-    [if x == "nothing"
-        x = nothing
-    elseif isa(x, AbstractString) && isa(Meta.parse("$x"), Int)
-        x = Meta.parse(x)
-    else
-        x
-    end for x in v]
-end
-
 function save_err(plt, alg, symmetric, prefix)
     if isa(alg, Val{:inscribed_circle})
         fn = val2str(alg)
@@ -278,17 +268,17 @@ function build_df(q, p, m, n, E, alg, symmetric, border_n)
     df[:p₀] = categorical(p[:,1])
     df[:p₂] = categorical(p[:,2])
     df[:n] = categorical(fill(n, N))
-    df[:m] = categorical(Array{Union{Int, Nothing}, 1}(fill(m, N)))
+    df[:m] = categorical((fill(m, N)))
     df[:E] = categorical(fill(E, N))
     df[:initial_cond_alg] = categorical(fill("$alg", N))
-    df[:symmetric] = categorical(Array{Union{String, Nothing}, 1}(fill("$symmetric", N)))
-    df[:border_n] = categorical(Array{Union{Int, Nothing}, 1}(fill(border_n, N)))
+    df[:symmetric] = categorical((fill("$symmetric", N)))
+    df[:border_n] = categorical((fill(border_n, N)))
     allowmissing!(df)
 
     return df
 end
 
-function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
+function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
         recompute=false)
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
@@ -298,7 +288,7 @@ function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
 
     if isa(alg, Val{:poincare_rand})
         n_ = n
-        m = nothing
+        m = missing
     else
         n_ = (n, m)
     end
@@ -308,11 +298,11 @@ function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
     else
         alg_ = (alg,)
         params_ = Dict(:params=>params)
-        symmetric = nothing
-        border_n = nothing
+        symmetric = missing
+        border_n = missing
     end
     typeof(alg) <: Union{Val{:poincare_uniform}, Val{:inscribed_circle}} &&
-        isa(m, Nothing) && @error "m not given"
+        isa(m, Missing) && @error "m not given"
 
     if !isfile("$prefix/z0.csv")
         @debug "No initial conditions file found. Generating new conditions."
@@ -329,20 +319,20 @@ function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
         col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
         any(.!haskey.(Ref(df), col_names)) && @error "Invalid DataFrame!" df
         # restore types
-        for c in setdiff(names(df), [:m, :symmetric, :border_n])
+        for c in names(df)#setdiff(names(df), [:m, :symmetric, :border_n])
             categorical!(df, c)
         end
-        types = [Int, String, Int]
-        for (i, c) in enumerate([:m, :symmetric, :border_n])
-            # @debug "b" df[c]
-            df[c] = replace_nothing(df[c])
-            # @debug "a" df[c]
-            df[c] = categorical(Array{Union{types[i], Nothing, Missing}, 1}(df[c]))
-        end
+        # types = [Int, String, Int]
+        # for (i, c) in enumerate([:m, :symmetric, :border_n])
+        #     # @debug "b" df[c]
+        #     df[c] = replace_nothing(df[c])
+        #     # @debug "a" df[c]
+        #     df[c] = categorical(Array{Union{types[i], Nothing, Missing}, 1}(df[c]))
+        # end
         # TODO: change comparison to value types after switching from CSV
         filtered_df = @linq df |> where(:n .== n) |> where(:m .== m) |>
             where(:E .== E) |> where(:initial_cond_alg .== "$alg") |>
-            where(:symmetric .== (isa(symmetric, Nothing) ? symmetric : "$symmetric")) |>
+            where(:symmetric .== "$symmetric") |> #(isa(symmetric, Nothing) ? symmetric : "$symmetric")) |>
             where(:border_n .== border_n)
         @debug "filter" size(filtered_df, 1) symmetric length(df[:symmetric] .== symmetric)
         compatible = size(filtered_df, 1) > 0 && !recompute
@@ -361,7 +351,7 @@ function initial_conditions(E; n=5000, m=nothing, params=(A=1, B=0.55, D=0.4),
                 # TODO: Try to find a better solution
                 idx = (df[:n] .== n) .& (df[:m] .== m) .& (df[:E] .== E) .&
                     (df[:initial_cond_alg] .== "$alg") .&
-                    (df[:symmetric] .== (isa(symmetric, Nothing) ? symmetric : "$symmetric")) .&
+                    (df[:symmetric] .== "$symmetric") .& #(isa(symmetric, Nothing) ? symmetric : "$symmetric")) |> (isa(symmetric, Nothing) ? symmetric : "$symmetric")) .&
                     (df[:border_n] .== border_n)
                 @debug "Deleted" length(idx)
                 deleterows!(df, axes(df[:n], 1)[idx])
