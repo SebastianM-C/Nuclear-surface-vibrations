@@ -8,6 +8,7 @@ using NLsolve, NLopt, Roots
 using Plots, LaTeXStrings
 using DataFrames, CSV
 using DataFramesMeta
+using Query
 using GeometricalPredicates
 
 include("hamiltonian.jl")
@@ -319,22 +320,24 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
         any(.!haskey.(Ref(df), col_names)) && @error "Invalid DataFrame!" df
         # restore types
-        for c in names(df)#setdiff(names(df), [:m, :symmetric, :border_n])
+        for c in setdiff(names(df), [:m, :symmetric, :border_n])
             categorical!(df, c)
         end
-        # types = [Int, String, Int]
-        # for (i, c) in enumerate([:m, :symmetric, :border_n])
-        #     # @debug "b" df[c]
-        #     df[c] = replace_nothing(df[c])
-        #     # @debug "a" df[c]
-        #     df[c] = categorical(Array{Union{types[i], Nothing, Missing}, 1}(df[c]))
-        # end
+        types = [Int, String, Int]
+        for (i, c) in enumerate([:m, :symmetric, :border_n])
+            df[c] = categorical(Array{Union{Missing,types[i]}}(df[c]))
+        end
         # TODO: change comparison to value types after switching from CSV
-        filtered_df = @linq df |> where(:n .== n) |> where(:m .== m) |>
-            where(:E .== E) |> where(:initial_cond_alg .== "$alg") |>
-            where(:symmetric .== "$symmetric") |> #(isa(symmetric, Nothing) ? symmetric : "$symmetric")) |>
-            where(:border_n .== border_n)
-        @debug "filter" size(filtered_df, 1) symmetric length(df[:symmetric] .== symmetric)
+        m_cond(m) = isa(m, Missing) ? isa.(m, Missing) : m == m
+        m_cond(m, x) = isa(m, Missing) ? isa.(m, Missing) : m == x
+        @debug "m" m m_cond(m)
+        filtered_df = dropmissing(df) |> @filter((Ref(_.n) .== n) .& m_cond.(Ref(_.m)) .&
+            (Ref(_.E) .== E) )|>DataFrame# .& (Ref(_.initial_cond_alg) .== "$alg") .&
+            # m_cond(Ref(_.symmetric), "$symmetric") .& m_cond(Ref(_.border_n))) |>
+            # DataFrame
+
+        @debug "filter" size(filtered_df, 1) df[:initial_cond_alg][7].== "$alg"
+
         compatible = size(filtered_df, 1) > 0 && !recompute
         if compatible
             unique!(filtered_df)
@@ -351,7 +354,7 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
                 # TODO: Try to find a better solution
                 idx = (df[:n] .== n) .& (df[:m] .== m) .& (df[:E] .== E) .&
                     (df[:initial_cond_alg] .== "$alg") .&
-                    (df[:symmetric] .== "$symmetric") .& #(isa(symmetric, Nothing) ? symmetric : "$symmetric")) |> (isa(symmetric, Nothing) ? symmetric : "$symmetric")) .&
+                    (df[:symmetric] .== "$symmetric") .&
                     (df[:border_n] .== border_n)
                 @debug "Deleted" length(idx)
                 deleterows!(df, axes(df[:n], 1)[idx])
