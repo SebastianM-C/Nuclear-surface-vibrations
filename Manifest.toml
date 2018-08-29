@@ -75,9 +75,11 @@ version = "0.3.13"
 
 [[ChaosTools]]
 deps = ["Combinatorics", "DiffEqBase", "Distances", "DynamicalSystemsBase", "ForwardDiff", "LinearAlgebra", "LsqFit", "NearestNeighbors", "OrdinaryDiffEq", "Reexport", "Roots", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "Test"]
-git-tree-sha1 = "20331390aab4e2ae7beb20be670a623fe5c3a5e2"
+git-tree-sha1 = "d9990a89f58a772111071b7ca3f5f3c3537b4489"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaDynamics/ChaosTools.jl.git"
 uuid = "608a59af-f2a3-5ad4-90b4-758bdf3122a7"
-version = "1.0.0"
+version = "1.0.0+"
 
 [[ChunkedArrays]]
 deps = ["EllipsisNotation"]
@@ -138,12 +140,6 @@ deps = ["CategoricalArrays", "CodecZlib", "Compat", "DataStreams", "Dates", "Int
 git-tree-sha1 = "31cca86a48add8d5cdd9457c4f75ee5577ef3488"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 version = "0.13.1"
-
-[[DataFramesMeta]]
-deps = ["DataFrames", "Random", "Statistics", "Test"]
-git-tree-sha1 = "5463b876fb15d6ebae76835a2c832fb08e6da753"
-uuid = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
-version = "0.4.0"
 
 [[DataStreams]]
 deps = ["Dates", "Missings", "Test", "WeakRefStrings"]
@@ -661,7 +657,7 @@ version = "2.0.1"
 
 [[Query]]
 deps = ["DataValues", "Documenter", "IterableTables", "MacroTools", "QueryOperators", "Statistics", "TableTraits", "Test"]
-git-tree-sha1 = "299df1fd994996dd3e6089df6532d022ec1d7c98"
+git-tree-sha1 = "7da356dc807725f50c65987efe6a0efb31babb1e"
 repo-rev = "master"
 repo-url = "https://github.com/queryverse/Query.jl.git"
 uuid = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"

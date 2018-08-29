@@ -7,8 +7,6 @@ using Logging, Random
 using NLsolve, NLopt, Roots
 using Plots, LaTeXStrings
 using DataFrames, CSV
-using DataFramesMeta
-using Query
 using GeometricalPredicates
 
 include("hamiltonian.jl")
@@ -71,7 +69,7 @@ function filter_NaNs!(q0, p0, n, m)
         @info "Found $nan_no NaNs leaving $(n*m-nan_no÷2) initial conditions."
     end
     N = n*m - nan_no ÷ 2
-    N == 0 && @error "All initial conditions are invalid!"
+    N == 0 && throw(ErrorException("All initial conditions are invalid!"))
 
     return q0, p0
 end
@@ -214,6 +212,7 @@ function _initial_conditions(E, n, m, alg::Val{:poincare_uniform}, symmetric=Val
         inpolygon(border, p) && (push!(points, p); counter += 1)
     end
     @debug "Generated $counter initial conditions."
+    counter == 0 && throw(ErrorException("No initial conditions generated!"))
     complete(frominterval(points, ex, ey)..., E, symmetric, params)
 end
 
@@ -272,7 +271,7 @@ function build_df(q, p, m, n, E, alg, symmetric, border_n)
     df[:m] = categorical((fill(m, N)))
     df[:E] = categorical(fill(E, N))
     df[:initial_cond_alg] = categorical(fill("$alg", N))
-    df[:symmetric] = categorical((fill("$symmetric", N)))
+    df[:symmetric] = categorical((fill(isa(symmetric, Missing) ? missing : "$symmetric", N)))
     df[:border_n] = categorical((fill(border_n, N)))
     allowmissing!(df)
 
@@ -303,7 +302,7 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         border_n = missing
     end
     typeof(alg) <: Union{Val{:poincare_uniform}, Val{:inscribed_circle}} &&
-        isa(m, Missing) && @error "m not given"
+        isa(m, Missing) && throw(ArgumentError("m not given"))
 
     if !isfile("$prefix/z0.csv")
         @debug "No initial conditions file found. Generating new conditions."
@@ -318,7 +317,7 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
     else
         df = CSV.read("$prefix/z0.csv", use_mmap=!Sys.iswindows())
         col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
-        any(.!haskey.(Ref(df), col_names)) && @error "Invalid DataFrame!" df
+        any(.!haskey.(Ref(df), col_names)) && throw(ErrorException("Invalid DataFrame!\n$df"))
         # restore types
         for c in setdiff(names(df), [:m, :symmetric, :border_n])
             categorical!(df, c)
@@ -328,15 +327,16 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
             df[c] = categorical(Array{Union{Missing,types[i]}}(df[c]))
         end
         # TODO: change comparison to value types after switching from CSV
-        m_cond(m) = isa(m, Missing) ? isa.(m, Missing) : m == m
-        m_cond(m, x) = isa(m, Missing) ? isa.(m, Missing) : m == x
-        @debug "m" m m_cond(m)
-        filtered_df = dropmissing(df) |> @filter((Ref(_.n) .== n) .& m_cond.(Ref(_.m)) .&
-            (Ref(_.E) .== E) )|>DataFrame# .& (Ref(_.initial_cond_alg) .== "$alg") .&
-            # m_cond(Ref(_.symmetric), "$symmetric") .& m_cond(Ref(_.border_n))) |>
-            # DataFrame
+        m_cond(v, x::Number) = isa(x, Missing) ? isa.(v, Missing) : v == x
+        m_cond(v, x) = isa(x, Missing) ? isa.(v, Missing) : v == "$x"
+        @debug "size" size(m_cond.(df[:symmetric], symmetric)) size(df[:E] .== E)
+        cond = (df[:n] .== n) .& m_cond.(df[:m], m) .& (df[:E] .== E) .&
+            (df[:initial_cond_alg] .== "$alg") .&
+            m_cond.(df[:symmetric], symmetric) .& m_cond.(df[:border_n], border_n)
+        @debug "m" m m_cond.(df[:border_n], border_n) cond
+        filtered_df = df[cond[.!isa.(cond, Missing)], :]
 
-        @debug "filter" size(filtered_df, 1) df[:initial_cond_alg][7].== "$alg"
+        @debug "filter" size(filtered_df, 1)
 
         compatible = size(filtered_df, 1) > 0 && !recompute
         if compatible
@@ -351,13 +351,8 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
 
             if recompute && size(filtered_df, 1) > 0
                 # delete the old values
-                # TODO: Try to find a better solution
-                idx = (df[:n] .== n) .& (df[:m] .== m) .& (df[:E] .== E) .&
-                    (df[:initial_cond_alg] .== "$alg") .&
-                    (df[:symmetric] .== "$symmetric") .&
-                    (df[:border_n] .== border_n)
-                @debug "Deleted" length(idx)
-                deleterows!(df, axes(df[:n], 1)[idx])
+                @debug "Deleted" count(cond)
+                deleterows!(df, axes(df[:n], 1)[cond])
             end
             # add the new values
             for c in setdiff(names(df), names(df_))
@@ -371,7 +366,7 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
             save_err(plt, alg, symmetric, prefix)
         end
     end
-    return q, p
+    return Array(disallowmissing(q)), Array(disallowmissing(p))
 end
 
 end  # module InitialConditions
