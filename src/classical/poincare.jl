@@ -1,10 +1,6 @@
 @everywhere begin
-    using OrdinaryDiffEq, DiffEqMonteCarlo
-
-    condition(u, t, integrator) = u
-    affect!(integrator) = nothing
-    cb(idx) = ContinuousCallback(condition,
-        affect!, nothing, save_positions=(false, true), idxs=idx)
+    # using ChaosTools
+    using DynamicalSystems
 end
 
 using StaticArrays
@@ -27,45 +23,44 @@ a Monte Carlo simulation.
 - `axis = 3`: Axis for the Poincare section
 - `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1)
-    tspan = (0., t)
+function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
+        diff_eq_kwargs=Dict(:abstol=>1e-14,:reltol=>0,:maxiters=>1e9))
     z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
-    # q0 = [SVector{2}(q0[i,1], q0[i,2]) for i ∈ axes(q0, 1)]
-    # p0 = [SVector{2}(p0[i,1], p0[i,2]) for i ∈ axes(p0, 1)]
-    # @debug "done" typeof(z0)
 
-    # prob = HamiltonianProblem(H, q0[1,:], p0[1,:], tspan)
-    # prob = DynamicalODEProblem(ṗ, q̇, p0[1], q0[1], tspan, params, callback=cb(axis))
-    prob = ODEProblem(ż, z0[1], tspan, params, callback=cb(axis))
-
-    function prob_func(prob, i, repeat)
-        ODEProblem(prob.f, z0[i], prob.tspan, prob.p, callback=cb(axis))
+    output = pmap(eachindex(z0)) do i
+        @debug "idx" i
+        ds = ContinuousDynamicalSystem(ż, z0[i], params)
+        poincaresos(ds, (axis, 0), t; direction=sgn, idxs=(axis==3) ? [4,2] : [3,1],
+            diff_eq_kwargs...)
     end
 
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
-
-    sim = solve(monte_prob, Vern9(), abstol=1e-13, reltol=1e-12, maxiters=1e10,
-        save_everystep=false, save_start=false, save_end=false,
-        num_monte=size(q0, 1), parallel_type=:pmap)
+    return output
 end
 
 function coloredpoincare(E, colors;
-        name="", A=1, B=0.55, D=0.4, n=15, m=15, t=500, axis=3, sgn=1)
-    prefix = "../../output/classical/B$B-D$D/E$E"
-    q0, p0 = initial_conditions(E, n, m, params=(A,B,D))
-    sim = poincaremap(q0, p0, N, prefix, A=A, B=B, D=D, t=t, axis=axis, sgn=sgn)
-    zcs = [fill(c, length(sim[i].u)) for (i,c) in enumerate(colors)]
+        name="", n=500, m=nothing, alg=Val(:poincare_rand), symmetric=Val(true),
+        border_n=1000, recompute=false, params=(A=1, B=0.55, D=0.4),
+        t=500., sgn=1,
+        diff_eq_kwargs=Dict(:abstol=>1e-14,:reltol=>0,:maxiters=>1e9))
+    prefix = "output/classical/B$B-D$D/E$E"
+    axis = isa(symmetric, Val{true}) ? 3 : 1
+    q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
+        symmetric=symmetric, border_n=border_n, recompute=recompute)
+    sim = poincaremap(q0, p0; params=params, t=t, axis=axis, sgn=sgn,
+        diff_eq_kwargs=diff_eq_kwargs)
+    zcs = [fill(c, size(sim[i], 1)) for (i,c) in enumerate(colors)]
 
+    plt = plot()
     if axis == 3
-        vars = (4, 2)
         xlabel =  L"$q_2$"
         ylabel =  L"$p_2$"
     else
-        vars =  (3, 1)
         xlabel = L"$q_1$"
         ylabel = L"$p_1$"
     end
-    plt = scatter(sim, vars=vars, msc=nothing, ms=1.2, zcolors=zcs)#,
-        #xlabel=xlabel, ylabel=ylabel)
+    for (i,s) in enumerate(sim)
+        plt = scatter!(plt, s[:,1], s[:,2], ms=1.2, msa=0, label="",
+            xlabel=xlabel, ylabel=ylabel, zcolor=zcs[i])
+    end
     savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end
