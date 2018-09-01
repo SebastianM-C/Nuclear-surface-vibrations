@@ -198,9 +198,9 @@ version = "0.3.2"
 
 [[DiffEqBase]]
 deps = ["Compat", "IteratorInterfaceExtensions", "LinearAlgebra", "Pkg", "RecipesBase", "RecursiveArrayTools", "Requires", "StaticArrays", "Statistics", "TableTraits", "Test", "TreeViews"]
-git-tree-sha1 = "508aff5d492a050433f731f3f71bf2e78c9e319c"
+git-tree-sha1 = "d70f84e11a25aea27594c000cc4b7121758bb44b"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "4.24.0"
+version = "4.24.3"
 
 [[DiffEqBiological]]
 deps = ["Compat", "DataStructures", "DiffEqBase", "DiffEqJump", "MacroTools", "Random", "Reexport", "Statistics", "SymEngine", "Test"]
@@ -375,9 +375,9 @@ version = "0.5.2"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "InteractiveUtils", "LinearAlgebra", "NaNMath", "Pkg", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Test"]
-git-tree-sha1 = "0dd11038da4efce9ce457b1cf47a52eaf6251bd3"
+git-tree-sha1 = "8425a7d4e060bc2ded32d090bce910a187d6cce7"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.8.5"
+version = "0.9.0"
 
 [[FunctionWrappers]]
 deps = ["Compat", "Pkg"]
@@ -515,9 +515,9 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[MathProgBase]]
 deps = ["Compat"]
-git-tree-sha1 = "f0f7f184965f8c3d7eb10408fccdf546fa124725"
+git-tree-sha1 = "83b11194ca1c6353f39307f3221c804fff96350d"
 uuid = "fdba3010-5040-5b88-9595-932c9decdf73"
-version = "0.7.4"
+version = "0.7.5"
 
 [[Measures]]
 deps = ["Compat"]

@@ -280,7 +280,7 @@ function build_df(q, p, m, n, E, alg, symmetric, border_n)
     return df
 end
 
-function DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
+function DataBaseInterface.DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
     col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "symmetric", "border_n"]
     types = [Union{Missing, Float64}, # q₀
             Union{Missing, Float64}, # q₂
@@ -348,38 +348,17 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         plt = energy_err(q, p, E, alg, symmetric, params)
         save_err(plt, alg, symmetric, prefix)
     else
-        # all_types = Dict()
-        # df = CSV.read("$prefix/z0.csv", use_mmap=!Sys.iswindows(), types=all_types)
-        # col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
-        # any(.!haskey.(Ref(df), col_names)) && throw(ErrorException("Invalid DataFrame!\n$df"))
-        # # restore types
-        # for c in setdiff(names(df), [:m, :symmetric, :border_n])
-        #     categorical!(df, c)
-        # end
-        # types = [Int, String, Int]
-        # for (i, c) in enumerate([:m, :symmetric, :border_n])
-        #     df[c] = categorical(Array{Union{Missing,types[i]}}(df[c]))
-        # end
         db = DataBase(E, params)
         # TODO: change comparison to value types after switching from CSV
-        # m_cond(v, x::Number) = isa(x, Missing) ? isa.(v, Missing) : v == x
-        # m_cond(v, x) = isa(x, Missing) ? isa.(v, Missing) : v == "$x"
-        # @debug "size" size(m_cond.(df[:symmetric], symmetric)) size(df[:E] .== E)
-        # cond = (df[:n] .== n) .& m_cond.(df[:m], m) .& (df[:E] .== E) .&
-        #     (df[:initial_cond_alg] .== "$alg") .&
-        #     m_cond.(df[:symmetric], symmetric) .& m_cond.(df[:border_n], border_n)
-        # @debug "m" m m_cond.(df[:border_n], border_n) cond
-        # filtered_df = df[cond[.!isa.(cond, Missing)], :]
         vals = Dict([:n, :m, :E, :initial_cond_alg, :symmetric, :border_n] .=>
-                    [n, m, E, initial_cond_alg, symmetric, border_n])
+                    [n, m, E, alg, symmetric, border_n])
         filtered_df, cond = compatible(db, vals)
-        # @debug "filter" size(filtered_df, 1)
 
         compat = size(filtered_df, 1) > 0 && !recompute
 
         if compat && !recompute
             unique!(filtered_df)
-            @debug "total size" size(df) size(filtered_df)
+            @debug "total size" size(db.df) size(filtered_df)
             q = hcat(filtered_df[:q₀], filtered_df[:q₂])
             p = hcat(filtered_df[:p₀], filtered_df[:p₂])
         else
@@ -388,18 +367,6 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
             df = build_df(q, p, m, n, E, alg, symmetric, border_n)
 
             update!(db, df, recompute, cond)
-            # if recompute && size(filtered_df, 1) > 0
-            #     # delete the old values
-            #     @debug "Deleted" count(cond)
-            #     deleterows!(df, axes(df[:n], 1)[cond])
-            # end
-            # # add the new values
-            # for c in setdiff(names(df), names(df_))
-            #     df_[c] = categorical(fill(missing, size(df_, 1)))
-            # end
-            # append!(df, df_[names(df)])
-            # @debug "total size" size(df)
-            # CSV.write("$prefix/z0.csv", df)
 
             plt = energy_err(q, p, E, alg, symmetric, params)
             save_err(plt, alg, symmetric, prefix)

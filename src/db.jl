@@ -33,16 +33,15 @@ function compatible(db::DataBase, vals)
     db.df[cond[.!isa.(cond, Missing)], :], cond
 end
 
-function deleterows!(db::DataBase, cond)
+function DataFrames.deleterows!(db::DataBase, cond)
     @debug "Deleted" count(cond)
-    DataFrames.deleterows!(db.df, axes(db.df, 1)[cond])
+    deleterows!(db.df, axes(db.df, 1)[cond])
 end
 
 function update!(db, df, recompute, cond)
     # delete the old values
     if recompute && count(cond) > 0
-        @debug "Deleted" count(cond)
-        deleterows!(df, cond)
+        deleterows!(db, cond)
     end
     # add the new values
     for c in setdiff(names(db.df), names(df))
