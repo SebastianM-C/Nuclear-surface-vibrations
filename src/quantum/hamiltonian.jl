@@ -1,7 +1,3 @@
-#!/usr/bin/env julia
-
-__precompile__()
-
 """
 This module exports a function that generates the Hamiltonian as a
 dense matrix in the basis given by the eigenstates of an isotropic

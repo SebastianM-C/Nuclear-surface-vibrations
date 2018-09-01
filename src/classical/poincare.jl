@@ -1,13 +1,15 @@
-module Poincare
+# module Poincare
 
-export poincaremap, coloredpoincare
+# export poincaremap, coloredpoincare
 
-using ..Hamiltonian, ..InitialConditions
+# using ..InitialConditions
+# using ..Distributed
 
-using ..Distributed
+# @everywhere include("$(@__DIR__)/hamiltonian.jl")
 using ChaosTools
 using StaticArrays
 using Plots, LaTeXStrings
+# @everywhere using .Hamiltonian
 
 """
     poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
@@ -30,7 +32,7 @@ function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
         diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9), full=false)
     # temp fix for poincaresos special case
     q0[:,1] .+= eps()
-    z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+    z0 = [StaticArrays.SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
     idxs = full ? (1:4) : (axis==3) ? [4,2] : [3,1]
     output = pmap(eachindex(z0)) do i
         @debug "idx" i
@@ -69,4 +71,4 @@ function coloredpoincare(E, colors;
     savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end
 
-end  # module Poincare
+# end  # module Poincare
