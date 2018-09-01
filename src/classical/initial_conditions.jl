@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 module InitialConditions
 
 export initial_conditions
@@ -10,7 +9,10 @@ using DataFrames, CSV
 using GeometricalPredicates
 
 include("hamiltonian.jl")
+include("../db.jl")
+
 using .Hamiltonian
+using .DataBaseInterface
 
 function objective(q::Vector, grad::Vector)
     sqrt.(sum(q.^2))
@@ -278,6 +280,37 @@ function build_df(q, p, m, n, E, alg, symmetric, border_n)
     return df
 end
 
+function DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
+    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "symmetric", "border_n"]
+    types = [Union{Missing, Float64}, # q₀
+            Union{Missing, Float64}, # q₂
+            Union{Missing, Float64}, # p₀
+            Union{Missing, Float64}, # p₂
+            Union{Missing, Int64}, # n
+            Union{Missing, Int64}, # m
+            Union{Missing, Float64}, # E
+            Union{Missing, String}, # initial_cond_alg
+            Union{Missing, String}, # symmetric
+            Union{Missing, Int64} # border_n
+            ]
+    columns = Dict(col_names .=> types)
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    location = (prefix, "z0.csv")
+    # check for additional columns
+    all_cols = split(readline(joinpath(location...)), ",")
+    if length(all_cols) > length(col_names)
+        standard_col_idx = findfirst.(isequal.(col_names, Ref(all_cols)))
+        others = all_cols[setdiff(axes(all_cols, 1), standard_col_idx)]
+        @debug "other cols" others
+        # register types
+        if !isa(findfirst(isequal("λ"), others), Nothing)
+            push!(columns, "λ"=>Union{Missing, Float64})
+        end
+        length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
+    end
+    DataBase(location, columns)
+end
+
 function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
         recompute=false)
@@ -310,36 +343,41 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         df = build_df(q, p, m, n, E, alg, symmetric, border_n)
 
         # TODO: Switch to JLD2 after https://github.com/simonster/JLD2.jl/issues/101 is fixed
-        CSV.write("$prefix/z0.csv", df)
+        db = DataBase((prefix, "z0.csv"), df)
 
         plt = energy_err(q, p, E, alg, symmetric, params)
         save_err(plt, alg, symmetric, prefix)
     else
-        df = CSV.read("$prefix/z0.csv", use_mmap=!Sys.iswindows())
-        col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
-        any(.!haskey.(Ref(df), col_names)) && throw(ErrorException("Invalid DataFrame!\n$df"))
-        # restore types
-        for c in setdiff(names(df), [:m, :symmetric, :border_n])
-            categorical!(df, c)
-        end
-        types = [Int, String, Int]
-        for (i, c) in enumerate([:m, :symmetric, :border_n])
-            df[c] = categorical(Array{Union{Missing,types[i]}}(df[c]))
-        end
+        # all_types = Dict()
+        # df = CSV.read("$prefix/z0.csv", use_mmap=!Sys.iswindows(), types=all_types)
+        # col_names = [:q₀, :q₂, :p₀, :p₂, :n, :m, :E, :initial_cond_alg, :symmetric, :border_n]
+        # any(.!haskey.(Ref(df), col_names)) && throw(ErrorException("Invalid DataFrame!\n$df"))
+        # # restore types
+        # for c in setdiff(names(df), [:m, :symmetric, :border_n])
+        #     categorical!(df, c)
+        # end
+        # types = [Int, String, Int]
+        # for (i, c) in enumerate([:m, :symmetric, :border_n])
+        #     df[c] = categorical(Array{Union{Missing,types[i]}}(df[c]))
+        # end
+        db = DataBase(E, params)
         # TODO: change comparison to value types after switching from CSV
-        m_cond(v, x::Number) = isa(x, Missing) ? isa.(v, Missing) : v == x
-        m_cond(v, x) = isa(x, Missing) ? isa.(v, Missing) : v == "$x"
-        @debug "size" size(m_cond.(df[:symmetric], symmetric)) size(df[:E] .== E)
-        cond = (df[:n] .== n) .& m_cond.(df[:m], m) .& (df[:E] .== E) .&
-            (df[:initial_cond_alg] .== "$alg") .&
-            m_cond.(df[:symmetric], symmetric) .& m_cond.(df[:border_n], border_n)
-        @debug "m" m m_cond.(df[:border_n], border_n) cond
-        filtered_df = df[cond[.!isa.(cond, Missing)], :]
+        # m_cond(v, x::Number) = isa(x, Missing) ? isa.(v, Missing) : v == x
+        # m_cond(v, x) = isa(x, Missing) ? isa.(v, Missing) : v == "$x"
+        # @debug "size" size(m_cond.(df[:symmetric], symmetric)) size(df[:E] .== E)
+        # cond = (df[:n] .== n) .& m_cond.(df[:m], m) .& (df[:E] .== E) .&
+        #     (df[:initial_cond_alg] .== "$alg") .&
+        #     m_cond.(df[:symmetric], symmetric) .& m_cond.(df[:border_n], border_n)
+        # @debug "m" m m_cond.(df[:border_n], border_n) cond
+        # filtered_df = df[cond[.!isa.(cond, Missing)], :]
+        vals = Dict([:n, :m, :E, :initial_cond_alg, :symmetric, :border_n] .=>
+                    [n, m, E, initial_cond_alg, symmetric, border_n])
+        filtered_df, cond = compatible(db, vals)
+        # @debug "filter" size(filtered_df, 1)
 
-        @debug "filter" size(filtered_df, 1)
+        compat = size(filtered_df, 1) > 0 && !recompute
 
-        compatible = size(filtered_df, 1) > 0 && !recompute
-        if compatible
+        if compat && !recompute
             unique!(filtered_df)
             @debug "total size" size(df) size(filtered_df)
             q = hcat(filtered_df[:q₀], filtered_df[:q₂])
@@ -347,20 +385,21 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         else
             @debug "Incompatible initial conditions. Generating new conditions."
             q, p = _initial_conditions(E, n_..., alg_...; params_...)
-            df_ = build_df(q, p, m, n, E, alg, symmetric, border_n)
+            df = build_df(q, p, m, n, E, alg, symmetric, border_n)
 
-            if recompute && size(filtered_df, 1) > 0
-                # delete the old values
-                @debug "Deleted" count(cond)
-                deleterows!(df, axes(df[:n], 1)[cond])
-            end
-            # add the new values
-            for c in setdiff(names(df), names(df_))
-                df_[c] = categorical(fill(missing, size(df_, 1)))
-            end
-            append!(df, df_[names(df)])
-            @debug "total size" size(df)
-            CSV.write("$prefix/z0.csv", df)
+            update!(db, df, recompute, cond)
+            # if recompute && size(filtered_df, 1) > 0
+            #     # delete the old values
+            #     @debug "Deleted" count(cond)
+            #     deleterows!(df, axes(df[:n], 1)[cond])
+            # end
+            # # add the new values
+            # for c in setdiff(names(df), names(df_))
+            #     df_[c] = categorical(fill(missing, size(df_, 1)))
+            # end
+            # append!(df, df_[names(df)])
+            # @debug "total size" size(df)
+            # CSV.write("$prefix/z0.csv", df)
 
             plt = energy_err(q, p, E, alg, symmetric, params)
             save_err(plt, alg, symmetric, prefix)

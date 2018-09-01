@@ -1,4 +1,3 @@
-#!/usr/bin/env julia
 module Hamiltonian
 
 export H, T, V, ż, ṗ, q̇

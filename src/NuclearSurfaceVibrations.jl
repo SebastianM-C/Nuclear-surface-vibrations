@@ -1,16 +1,26 @@
+__precompile__(false)
+
 module NuclearSurfaceVibrations
+
+using Distributed
+@everywhere using Pkg
+@everywhere Pkg.activate(".")
 
 export Classical, Quantum
 
 module Classical
 
+export H, T, V, poincaremap, coloredpoincare
+
 using Reexport
+using Distributed
 
-include("classical/hamiltonian.jl")
-include("classical/initial_conditions.jl")
-# include("classical/poincare.jl")
+@everywhere include("$(@__DIR__)/classical/hamiltonian.jl")
 
-@reexport using .Hamiltonian
+include("$(@__DIR__)/classical/initial_conditions.jl")
+# @everywhere include("$(@__DIR__)/classical/poincare.jl")
+
+@everywhere using .Hamiltonian
 @reexport using .InitialConditions
 
 end  # module Classical
