@@ -7,7 +7,8 @@ using .DataBaseInterface
 global df = DataFrame(:a=>categorical([missing,2]),
     :b=>categorical(allowmissing([2.,3])),
     :c=>categorical(["$(Val(true))",missing]))
-
+sd = view(df, 1)
+sd[:a] .= [1,2,3]
 const types = [Union{Missing, Int}, Union{Missing, Float64}, Union{Missing, String}]
 
 const location = (".", "test.csv")

@@ -28,9 +28,19 @@ end
 ==ₘ(v, x) = isa(x, Missing) ? isa(v, Missing) : v == x
 ==ₘ(v, x::Val) = isa(x, Missing) ? isa(v, Missing) : v == "$x"
 
+function fill_diff!(df::AbstractDataFrame, cols)
+    for c in setdiff(names(df), cols)
+        df[c] .= fill(missing, size(df[c], 1))
+    end
+end
+
 function compatible(db::DataBase, vals)
+    # extend with missing
+    fill_diff!(db.df, keys(vals))
     cond = reduce((x,y)->x.&y, [db.df[k] .==ₘ v for (k,v) in vals])
-    db.df[cond[.!isa.(cond, Missing)], :], cond
+    subdf = view(db.df, [cond[.!isa.(cond, Missing)], :])
+
+    return subdf, cond
 end
 
 function DataFrames.deleterows!(db::DataBase, cond)
@@ -39,14 +49,13 @@ function DataFrames.deleterows!(db::DataBase, cond)
 end
 
 function update!(db, df, recompute, cond)
+    # TODO: SubDataFrames
     # delete the old values
     if recompute && count(cond) > 0
         deleterows!(db, cond)
     end
     # add the new values
-    for c in setdiff(names(db.df), names(df))
-        df[c] = categorical(fill(missing, size(df, 1)))
-    end
+    fill_diff!(db.df, names(df))
     append!(db.df, df[names(db.df)])
     @debug "total size" size(db.df)
     CSV.write(joinpath(db.location...), db.df)

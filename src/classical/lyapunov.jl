@@ -1,46 +1,54 @@
-!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
-!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
+module Lyapunov
 
-using Hamiltonian, InitialConditions
-@everywhere using DynamicalSystemsBase, ChaosTools
+using ..Distributed
+using ..InitialConditions
+
+using ChaosTools
+using OrdinaryDiffEq
 using StaticArrays
-using DataFrames, CSV
 
-function λmap(E; A=1, B=0.55, D=0.4, n=15, m=15, T=10000., Ttr=3000., d0=1e-9,
-               upper_threshold=1e-6, lower_threshold=1e-12,
-               inittest = ChaosTools.inittest_default(4),
-               dt=20., diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14,
-               :maxiters=>1e9), recompute=false)
-    prefix = "../../output/classical/B$B-D$D/E$E"
-    q0, p0, N = initial_conditions(E, n, m, params=(A,B,D))
-    df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
-    # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
-    if !haskey(df, :λs) || recompute
-        λs = _λmap(q0, p0, N; A=A, B=B, D=D, T=T, Ttr=Ttr,
-           d0=d0, upper_threshold=upper_threshold, lower_threshold=lower_threshold,
-           inittest=inittest, dt=dt, diff_eq_kwargs=diff_eq_kwargs)
-        df[:λs] = λs
-        CSV.write("$prefix/z0.csv", df)
+function λmap(E; params=(A=1, B=0.55, D=0.4), n=500, m=nothing,
+        alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
+        recompute=false, lyapunov_alg=Val{:DynamicalSystems},
+        T=10000., Ttr=1000., d0=1e-9, upper_threshold=1e-6, lower_threshold=1e-12,
+        dt=20., solver=Vern9(),
+        diff_eq_kwargs=(abstol=1e-14, reltol=1e-14, maxiters=1e9))
+
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
+        symmetric=symmetric, border_n=border_n, recompute=recompute)
+    db = DataBase(E, params)
+
+    vals = Dict([:lyapunov_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut, :lyap_lt, :lyap_dt] .=>
+                [lyapunov_alg, T, Ttr, d0, upper_threshold, lower_threshold, dt])
+    filtered_df, cond = compatible(db, vals)
+    compat = size(filtered_df, 1) > 0 && !recompute
+
+    if compat
+        λs = filtered_df[:λs]
     else
-        df = CSV.read("$prefix/z0.csv", allowmissing=:none)
-        λs = df[:λs]
+        λs = _λmap(q0, p0, alg; params=params, T=T, Ttr=Ttr, d0=d0,
+            upper_threshold=upper_threshold, lower_threshold=lower_threshold,
+            dt=dt, diff_eq_kwargs=diff_eq_kwargs)
+        # df[:λs] = λs
+        # CSV.write("$prefix/z0.csv", df)
     end
     return λs
 end
 
-function _λmap(q0, p0, N; A=1, B=0.55, D=0.4, T=10000., Ttr=1000., d0=1e-9,
-               upper_threshold=1e-6, lower_threshold=1e-12,
-               inittest = ChaosTools.inittest_default(4),
-               dt=10., diff_eq_kwargs=Dict(:abstol=>d0, :reltol=>d0))
-    z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
-    ds = DynamicalSystemsBase.ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
+function _λmap(q0, p0, alg::Val{:DynamicalSystems}; params=(A=1, B=0.55, D=0.4),
+        T=10000., Ttr=1000., d0=1e-9, upper_threshold=1e-6, lower_threshold=1e-12,
+        dt=10., solver=Vern9(), diff_eq_kwargs=(abstol=d0, reltol=d0))
+    inittest = ChaosTools.inittest_default(4)
+    z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+    ds = ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
 
     pinteg = DynamicalSystemsBase.parallel_integrator(ds,
             [deepcopy(DynamicalSystemsBase.get_state(ds)),
-            inittest(DynamicalSystemsBase.get_state(ds), d0)];
-            diff_eq_kwargs=diff_eq_kwargs)
+            inittest(DynamicalSystemsBase.get_state(ds), d0)]; alg=solver,
+            diff_eq_kwargs...)
 
-    λs = pmap(1:N) do i
+    λs = pmap(eachindex(z0)) do i
             set_state!(pinteg, z0[i])
             reinit!(pinteg, pinteg.u)
             ChaosTools._lyapunov(pinteg, T, Ttr, dt, d0,
@@ -101,3 +109,5 @@ function λ_time(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9,
     monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
     solve(monte_prob, DPRKN12(); kwargs..., saveat=τ, num_monte=n, parallel_type=parallel_type)
 end
+
+end  # module Lyapunov

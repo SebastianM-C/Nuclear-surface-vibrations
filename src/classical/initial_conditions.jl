@@ -303,8 +303,8 @@ function DataBaseInterface.DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
         others = all_cols[setdiff(axes(all_cols, 1), standard_col_idx)]
         @debug "other cols" others
         # register types
-        if !isa(findfirst(isequal("λ"), others), Nothing)
-            push!(columns, "λ"=>Union{Missing, Float64})
+        if !isa(findfirst(isequal("λs"), others), Nothing)
+            push!(columns, "λs"=>Union{Missing, Float64})
         end
         length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
     end
@@ -356,11 +356,11 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
 
         compat = size(filtered_df, 1) > 0 && !recompute
 
-        if compat && !recompute
-            unique!(filtered_df)
-            @debug "total size" size(db.df) size(filtered_df)
-            q = hcat(filtered_df[:q₀], filtered_df[:q₂])
-            p = hcat(filtered_df[:p₀], filtered_df[:p₂])
+        if compat
+            unique_df = unique(filtered_df)
+            @debug "total size" size(db.df) size(unique_df)
+            q = hcat(unique_df[:q₀], unique_df[:q₂])
+            p = hcat(unique_df[:p₀], unique_df[:p₂])
         else
             @debug "Incompatible initial conditions. Generating new conditions."
             q, p = _initial_conditions(E, n_..., alg_...; params_...)

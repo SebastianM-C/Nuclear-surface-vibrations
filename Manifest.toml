@@ -606,6 +606,12 @@ git-tree-sha1 = "9e3e7a5c9b8cfdba8c01a1bcae38fe0144936fda"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.9.5"
 
+[[ParallelDataTransfer]]
+deps = ["Distributed", "Random", "Test"]
+git-tree-sha1 = "75e75900c8b0d8dfb69cbe082832b1dc9f8aacfe"
+uuid = "2dcacdae-9679-587a-88bb-8b444fb7085b"
+version = "0.5.0"
+
 [[ParameterizedFunctions]]
 deps = ["DataStructures", "DiffEqBase", "InteractiveUtils", "LinearAlgebra", "SimpleTraits", "SymEngine", "Test"]
 git-tree-sha1 = "c6d904befed8dbfcc1f81741b2404f735f8a6f8a"

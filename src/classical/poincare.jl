@@ -1,18 +1,21 @@
-# module Poincare
+module Poincare
 
-# export poincaremap, coloredpoincare
+export poincaremap, coloredpoincare
 
-# using ..InitialConditions
-# using ..Distributed
+using ..Distributed
+using ..InitialConditions
 
-# @everywhere include("$(@__DIR__)/hamiltonian.jl")
+using ParallelDataTransfer
 using ChaosTools
 using StaticArrays
 using Plots, LaTeXStrings
-# @everywhere using .Hamiltonian
+
+include_remote("$(@__DIR__)/hamiltonian.jl")
+using ..Hamiltonian
 
 """
-    poincaremap(E; n=10, m=10, A=1, B=0.55, D=0.4, t=100, axis=3)
+    poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
+            diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9), full=false)
 
 Create a Poincare map at the given energy for the given parameters through
 a Monte Carlo simulation.
@@ -32,7 +35,7 @@ function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
         diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9), full=false)
     # temp fix for poincaresos special case
     q0[:,1] .+= eps()
-    z0 = [StaticArrays.SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+    z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
     idxs = full ? (1:4) : (axis==3) ? [4,2] : [3,1]
     output = pmap(eachindex(z0)) do i
         @debug "idx" i
@@ -49,7 +52,7 @@ function coloredpoincare(E, colors;
         border_n=1000, recompute=false, params=(A=1, B=0.55, D=0.4),
         t=500., sgn=1,
         diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9))
-    prefix = "output/classical/B$B-D$D/E$E"
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     axis = isa(symmetric, Val{true}) ? 3 : 4
     q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
         symmetric=symmetric, border_n=border_n, recompute=recompute)
@@ -71,4 +74,4 @@ function coloredpoincare(E, colors;
     savefig(plt,  "$prefix/poincare_$name-ax$axis-t_$t-_sgn$sgn.pdf")
 end
 
-# end  # module Poincare
+end  # module Poincare

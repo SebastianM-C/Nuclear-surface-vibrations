@@ -10,18 +10,17 @@ export Classical, Quantum
 
 module Classical
 
-export H, T, V, poincaremap, coloredpoincare
-
 using Reexport
 using ..Distributed
 
-@everywhere include("$(@__DIR__)/classical/hamiltonian.jl")
+include("classical/hamiltonian.jl")
 include("classical/initial_conditions.jl")
-
-@everywhere using .Hamiltonian
 @reexport using .InitialConditions
+@reexport using .Hamiltonian
 
-@everywhere include("$(@__DIR__)/classical/poincare.jl")
+include("classical/poincare.jl")
+
+@reexport using .Poincare
 
 end  # module Classical
 
