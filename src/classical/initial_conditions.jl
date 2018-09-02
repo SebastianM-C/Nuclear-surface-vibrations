@@ -341,8 +341,8 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
         @debug "No initial conditions file found. Generating new conditions."
         q, p = _initial_conditions(E, n_..., alg_...; params_...)
         df = build_df(q, p, m, n, E, alg, symmetric, border_n)
+        cond = BitArray(true for i in axes(df, 1))
 
-        # TODO: Switch to JLD2 after https://github.com/simonster/JLD2.jl/issues/101 is fixed
         db = DataBase((prefix, "z0.csv"), df)
 
         plt = energy_err(q, p, E, alg, symmetric, params)
@@ -372,7 +372,7 @@ function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
             save_err(plt, alg, symmetric, prefix)
         end
     end
-    return Array(disallowmissing(q)), Array(disallowmissing(p))
+    return Array(disallowmissing(q)), Array(disallowmissing(p)), cond
 end
 
 end  # module InitialConditions

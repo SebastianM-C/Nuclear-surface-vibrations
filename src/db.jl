@@ -15,6 +15,7 @@ struct DataBase
         new(location, columns, df)
     end
     function DataBase(location, columns::Dict{String, Union})
+        # TODO: Switch to JLD2 after https://github.com/simonster/JLD2.jl/issues/101 is fixed
         # https://github.com/JuliaData/CSV.jl/issues/263
         df = CSV.read(joinpath(location...), use_mmap=!Sys.iswindows(), types=columns)
         for c in names(df)
@@ -25,12 +26,12 @@ struct DataBase
     end
 end
 
-==ₘ(v, x) = isa(x, Missing) ? isa(v, Missing) : v == x
-==ₘ(v, x::Val) = isa(x, Missing) ? isa(v, Missing) : v == "$x"
+==ₘ(v, x) = isa(x, Missing) ? isa(v, Missing) : isa(v, Missing) ? false : v == x
+==ₘ(v, x::Val) = isa(x, Missing) ? isa(v, Missing) : isa(v, Missing) ? false : v == "$x"
 
 function fill_diff!(df::AbstractDataFrame, cols)
-    for c in setdiff(names(df), cols)
-        df[c] .= fill(missing, size(df[c], 1))
+    for c in setdiff(cols, names(df))
+        df[c] = fill(missing, size(df, 1))
     end
 end
 
@@ -38,7 +39,7 @@ function compatible(db::DataBase, vals)
     # extend with missing
     fill_diff!(db.df, keys(vals))
     cond = reduce((x,y)->x.&y, [db.df[k] .==ₘ v for (k,v) in vals])
-    subdf = view(db.df, [cond[.!isa.(cond, Missing)], :])
+    subdf = view(db.df, cond)
 
     return subdf, cond
 end
@@ -48,15 +49,21 @@ function DataFrames.deleterows!(db::DataBase, cond)
     deleterows!(db.df, axes(db.df, 1)[cond])
 end
 
-function update!(db, df, recompute, cond)
-    # TODO: SubDataFrames
-    # delete the old values
-    if recompute && count(cond) > 0
-        deleterows!(db, cond)
-    end
-    # add the new values
-    fill_diff!(db.df, names(df))
+function append_with_missing!(db::DataBase, df)
+    @debug "Appended" size(df, 1)
+    fill_diff!(df, names(db.df))
     append!(db.df, df[names(db.df)])
+end
+
+function update!(db, df, filtered_df)
+    if size(filtered_df, 1) > 0
+        for c in names(df)
+            filtered_df[c] .= df[c]
+        end
+    else
+        fill_diff!(db.df, names(df))
+        append!(db.df, df[names(db.df)])
+    end
     @debug "total size" size(db.df)
     CSV.write(joinpath(db.location...), db.df)
 end

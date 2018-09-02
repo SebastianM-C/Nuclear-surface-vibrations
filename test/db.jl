@@ -7,8 +7,7 @@ using .DataBaseInterface
 global df = DataFrame(:a=>categorical([missing,2]),
     :b=>categorical(allowmissing([2.,3])),
     :c=>categorical(["$(Val(true))",missing]))
-sd = view(df, 1)
-sd[:a] .= [1,2,3]
+
 const types = [Union{Missing, Int}, Union{Missing, Float64}, Union{Missing, String}]
 
 const location = (".", "test.csv")
@@ -30,17 +29,20 @@ end
 
 @testset "Exported functions" begin
     @test missing ==ₘ missing
-    @test (2 ==ₘ missing) === false
-    @test (missing ==ₘ 2) === missing
+    @test (2 ==ₘ missing) == false
+    @test (missing ==ₘ 2) == false
     @test 2 ==ₘ 2
     @test "$(Val(true))" ==ₘ Val(true)
-    @test (missing ==ₘ Val(true)) === missing
+    @test (missing ==ₘ Val(true)) == false
 
     db = DataBase(location, df)
     filtered_df, cond = compatible(db, Dict(:a=>2,:c=>missing))
     @test count(cond) == 1
     @test cond[1] == false && cond[2] == true
     @test all([all(filtered_df[c] .==ₘ db.df[c][2,:]) for c in names(df)])
+    @test isa(filtered_df, SubDataFrame)
+    f2, c2 = compatible(db, Dict(:d=>3))
+    @test size(f2, 1) == 0
 
     DataBaseInterface.deleterows!(db, cond)
     @test size(db.df) == (1, 3)
