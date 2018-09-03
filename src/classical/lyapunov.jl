@@ -1,47 +1,89 @@
 module Lyapunov
 
+export λmap, LyapunovAlgorithm, DynSys
+
 using ..Distributed
+using ..Parameters
 using ..InitialConditions
+using ..Classical: AbstractAlgorithm
 
 using ChaosTools
+
 using OrdinaryDiffEq
 using StaticArrays
 
-function λmap(E; params=(A=1, B=0.55, D=0.4), n=500, m=nothing,
-        alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
-        recompute=false, lyapunov_alg=Val{:DynamicalSystems},
-        T=10000., Ttr=1000., d0=1e-9, upper_threshold=1e-6, lower_threshold=1e-12,
-        dt=20., solver=Vern9(),
-        diff_eq_kwargs=(abstol=1e-14, reltol=1e-14, maxiters=1e9))
+abstract type LyapunovAlgorithm <: AbstractAlgorithm end
+
+@with_kw struct DynSys{R <: Real} <: LyapunovAlgorithm  @deftype R
+    T = 1e4
+    Ttr = 1e3
+    d0 = 1e-9
+    upper_threshold = 1e-6
+    lower_threshold = 1e-12
+    dt = 20.
+    solver::OrdinaryDiffEqAlgorithm = Vern9()
+    diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
+end
+
+function build_df(λs, alg)
+    N = size(λs, 1)
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_missing(alg)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
+    df = DataFrame()
+    df[:λs] = categorical(λs)
+    df[:lyap_alg] = categorical(fill(string(typeof(alg)), N))
+    df[:lyap_T] = categorical(fill(T, N))
+    df[:lyap_Ttr] = categorical(fill(Ttr, N))
+    df[:lyap_d0] = categorical(fill(d0, N))
+    df[:lyap_ut] = categorical(fill(upper_threshold, N))
+    df[:lyap_lt] = categorical(fill(lower_threshold, N))
+    df[:lyap_dt] = categorical(fill(dt, N))
+    df[:lyap_integ] = categorical(fill("$solver", N))
+    df[:lyap_diffeq_kw] = categorical(fill("$diff_eq_kwargs", N))
+    allowmissing!(df)
+
+    return df
+end
+
+function λmap(E; params=(A=1, B=0.55, D=0.4), alg=PoincareRand(n=500),
+        recompute=false, lyapunov_alg=DynSys(), alg_recompute=false)
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
         symmetric=symmetric, border_n=border_n, recompute=recompute)
     db = DataBase(E, params)
+    n, m, border_n = unpack_with_missing(alg)
+    ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
+                [n, m, E, string(typeof(alg)), border_n])
+    ic_df, ic_cond = compatible(db.df, ic_vals)
 
-    vals = Dict([:lyapunov_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut, :lyap_lt, :lyap_dt] .=>
-                [lyapunov_alg, T, Ttr, d0, upper_threshold, lower_threshold, dt])
-    filtered_df, cond = compatible(db, vals)
-    compat = size(filtered_df, 1) > 0 && !recompute
+    vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
+                :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
+                [string(typeof(lyapunov_alg)), T, Ttr, d0, upper_threshold,
+                lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
+    filtered_df, λcond = compatible(db.df, vals)
+    cond = ic_cond .& λcond
+    compat = count(cond) > 0 && !recompute
 
     if compat
-        λs = filtered_df[:λs]
+        λs = unique(filtered_df[:λs])
     else
-        λs = _λmap(q0, p0, alg; params=params, T=T, Ttr=Ttr, d0=d0,
-            upper_threshold=upper_threshold, lower_threshold=lower_threshold,
-            dt=dt, diff_eq_kwargs=diff_eq_kwargs)
-        # df[:λs] = λs
-        # CSV.write("$prefix/z0.csv", df)
+        @debug "Incompatible values. Computing new values."
+        λs = _λmap(q0, p0, alg; params=params)
+        df = build_df(λs, alg)
+
+        update!(db, df, cond)
+
+        # plots
     end
     return λs
 end
 
-function _λmap(q0, p0, alg::Val{:DynamicalSystems}; params=(A=1, B=0.55, D=0.4),
-        T=10000., Ttr=1000., d0=1e-9, upper_threshold=1e-6, lower_threshold=1e-12,
-        dt=10., solver=Vern9(), diff_eq_kwargs=(abstol=d0, reltol=d0))
+function _λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
     inittest = ChaosTools.inittest_default(4)
     z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
-    ds = ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
+    ds = ContinuousDynamicalSystem(ż, z0[1], params)
 
     pinteg = DynamicalSystemsBase.parallel_integrator(ds,
             [deepcopy(DynamicalSystemsBase.get_state(ds)),
@@ -98,7 +140,9 @@ function λ_time(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9,
                                             integrator.u.x[2][idx1] + Δq/a))
     end
     rescale = PeriodicCallback(affect!, τ, save_positions=(true,false))
-    prob_func(prob, i, repeat) = ttr≠0?DynamicalODEProblem(f1, f2, p0[i], q0[i], tspan, p, callback=rescale):dist_prob(p, p0[i], q0[i], d0, tspan, rescale)
+    prob_func(prob, i, repeat) = ttr≠0 ?
+        DynamicalODEProblem(f1, f2, p0[i], q0[i], tspan, p, callback=rescale) :
+        dist_prob(p, p0[i], q0[i], d0, tspan, rescale)
 
     function output_func(sol, i)
         λᵢ = [log(dist(s)/d0)/τ for s in sol.u]

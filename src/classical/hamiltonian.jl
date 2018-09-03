@@ -1,18 +1,24 @@
 module Hamiltonian
 
-export H, T, V, ż, ṗ, q̇
+export H, T, V, ż, ṗ, q̇, PhysicalParameters
 
 using StaticArrays
 using Parameters
 using LinearAlgebra
 
+@with_kw struct PhysicalParameters{R<:Real} @deftype R
+    A::Int = 1
+    B = 0.55
+    D = 0.4
+end
+
 function T(p, A)
-  A / 2 * norm(p)^2
+    A / 2 * norm(p)^2
 end
 # V(q) = 1/2 * (q[1]^2 + q[2]^2 + 2q[1]^2 * q[2]- 2/3 * q[2]^3)
 function V(q, params)
-  @unpack A, B, D = params
-  A / 2 * (q[1]^2 + q[2]^2) + B / √2 * q[1] * (3 * q[2]^2 - q[1]^2) + D / 4 * (q[1]^2 + q[2]^2)^2
+    @unpack A, B, D = params
+    A / 2 * (q[1]^2 + q[2]^2) + B / √2 * q[1] * (3 * q[2]^2 - q[1]^2) + D / 4 * (q[1]^2 + q[2]^2)^2
 end
 
 function Vjac!(J, q, params)
@@ -21,7 +27,7 @@ function Vjac!(J, q, params)
   J[1,2] = A * q[2] + 3*√2 * q[1]* q[2] + D * q[2] * (q[1]^2 + q[2]^2)
 end
 
-H(p, q, params=(A=1, B=0.55, D=0.4)) = T(p, params.A) + V(q, params)
+H(p, q, params=PhysicalParameters()) = T(p, params.A) + V(q, params)
 
 @inbounds @inline function ż(z, p, t)
     @unpack A, B, D = p

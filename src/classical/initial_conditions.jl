@@ -1,6 +1,11 @@
 module InitialConditions
 
-export initial_conditions
+export initial_conditions, InitialConditionsAlgorithm, Plane,
+    PoincareRand, PoincareUniform, InscribedCircle, unpack_with_missing
+
+using ..Hamiltonian
+using ..Parameters
+using ..Classical: AbstractAlgorithm
 
 using Logging, Random
 using NLsolve, NLopt, Roots
@@ -8,11 +13,46 @@ using Plots, LaTeXStrings
 using DataFrames, CSV
 using GeometricalPredicates
 
-include("hamiltonian.jl")
 include("../db.jl")
-
-using .Hamiltonian
 using .DataBaseInterface
+
+abstract type InitialConditionsAlgorithm <: AbstractAlgorithm end
+abstract type Plane end
+struct Symmetric <: Plane end
+struct Asymmetric <: Plane end
+
+@with_kw struct PoincareRand{P <: Plane} <: InitialConditionsAlgorithm
+    n::Int
+    plane::P = Symmetric()
+    border_n::Int = 1000
+    @assert n > 0
+    @assert border_n > 3
+end
+
+@with_kw struct PoincareUniform{P <: Plane} <: InitialConditionsAlgorithm
+    n::Int
+    m::Int
+    plane::P = Symmetric()
+    border_n::Int = 1000
+    @assert n > 0
+    @assert m > 0
+    @assert border_n > 3
+end
+
+@with_kw struct InscribedCircle <: InitialConditionsAlgorithm
+    n::Int
+    m::Int
+    @assert n > 0
+    @assert m > 0
+end
+
+function unpack_with_missing(alg::InitialConditionsAlgorithm)
+    n = alg.n
+    m = isa(alg, PoincareRand) ? missing : alg.m
+    border_n = isa(alg, InscribedCircle) ? missing : alg.border_n
+
+    return n, m, border_n
+end
 
 function objective(q::Vector, grad::Vector)
     sqrt.(sum(q.^2))
@@ -90,8 +130,9 @@ Compute ``p_2`` (or ``p_0``) when the other is given at energy `E`.
 """
 p2(E, p, q, params) = √(2 * params.A * (E - V(q, params)) - p^2)
 
-function _initial_conditions(E, n, m, alg::Val{:inscribed_circle};
-        params=(A=1, B=0.55, D=0.4))
+function _initial_conditions(E, alg::InscribedCircle;
+        params=PhysicalParameters())
+    @unpack n, m = alg
     T_range = range(0, stop=E, length=m)
 
     q0 = zeros(n*m, 2)
@@ -137,7 +178,7 @@ function frominterval(points, ex, ey)
     [frominterval(p._x, ex) for p in points], [frominterval(p._y, ey) for p in points]
 end
 
-function phase_space_border(E, symmetric::Val{true}, n=1000; params=(A=1, B=0.55, D=0.4))
+function phase_space_border(E, plane::Symmetric, n=1000; params=PhysicalParameters())
     p = range(0, stop=√(2 * params.A * E), length=n)
     q0 = E < 1e5 ? 0 : 10
     q = [find_zero(q->H([0,pᵢ], [0,q], params) - E, q0) for pᵢ in p]
@@ -148,7 +189,7 @@ function phase_space_border(E, symmetric::Val{true}, n=1000; params=(A=1, B=0.55
     Polygon(tointerval(points, ex, ey)...), ex, ey
 end
 
-function phase_space_border(E, symmetric::Val{false}, n=1000; params=(A=1, B=0.55, D=0.4))
+function phase_space_border(E, plane::Asymmetric, n=1000; params=PhysicalParameters())
     p = range(0, stop=√(2 * params.A * E), length=n)
     p = p[1:end-1]
     q₊0 = E < 1e5 ? (0,100) : (0,10000)
@@ -164,7 +205,7 @@ end
 
 Random.rand(rng::AbstractRNG, ::Random.SamplerType{Point2D}) = Point((rand(rng) + 1), (rand(rng) + 1))
 
-function complete(q₂, p₂, E, symmetric::Val{true}, params)
+function complete(q₂, p₂, E, plane::Symmetric, params)
     n = length(q₂)
     q = zeros(eltype(q₂), n, 2)
     p = zeros(eltype(p₂), n, 2)
@@ -177,7 +218,7 @@ function complete(q₂, p₂, E, symmetric::Val{true}, params)
     q, p
 end
 
-function complete(q₀, p₀, E, symmetric::Val{false}, params)
+function complete(q₀, p₀, E, plane::Asymmetric, params)
     n = length(q₀)
     q = zeros(eltype(q₀), n, 2)
     p = zeros(eltype(p₀), n, 2)
@@ -190,24 +231,26 @@ function complete(q₀, p₀, E, symmetric::Val{false}, params)
     q, p
 end
 
-function _initial_conditions(E, n, alg::Val{:poincare_rand}, symmetric=Val(true);
-        params=(A=1, B=0.55, D=0.4), border_n=1000)
-    border, ex, ey = phase_space_border(E, symmetric, border_n, params=params)
+function _initial_conditions(E, alg::PoincareRand;
+        params=PhysicalParameters())
+    @unpack n, plane, border_n = alg
+    border, ex, ey = phase_space_border(E, plane, border_n, params=params)
     counter = 0
     points = Vector{Point2D}()
     while counter < n
         p = rand(Point2D)
         inpolygon(border, p) && (push!(points, p); counter += 1)
     end
-    complete(frominterval(points, ex, ey)..., E, symmetric, params)
+    complete(frominterval(points, ex, ey)..., E, plane, params)
 end
 
-function _initial_conditions(E, n, m, alg::Val{:poincare_uniform}, symmetric=Val(true);
-        params=(A=1, B=0.55, D=0.4), border_n=1000)
-    border, ex, ey = phase_space_border(E, symmetric, border_n, params=params)
+function _initial_conditions(E, alg::PoincareUniform;
+        params=PhysicalParameters())
+    @unpack n, m, plane, border_n = alg
+    border, ex, ey = phase_space_border(E, plane, border_n, params=params)
     counter = 0
     points = Vector{Point2D}()
-    it_grid = Iterators.product(range(1,stop=2-1e-14,length=n),
+    it_grid = Iterators.product(range(1, stop=2-1e-14, length=n),
         range(1,stop=2-1e-14,length=m))
     grid = [Point(x, y) for (x, y) ∈ it_grid]
     for p in grid
@@ -215,55 +258,47 @@ function _initial_conditions(E, n, m, alg::Val{:poincare_uniform}, symmetric=Val
     end
     @debug "Generated $counter initial conditions."
     counter == 0 && throw(ErrorException("No initial conditions generated!"))
-    complete(frominterval(points, ex, ey)..., E, symmetric, params)
+    complete(frominterval(points, ex, ey)..., E, plane, params)
 end
 
-function poincare_err(q, p, err, symmetric::Val{true})
+function poincare_err(q, p, err, plane::Symmetric)
     scatter(q[:, 2], p[:, 2], marker_z=err, m=1.2, msa=0,
         label="", xlabel=L"q_2", ylabel=L"p_2")
 end
 
-function poincare_err(q, p, err, symmetric::Val{false})
+function poincare_err(q, p, err, plane::Asymmetric)
     scatter(q[:, 1], p[:, 1], marker_z=err, m=1.2, msa=0,
         label="", xlabel=L"q_0", ylabel=L"p_0")
 end
 
-function energy_err(q, p, E, alg, symmetric, params)
+function energy_err(q, p, E, alg, params)
     err = abs.([H(p[i,:], q[i,:], params) - E for i ∈ axes(q, 1)])
     plt = histogram(err, nbins=10, xlabel=L"\Delta E", ylabel=L"N",
         label="max err: $(maximum(err))")
     maximum(err) > 1e-12 && @warn "max err: $(maximum(err))"
-    if !isa(alg, Val{:inscribed_circle})
-        plt = plot(plt, poincare_err(q, p, err, symmetric), layout=(2,1))
+    if !isa(alg, InscribedCircle)
+        plt = plot(plt, poincare_err(q, p, err, alg.plane), layout=(2,1))
+    else
+        plt2 = scatter(q[:, 1], q[:, 2], marker_z=err, m=1.2, msa=0,
+            label="", xlabel=L"q_0", ylabel=L"q_2")
+        plt = plot(plt, plt2)
     end
 
     return plt
 end
 
-"""
-    val2str(v)
-
-Extrct a string from a value type based on a symbol.
-"""
-val2str(v) = match(r":(\w+)", "$v").captures[1]
-
-function save_err(plt, alg, symmetric, prefix)
-    if isa(alg, Val{:inscribed_circle})
-        fn = val2str(alg)
-    elseif isa(symmetric, Val{true})
-        fn = val2str(alg)*"_symm"
-    else
-        fn = val2str(alg)*"_asymm"
-    end
-
+function save_err(plt, alg, prefix)
+    fn = string(typeof(alg))
+    fn = replace(fn, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
     if !isdir("$prefix/initial_energy_err")
         mkpath("$prefix/initial_energy_err")
     end
     savefig(plt, "$prefix/initial_energy_err/$fn.pdf")
 end
 
-function build_df(q, p, m, n, E, alg, symmetric, border_n)
+function build_df(q, p, E, alg)
     N = size(q, 1)
+    n, m, border_n = unpack_with_missing(alg)
     df = DataFrame()
     df[:q₀] = categorical(q[:,1])
     df[:q₂] = categorical(q[:,2])
@@ -272,16 +307,15 @@ function build_df(q, p, m, n, E, alg, symmetric, border_n)
     df[:n] = categorical(fill(n, N))
     df[:m] = categorical((fill(m, N)))
     df[:E] = categorical(fill(E, N))
-    df[:initial_cond_alg] = categorical(fill("$alg", N))
-    df[:symmetric] = categorical((fill(isa(symmetric, Missing) ? missing : "$symmetric", N)))
+    df[:initial_cond_alg] = categorical(fill(string(typeof(alg)), N))
     df[:border_n] = categorical((fill(border_n, N)))
     allowmissing!(df)
 
     return df
 end
 
-function DataBaseInterface.DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
-    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "symmetric", "border_n"]
+function DataBaseInterface.DataBase(E, params=PhysicalParameters())
+    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "border_n"]
     types = [Union{Missing, Float64}, # q₀
             Union{Missing, Float64}, # q₂
             Union{Missing, Float64}, # p₀
@@ -290,7 +324,6 @@ function DataBaseInterface.DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
             Union{Missing, Int64}, # m
             Union{Missing, Float64}, # E
             Union{Missing, String}, # initial_cond_alg
-            Union{Missing, String}, # symmetric
             Union{Missing, Int64} # border_n
             ]
     columns = Dict(col_names .=> types)
@@ -305,74 +338,74 @@ function DataBaseInterface.DataBase(E, params::NamedTuple=(A=1, B=0.55, D=0.4))
         # register types
         if !isa(findfirst(isequal("λs"), others), Nothing)
             push!(columns, "λs"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_alg"), others), Nothing)
+            push!(columns, "lyap_alg"=>Union{Missing, String})
+        elseif !isa(findfirst(isequal("lyap_T"), others), Nothing)
+            push!(columns, "lyap_T"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_Ttr"), others), Nothing)
+            push!(columns, "lyap_Ttr"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_d0"), others), Nothing)
+            push!(columns, "lyap_d0"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_ut"), others), Nothing)
+            push!(columns, "lyap_ut"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_lt"), others), Nothing)
+            push!(columns, "lyap_lt"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_dt"), others), Nothing)
+            push!(columns, "lyap_dt"=>Union{Missing, Float64})
+        elseif !isa(findfirst(isequal("lyap_integ"), others), Nothing)
+            push!(columns, "lyap_integ"=>Union{Missing, String})
         end
         length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
     end
     DataBase(location, columns)
 end
 
-function initial_conditions(E; n=5000, m=missing, params=(A=1, B=0.55, D=0.4),
-        alg=Val(:poincare_rand), symmetric=Val(true), border_n=1000,
+function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
         recompute=false)
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     if !isdir(prefix)
         mkpath(prefix)
     end
 
-    if isa(alg, Val{:poincare_rand})
-        n_ = n
-        m = missing
-    else
-        n_ = (n, m)
-    end
-    if !isa(alg, Val{:inscribed_circle})
-        alg_ = (alg, symmetric)
-        params_ = Dict(:params=>params, :border_n=>border_n)
-    else
-        alg_ = (alg,)
-        params_ = Dict(:params=>params)
-        symmetric = missing
-        border_n = missing
-    end
-    typeof(alg) <: Union{Val{:poincare_uniform}, Val{:inscribed_circle}} &&
-        isa(m, Missing) && throw(ArgumentError("m not given"))
+    n, m, border_n = unpack_with_missing(alg)
 
     if !isfile("$prefix/z0.csv")
         @debug "No initial conditions file found. Generating new conditions."
-        q, p = _initial_conditions(E, n_..., alg_...; params_...)
-        df = build_df(q, p, m, n, E, alg, symmetric, border_n)
-        cond = BitArray(true for i in axes(df, 1))
+        q, p = _initial_conditions(E, alg; params=params)
+        df = build_df(q, p, E, alg)
 
         db = DataBase((prefix, "z0.csv"), df)
 
-        plt = energy_err(q, p, E, alg, symmetric, params)
-        save_err(plt, alg, symmetric, prefix)
+        plt = energy_err(q, p, E, alg, params)
+        save_err(plt, alg, prefix)
     else
         db = DataBase(E, params)
-        # TODO: change comparison to value types after switching from CSV
-        vals = Dict([:n, :m, :E, :initial_cond_alg, :symmetric, :border_n] .=>
-                    [n, m, E, alg, symmetric, border_n])
-        filtered_df, cond = compatible(db, vals)
+        # TODO: preserve the types after switching from CSV
+        vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
+                    [n, m, E, string(typeof(alg)), border_n])
+        cond = compatible(db.df, vals)
 
-        compat = size(filtered_df, 1) > 0 && !recompute
+        compat = count(cond) > 0 && !recompute
 
         if compat
-            unique_df = unique(filtered_df)
+            unique_df = unique(view(db.df, cond))
             @debug "total size" size(db.df) size(unique_df)
             q = hcat(unique_df[:q₀], unique_df[:q₂])
             p = hcat(unique_df[:p₀], unique_df[:p₂])
         else
             @debug "Incompatible initial conditions. Generating new conditions."
-            q, p = _initial_conditions(E, n_..., alg_...; params_...)
-            df = build_df(q, p, m, n, E, alg, symmetric, border_n)
+            q, p = _initial_conditions(E, alg; params=params)
+            df = build_df(q, p, E, alg)
 
-            update!(db, df, recompute, cond)
-
-            plt = energy_err(q, p, E, alg, symmetric, params)
-            save_err(plt, alg, symmetric, prefix)
+            if recompute
+                DataBaseInterface.deleterows!(db, cond)
+            end
+            append_with_missing!(db, df)
+            plt = energy_err(q, p, E, alg, params)
+            save_err(plt, alg, prefix)
         end
     end
-    return Array(disallowmissing(q)), Array(disallowmissing(p)), cond
+    return Array(disallowmissing(q)), Array(disallowmissing(p))
 end
 
 end  # module InitialConditions

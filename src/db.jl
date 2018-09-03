@@ -1,6 +1,6 @@
 module DataBaseInterface
 
-export DataBase, ==ₘ, compatible, update!
+export DataBase, ==ₘ, compatible, update!, append_with_missing!
 
 using DataFrames, CSV
 
@@ -27,7 +27,6 @@ struct DataBase
 end
 
 ==ₘ(v, x) = isa(x, Missing) ? isa(v, Missing) : isa(v, Missing) ? false : v == x
-==ₘ(v, x::Val) = isa(x, Missing) ? isa(v, Missing) : isa(v, Missing) ? false : v == "$x"
 
 function fill_diff!(df::AbstractDataFrame, cols)
     for c in setdiff(cols, names(df))
@@ -35,13 +34,13 @@ function fill_diff!(df::AbstractDataFrame, cols)
     end
 end
 
-function compatible(db::DataBase, vals)
+function compatible(df::AbstractDataFrame, vals)
     # extend with missing
-    fill_diff!(db.df, keys(vals))
-    cond = reduce((x,y)->x.&y, [db.df[k] .==ₘ v for (k,v) in vals])
-    subdf = view(db.df, cond)
+    fill_diff!(df, keys(vals))
+    cond = reduce((x,y)->x.&y, [df[k] .==ₘ v for (k,v) in vals])
+    subdf = view(df, cond)
 
-    return subdf, cond
+    return cond
 end
 
 function DataFrames.deleterows!(db::DataBase, cond)
@@ -53,12 +52,14 @@ function append_with_missing!(db::DataBase, df)
     @debug "Appended" size(df, 1)
     fill_diff!(df, names(db.df))
     append!(db.df, df[names(db.df)])
+    CSV.write(joinpath(db.location...), db.df)
 end
 
-function update!(db, df, filtered_df)
-    if size(filtered_df, 1) > 0
+function update!(db, df, cond)
+    subdf = view(db.df, cond)
+    if size(subdf, 1) > 0
         for c in names(df)
-            filtered_df[c] .= df[c]
+            subdf[c] .= df[c]
         end
     else
         fill_diff!(db.df, names(df))
