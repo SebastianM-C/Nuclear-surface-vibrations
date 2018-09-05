@@ -50,7 +50,7 @@ function build_df(λs, alg)
     return df
 end
 
-function λmap(E; params=(A=1, B=0.55, D=0.4), alg=PoincareRand(n=500),
+function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
         recompute=false, lyapunov_alg=DynSys(), alg_recompute=false)
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
@@ -89,7 +89,7 @@ function λmap(E; params=(A=1, B=0.55, D=0.4), alg=PoincareRand(n=500),
         # plots
     end
     arr_type = nonnothingtype(eltype(λs))
-    return Array{arr_type}(disallowmissing(λs))
+    return disallowmissing(Array{arr_type}(λs))
 end
 
 function λmap(q0, p0, alg::DynSys; params=PhysicalParameters())

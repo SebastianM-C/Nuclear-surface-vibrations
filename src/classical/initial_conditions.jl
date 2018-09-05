@@ -332,27 +332,36 @@ function DataBaseInterface.DataBase(E, params=PhysicalParameters())
     if length(all_cols) > length(col_names)
         standard_col_idx = findfirst.(isequal.(col_names, Ref(all_cols)))
         others = all_cols[setdiff(axes(all_cols, 1), standard_col_idx)]
-        @debug "other cols" others
+        # @debug "other cols" others all_cols
         # register types
         if !isa(findfirst(isequal("λs"), others), Nothing)
             push!(columns, "λs"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_alg"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_alg"), others), Nothing)
             push!(columns, "lyap_alg"=>Union{Missing, String})
-        elseif !isa(findfirst(isequal("lyap_T"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_T"), others), Nothing)
             push!(columns, "lyap_T"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_Ttr"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_Ttr"), others), Nothing)
             push!(columns, "lyap_Ttr"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_d0"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_d0"), others), Nothing)
             push!(columns, "lyap_d0"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_ut"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_ut"), others), Nothing)
             push!(columns, "lyap_ut"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_lt"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_lt"), others), Nothing)
             push!(columns, "lyap_lt"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_dt"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_dt"), others), Nothing)
             push!(columns, "lyap_dt"=>Union{Missing, Float64})
-        elseif !isa(findfirst(isequal("lyap_integ"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_integ"), others), Nothing)
             push!(columns, "lyap_integ"=>Union{Missing, String})
-        elseif !isa(findfirst(isequal("lyap_diffeq_kw"), others), Nothing)
+        end
+        if !isa(findfirst(isequal("lyap_diffeq_kw"), others), Nothing)
             push!(columns, "lyap_diffeq_kw"=>Union{Missing, String})
         end
         length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
@@ -364,13 +373,15 @@ function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
 
+    @debug "ic" icdf
     cond = compatible(icdf, vals)
-    @debug "update" cond
+    @debug "updating" cond
     update!(icdf, df, cond)
-    @debug "done"
+    @debug "done" size(icdf) size(db.df[ic_cond,:])
     for c in names(icdf)
         db.df[c][ic_cond] .= icdf[c]
     end
+    # TRY join on ic
     @debug "check update" db.df
     update_file!(db)
 end
@@ -422,7 +433,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         end
     end
     arr_type = nonnothingtype(eltype(q))
-    return Array{arr_type}(disallowmissing(q)), Array{arr_type}(disallowmissing(p))
+    return disallowmissing(Array{arr_type}(q)), disallowmissing(Array{arr_type}(p))
 end
 
 end  # module InitialConditions
