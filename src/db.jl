@@ -95,7 +95,6 @@ function update!(df1, df2, cond)
             df1[c][cond] .= df2[c]
         end
     end
-    @debug "done"
     append_cloned!(df1, df2, .!cond)
 end
 
@@ -110,7 +109,9 @@ function append_cloned!(df1, df2, cond)
         for c in names(df2)
             df_[c][cond] .= df2[c]
         end
+        @debug "check clone" colwise(length, df_)
         append!(df1, df_[names(df1)])
+        @debug "check update" colwise(length, df1) size(df1)
     end
 end
 
