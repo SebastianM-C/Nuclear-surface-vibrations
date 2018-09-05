@@ -376,12 +376,16 @@ function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     @debug "ic" icdf
     cond = compatible(icdf, vals)
     @debug "updating" cond
+    # for c in setdiff(names(db.df), names(df))
+    #     icdf[c] = db.df[c]
+    # end
+    icdf = db.df[ic_cond, names(db.df)]
+    @debug "before" size(icdf) size(db.df) colwise(length, db.df)
     update!(icdf, df, cond)
-    @debug "done" size(icdf) size(db.df[ic_cond,:])
-    for c in names(icdf)
-        db.df[c][ic_cond] .= icdf[c]
-    end
-    # TRY join on ic
+    @debug "done" size(icdf) size(db.df) colwise(length, db.df)
+    # Why does it work?
+    deleterows!(db, ic_cond)
+    append!(db.df, icdf[names(db.df)])
     @debug "check update" db.df
     update_file!(db)
 end
