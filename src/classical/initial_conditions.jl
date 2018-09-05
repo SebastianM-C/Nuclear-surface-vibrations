@@ -312,7 +312,7 @@ function build_df(q, p, E, alg)
     return df
 end
 
-function DataBaseInterface.DataBase(E, params=PhysicalParameters())
+function DataBaseInterface.DataBase(E, params::PhysicalParameters)
     col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "border_n"]
     types = [Union{Missing, Float64}, # q₀
             Union{Missing, Float64}, # q₂

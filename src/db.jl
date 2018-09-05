@@ -6,7 +6,7 @@ using DataFrames, CSV
 
 struct DataBase
     location::Tuple{String, String}
-    columns::Dict{String, Union{Union, Type}}
+    columns::Dict{String, Union}
     df::DataFrame
 
     function DataBase(location, df::DataFrame)
@@ -18,7 +18,7 @@ struct DataBase
         CSV.write(joinpath(location...), df)
         new(location, columns, df)
     end
-    function DataBase(location, columns::Dict{String, Union{Union, Type}})
+    function DataBase(location, columns::Dict{String, Union})
         # TODO: Switch to JLD2 after https://github.com/simonster/JLD2.jl/issues/101 is fixed
         # https://github.com/JuliaData/CSV.jl/issues/263
         df = CSV.read(joinpath(location...), use_mmap=!Sys.iswindows(), types=columns)
@@ -67,22 +67,22 @@ end
 
 function fix_column_types(db::DataBase, df::AbstractDataFrame)
     coldiff = setdiff(string.(names(df)), keys(db.columns))
-    fix = false
-    if all(compatible(db.df[:, names(df)], Dict(names(df) .=> Nothing)))
-        fix = true
-    end
-    @debug "fix" names(df) compatible(db.df[:, names(df)], Dict(names(df) .=> Nothing))
-    if !isempty(coldiff)
-        coldict = Dict(string.(names(df)) .=> eltypes(df))
-        @debug "cols" coldiff coldict
-        # @debug "db" db.columns
-        # push!.(Ref(db.columns), coldict)
-        # @debug "check" db.columns
-        # Check if missings were introduced by append_with_missing!
+    coldict = Dict(string.(names(df)) .=> eltypes(df))
+    # Check if nothings were introduced by append_with_missing!
+    to_fix = compatible(db.df[:, names(df)], Dict(names(df) .=> nothing))
+    @debug "fix" db.df[:, names(df)] to_fix
+    if all(to_fix .=== true)
         for (k,v) in coldict
-            db.df[Symbol(k)] = fix ?
-                CategoricalArray{v}(fill(missing, length(db.df[Symbol(k)]))) :
-                CategoricalArray{v}(db.df[Symbol(k)])
+            db.df[Symbol(k)] = CategoricalArray{v}(fill(missing, length(db.df[Symbol(k)])))
+        end
+    end
+    if !isempty(coldiff)
+        @debug "db" db.columns
+        push!.(Ref(db.columns), coldict)
+        @debug "check" db.columns
+
+        for (k,v) in coldict
+            db.df[Symbol(k)] = CategoricalArray{v}(db.df[Symbol(k)])
         end
     end
 end

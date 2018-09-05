@@ -14,7 +14,6 @@ using OrdinaryDiffEq
 using StaticArrays
 using DataFrames
 
-# include_remote("$(@__DIR__)/hamiltonian.jl")
 using ..Hamiltonian
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
