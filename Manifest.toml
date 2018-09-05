@@ -88,10 +88,8 @@ version = "0.3.13"
 [[ChaosTools]]
 deps = ["Combinatorics", "DiffEqBase", "Distances", "DynamicalSystemsBase", "ForwardDiff", "LinearAlgebra", "LsqFit", "NearestNeighbors", "OrdinaryDiffEq", "Reexport", "Roots", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "Test"]
 git-tree-sha1 = "bc066ee144a5fe5c4fd0a4a5b1ddadf38417df5a"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaDynamics/ChaosTools.jl.git"
 uuid = "608a59af-f2a3-5ad4-90b4-758bdf3122a7"
-version = "1.0.0+"
+version = "1.1.0"
 
 [[ChunkedArrays]]
 deps = ["EllipsisNotation"]
@@ -321,10 +319,10 @@ deps = ["LinearAlgebra", "Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
-deps = ["Distributed", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "c43dc10a52598ad76d61f8907b3b30f159ca146f"
+deps = ["Distributed", "LinearAlgebra", "PDMats", "Pkg", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
+git-tree-sha1 = "07f0e38d8a9c8151af4d843500de1bf0baa59dca"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.16.2"
+version = "0.16.3"
 
 [[DocSeeker]]
 deps = ["Hiccup", "IterTools", "Markdown", "REPL", "Requires", "Serialization", "StringDistances", "Test", "URIParser"]

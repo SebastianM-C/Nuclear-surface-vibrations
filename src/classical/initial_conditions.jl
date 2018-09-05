@@ -1,10 +1,11 @@
 module InitialConditions
 
-export initial_conditions, InitialConditionsAlgorithm, Plane,
-    PoincareRand, PoincareUniform, InscribedCircle, unpack_with_missing
+export initial_conditions, update, InitialConditionsAlgorithm, Plane,
+    PoincareRand, PoincareUniform, InscribedCircle, unpack_with_nothing
 
 using ..Hamiltonian
 using ..Parameters
+using ..DataBaseInterface
 using ..Classical: AbstractAlgorithm
 
 using Logging, Random
@@ -12,9 +13,6 @@ using NLsolve, NLopt, Roots
 using Plots, LaTeXStrings
 using DataFrames, CSV
 using GeometricalPredicates
-
-include("../db.jl")
-using .DataBaseInterface
 
 abstract type InitialConditionsAlgorithm <: AbstractAlgorithm end
 abstract type Plane end
@@ -46,10 +44,10 @@ end
     @assert m > 0
 end
 
-function unpack_with_missing(alg::InitialConditionsAlgorithm)
+function unpack_with_nothing(alg::InitialConditionsAlgorithm)
     n = alg.n
-    m = isa(alg, PoincareRand) ? missing : alg.m
-    border_n = isa(alg, InscribedCircle) ? missing : alg.border_n
+    m = isa(alg, PoincareRand) ? nothing : alg.m
+    border_n = isa(alg, InscribedCircle) ? nothing : alg.border_n
 
     return n, m, border_n
 end
@@ -130,7 +128,7 @@ Compute ``p_2`` (or ``p_0``) when the other is given at energy `E`.
 """
 p2(E, p, q, params) = √(2 * params.A * (E - V(q, params)) - p^2)
 
-function _initial_conditions(E, alg::InscribedCircle;
+function initial_conditions(E, alg::InscribedCircle;
         params=PhysicalParameters())
     @unpack n, m = alg
     T_range = range(0, stop=E, length=m)
@@ -231,7 +229,7 @@ function complete(q₀, p₀, E, plane::Asymmetric, params)
     q, p
 end
 
-function _initial_conditions(E, alg::PoincareRand;
+function initial_conditions(E, alg::PoincareRand;
         params=PhysicalParameters())
     @unpack n, plane, border_n = alg
     border, ex, ey = phase_space_border(E, plane, border_n, params=params)
@@ -244,7 +242,7 @@ function _initial_conditions(E, alg::PoincareRand;
     complete(frominterval(points, ex, ey)..., E, plane, params)
 end
 
-function _initial_conditions(E, alg::PoincareUniform;
+function initial_conditions(E, alg::PoincareUniform;
         params=PhysicalParameters())
     @unpack n, m, plane, border_n = alg
     border, ex, ey = phase_space_border(E, plane, border_n, params=params)
@@ -298,7 +296,7 @@ end
 
 function build_df(q, p, E, alg)
     N = size(q, 1)
-    n, m, border_n = unpack_with_missing(alg)
+    n, m, border_n = unpack_with_nothing(alg)
     df = DataFrame()
     df[:q₀] = categorical(q[:,1])
     df[:q₂] = categorical(q[:,2])
@@ -354,10 +352,27 @@ function DataBaseInterface.DataBase(E, params=PhysicalParameters())
             push!(columns, "lyap_dt"=>Union{Missing, Float64})
         elseif !isa(findfirst(isequal("lyap_integ"), others), Nothing)
             push!(columns, "lyap_integ"=>Union{Missing, String})
+        elseif !isa(findfirst(isequal("lyap_diffeq_kw"), others), Nothing)
+            push!(columns, "lyap_diffeq_kw"=>Union{Missing, String})
         end
         length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
     end
     DataBase(location, columns)
+end
+
+function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
+    DataBaseInterface.fix_column_types(db, df)
+    icdf = db.df[ic_cond, names(df)]
+
+    cond = compatible(icdf, vals)
+    @debug "update" cond
+    update!(icdf, df, cond)
+    @debug "done"
+    for c in names(icdf)
+        db.df[c][ic_cond] .= icdf[c]
+    end
+    @debug "check update" db.df
+    update_file!(db)
 end
 
 function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
@@ -367,11 +382,11 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         mkpath(prefix)
     end
 
-    n, m, border_n = unpack_with_missing(alg)
+    n, m, border_n = unpack_with_nothing(alg)
 
     if !isfile("$prefix/z0.csv")
         @debug "No initial conditions file found. Generating new conditions."
-        q, p = _initial_conditions(E, alg; params=params)
+        q, p = initial_conditions(E, alg; params=params)
         df = build_df(q, p, E, alg)
 
         db = DataBase((prefix, "z0.csv"), df)
@@ -380,10 +395,10 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         save_err(plt, alg, prefix)
     else
         db = DataBase(E, params)
-        # TODO: preserve the types after switching from CSV
         vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                     [n, m, E, string(typeof(alg)), border_n])
         cond = compatible(db.df, vals)
+        @debug "compatible" cond
 
         compat = count(cond) > 0 && !recompute
 
@@ -394,18 +409,20 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
             p = hcat(unique_df[:p₀], unique_df[:p₂])
         else
             @debug "Incompatible initial conditions. Generating new conditions."
-            q, p = _initial_conditions(E, alg; params=params)
+            q, p = initial_conditions(E, alg; params=params)
             df = build_df(q, p, E, alg)
 
             if recompute
                 DataBaseInterface.deleterows!(db, cond)
             end
             append_with_missing!(db, df)
+            update_file!(db)
             plt = energy_err(q, p, E, alg, params)
             save_err(plt, alg, prefix)
         end
     end
-    return Array(disallowmissing(q)), Array(disallowmissing(p))
+    arr_type = nonnothingtype(eltype(q))
+    return Array{arr_type}(disallowmissing(q)), Array{arr_type}(disallowmissing(p))
 end
 
 end  # module InitialConditions

@@ -4,13 +4,18 @@ export λmap, LyapunovAlgorithm, DynSys
 
 using ..Distributed
 using ..Parameters
+using ..DataBaseInterface
 using ..InitialConditions
 using ..Classical: AbstractAlgorithm
 
 using ChaosTools
-
+using ParallelDataTransfer
 using OrdinaryDiffEq
 using StaticArrays
+using DataFrames
+
+# include_remote("$(@__DIR__)/hamiltonian.jl")
+using ..Hamiltonian
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
 
@@ -27,7 +32,7 @@ end
 
 function build_df(λs, alg)
     N = size(λs, 1)
-    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_missing(alg)
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
     df = DataFrame()
     df[:λs] = categorical(λs)
@@ -49,37 +54,45 @@ function λmap(E; params=(A=1, B=0.55, D=0.4), alg=PoincareRand(n=500),
         recompute=false, lyapunov_alg=DynSys(), alg_recompute=false)
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
-    q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
-        symmetric=symmetric, border_n=border_n, recompute=recompute)
+    q0, p0 = initial_conditions(E, alg=alg, params=params, recompute=recompute)
     db = DataBase(E, params)
-    n, m, border_n = unpack_with_missing(alg)
+    n, m, border_n = unpack_with_nothing(alg)
     ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                 [n, m, E, string(typeof(alg)), border_n])
-    ic_df, ic_cond = compatible(db.df, ic_vals)
+    ic_cond = compatible(db.df, ic_vals)
+    @debug "ic cond" ic_cond
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(lyapunov_alg)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = lyapunov_alg
 
     vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
                 :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
                 [string(typeof(lyapunov_alg)), T, Ttr, d0, upper_threshold,
                 lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
-    filtered_df, λcond = compatible(db.df, vals)
+    λcond = compatible(db.df, vals)
     cond = ic_cond .& λcond
-    compat = count(cond) > 0 && !recompute
+    @debug "compatible" λcond cond
 
-    if compat
-        λs = unique(filtered_df[:λs])
+    if !alg_recompute && count(skipmissing(cond)) == count(ic_cond)
+        _cond = BitArray(replace(cond, missing=>false))
+        λs = unique(db.df[_cond, :λs])
     else
         @debug "Incompatible values. Computing new values."
-        λs = _λmap(q0, p0, alg; params=params)
-        df = build_df(λs, alg)
+        λs = λmap(q0, p0, lyapunov_alg; params=params)
+        df = build_df(λs, lyapunov_alg)
 
-        update!(db, df, cond)
+        if !haskey(db.df, :λs)
+            db.df[:λs] = Array{Union{Missing, Float64}}(fill(missing, size(db.df, 1)))
+        end
+        update!(db, df, ic_cond, vals)
 
+        @debug "total size" size(db.df)
         # plots
     end
-    return λs
+    arr_type = nonnothingtype(eltype(λs))
+    return Array{arr_type}(disallowmissing(λs))
 end
 
-function _λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
+function λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
     inittest = ChaosTools.inittest_default(4)
     z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
@@ -93,7 +106,7 @@ function _λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
     λs = pmap(eachindex(z0)) do i
             set_state!(pinteg, z0[i])
             reinit!(pinteg, pinteg.u)
-            ChaosTools._lyapunov(pinteg, T, Ttr, dt, d0,
+            ChaosTools.lyapunov(pinteg, T, Ttr, dt, d0,
                 upper_threshold, lower_threshold)
         end
 

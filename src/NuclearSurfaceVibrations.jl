@@ -18,6 +18,7 @@ using ..Distributed
 using ..Parameters
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
 
+include("db.jl")
 include("classical/hamiltonian.jl")
 include("classical/initial_conditions.jl")
 @reexport using .InitialConditions
