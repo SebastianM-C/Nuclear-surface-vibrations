@@ -373,17 +373,13 @@ function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
 
-    @debug "ic" icdf
+    @debug "ic" icdf vals
     cond = compatible(icdf, vals)
     @debug "updating" cond
-    # for c in setdiff(names(db.df), names(df))
-    #     icdf[c] = db.df[c]
-    # end
     icdf = db.df[ic_cond, names(db.df)]
     @debug "before" size(icdf) size(db.df) colwise(length, db.df)
     update!(icdf, df, cond)
     @debug "done" size(icdf) size(db.df) colwise(length, db.df)
-    # Why does it work?
     deleterows!(db, ic_cond)
     append!(db.df, icdf[names(db.df)])
     @debug "check update" db.df

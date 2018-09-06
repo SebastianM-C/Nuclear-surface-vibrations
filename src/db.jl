@@ -48,7 +48,6 @@ end
 function compatible(df::AbstractDataFrame, vals)
     # extend with missing
     fill_diff!(df, keys(vals))
-    # @debug df[:] vals
     reduce((x,y)->x.&y, [df[k] .== v for (k,v) in vals])
 end
 
@@ -115,7 +114,7 @@ function append_cloned!(df1, df2, cond)
     end
 end
 
-function update_file!(db)
+function update_file(db)
     # HACK
     for c in names(db.df)
         db.df[c] = replace(db.df[c], nothing=>missing)

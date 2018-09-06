@@ -361,9 +361,9 @@ version = "1.0.1"
 
 [[FillArrays]]
 deps = ["Compat", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "4c3c7fcd8918b944a42cbef432335824d0276fe3"
+git-tree-sha1 = "c80c54ba3341ffc3c64e817f742ce77564ad410c"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.2.0"
+version = "0.2.1"
 
 [[FixedPointNumbers]]
 deps = ["Pkg", "Test"]
@@ -436,9 +436,9 @@ version = "0.1.1"
 
 [[JLD2]]
 deps = ["CodecZlib", "DataStructures", "FileIO", "LinearAlgebra", "Mmap", "Printf", "Random", "Test"]
-git-tree-sha1 = "8f0b471c05fd5c256932bd08bb71729cbb7b966f"
+git-tree-sha1 = "3ba90ff93e1d5b9b2103588051c2d349fae54dac"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.1.1"
+version = "0.1.2"
 
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Pkg", "Sockets", "Test", "Unicode"]
