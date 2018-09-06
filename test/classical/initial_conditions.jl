@@ -74,9 +74,16 @@ end
         min_level=Logging.Debug, match_mode=:any,
         initial_conditions(10., alg=PoincareRand(n=3)))
 
+    @testset "Insert after having other data" begin
     db = InitialConditions.DataBase(E, params)
     @test all(db.df[:fake_data][1:13] .== fake_data)
     @test all(db.df[:fake_data][13:3] .=== missing)
+
+    @test_logs((:debug, "Incompatible initial conditions. Generating new conditions."),
+        (:debug, "Deleting"),
+        min_level=Logging.Debug, match_mode=:any,
+        initial_conditions(10., alg=PoincareRand(n=2), recompute=true))
+    end
 end
 
 rm(TEST_DIR, force=true, recursive=true)

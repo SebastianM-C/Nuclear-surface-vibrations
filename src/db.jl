@@ -1,6 +1,6 @@
 module DataBaseInterface
 
-export DataBase, compatible, update!, append_with_missing!, update_file!, nonnothingtype
+export DataBase, compatible, update!, append_with_missing!, update_file, nonnothingtype
 
 using DataFrames, CSV
 
