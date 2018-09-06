@@ -25,6 +25,8 @@ module Hamiltonian
 
 export compute_hamiltonian
 
+using SparseArrays
+
 """
     elem(m::Integer, n::Integer, k::Integer, l::Integer)
 

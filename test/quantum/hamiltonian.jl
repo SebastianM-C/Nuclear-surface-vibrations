@@ -1,6 +1,7 @@
 include("../../src/quantum/hamiltonian.jl")
-using Hamiltonian
-using Base.Test
+using .Hamiltonian
+using SparseArrays
+using Test
 
 @testset "Hamiltonian computation tests" begin
     H = [ 0.0  0.0  0.0  0.0  0.0  0.0
