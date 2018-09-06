@@ -377,13 +377,12 @@ function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     cond = compatible(icdf, vals)
     @debug "updating" cond
     icdf = db.df[ic_cond, names(db.df)]
-    @debug "before" size(icdf) size(db.df) colwise(length, db.df)
     update!(icdf, df, cond)
     @debug "done" size(icdf) size(db.df) colwise(length, db.df)
     deleterows!(db, ic_cond)
     append!(db.df, icdf[names(db.df)])
     @debug "check update" db.df
-    update_file!(db)
+    update_file(db)
 end
 
 function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
@@ -427,7 +426,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
                 DataBaseInterface.deleterows!(db, cond)
             end
             append_with_missing!(db, df)
-            update_file!(db)
+            update_file(db)
             plt = energy_err(q, p, E, alg, params)
             save_err(plt, alg, prefix)
         end
