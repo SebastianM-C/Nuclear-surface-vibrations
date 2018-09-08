@@ -52,12 +52,12 @@ function compatible(df::AbstractDataFrame, vals)
 end
 
 function DataFrames.deleterows!(db::DataBase, cond)
-    @debug "Deleting" count(cond)
+    @debug "Deleting rows" count(cond)
     deleterows!(db.df, axes(db.df, 1)[cond])
 end
 
 function append_with_missing!(db::DataBase, df)
-    @debug "Appending" size(df, 1)
+    @debug "Appending with missing" size(df)
     for c in setdiff(names(db.df), names(df))
         df[c] = CategoricalArray{eltype(db.df[c])}(fill(missing, size(df, 1)))
     end
@@ -68,28 +68,28 @@ function fix_column_types(db::DataBase, df::AbstractDataFrame)
     coldiff = setdiff(string.(names(df)), keys(db.columns))
     coldict = Dict(string.(names(df)) .=> eltypes(df))
     # Check if nothings were introduced by append_with_missing!
-    to_fix = compatible(db.df[:, names(df)], Dict(names(df) .=> nothing))
-    @debug "fix" db.df[:, names(df)] to_fix
-    if all(to_fix .=== true)
-        for (k,v) in coldict
-            db.df[Symbol(k)] = CategoricalArray{v}(fill(missing, length(db.df[Symbol(k)])))
+    rows_to_fix = compatible(db.df[:, names(df)], Dict(names(df) .=> nothing))
+    rows_to_fix = replace(rows_to_fix, missing=>false)  # already ok
+
+    if any(rows_to_fix)
+        @debug "Fixing missing values" db.df[:, names(df)] rows_to_fix coldiff
+        for c ∈ names(df)
+            db.df[rows_to_fix, c] = replace(db.df[rows_to_fix, c], nothing=>missing)
         end
     end
-    if !isempty(coldiff)
-        @debug "db" db.columns
-        push!.(Ref(db.columns), coldict)
-        @debug "check" db.columns
 
+    if !isempty(coldiff)
         for (k,v) in coldict
             db.df[Symbol(k)] = CategoricalArray{v}(db.df[Symbol(k)])
         end
+        @debug "Fixed column types"
     end
 end
 
 function update!(df1, df2, cond)
     cond = BitArray(replace(cond, missing=>true))
-    @debug "Updated in-place" count(cond) cond
     if count(cond) > 0
+        @debug "Updating in-place" count(cond)
         for c in names(df2)
             df1[c][cond] .= df2[c]
         end
@@ -104,13 +104,10 @@ function append_cloned!(df1, df2, cond)
         for c in names(df1)
             df_[c] = df1[c][cond]
         end
-        @debug "Updating clone"
         for c in names(df2)
             df_[c][cond] .= df2[c]
         end
-        @debug "check clone" colwise(length, df_)
         append!(df1, df_[names(df1)])
-        @debug "check update" colwise(length, df1) size(df1)
     end
 end
 

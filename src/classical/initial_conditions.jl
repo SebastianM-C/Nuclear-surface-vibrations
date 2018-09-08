@@ -111,6 +111,7 @@ function filter_NaNs!(q0, p0, n, m)
     N = n*m - nan_no ÷ 2
     N == 0 && throw(ErrorException("All initial conditions are invalid!"))
 
+    @debug "Generated $N initial conditions."
     return q0, p0
 end
 
@@ -239,6 +240,7 @@ function initial_conditions(E, alg::PoincareRand;
         p = rand(Point2D)
         inpolygon(border, p) && (push!(points, p); counter += 1)
     end
+    @debug "Generated $counter initial conditions."
     complete(frominterval(points, ex, ey)..., E, plane, params)
 end
 
@@ -372,16 +374,13 @@ end
 function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
-
-    @debug "ic" icdf vals
+    @debug "Selected compatible initial conditions" icdf vals
     cond = compatible(icdf, vals)
-    @debug "updating" cond
-    icdf = db.df[ic_cond, names(db.df)]
+    @debug "Updating copy" cond
+    icdf = db.df[ic_cond, :]
     update!(icdf, df, cond)
-    @debug "done" size(icdf) size(db.df) colwise(length, db.df)
     deleterows!(db, ic_cond)
     append!(db.df, icdf[names(db.df)])
-    @debug "check update" db.df
     update_file(db)
 end
 
@@ -408,14 +407,13 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                     [n, m, E, string(typeof(alg)), border_n])
         cond = compatible(db.df, vals)
-        @debug "compatible" cond
+        @debug "Checking compatibility with stored initial conditions" cond
 
         compat = count(cond) > 0 && !recompute
 
         if compat
-            @debug "Loading compatible initial conditions."
             unique_df = unique(view(db.df, cond))
-            @debug "total size" size(db.df) size(unique_df)
+            @debug "Loading compatible initial conditions." size(db.df) size(unique_df)
             q = hcat(unique_df[:q₀], unique_df[:q₂])
             p = hcat(unique_df[:p₀], unique_df[:p₂])
         else

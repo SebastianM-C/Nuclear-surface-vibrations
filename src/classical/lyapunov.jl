@@ -59,7 +59,7 @@ function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
     ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                 [n, m, E, string(typeof(alg)), border_n])
     ic_cond = compatible(db.df, ic_vals)
-    @debug "ic cond" ic_cond
+    @debug "Initial conditions compat" ic_cond
     # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(lyapunov_alg)
     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = lyapunov_alg
 
@@ -69,10 +69,11 @@ function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
                 lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
     λcond = compatible(db.df, vals)
     cond = ic_cond .& λcond
-    @debug "compatible" λcond cond
+    @debug "Stored values compat" λcond cond
 
     if !alg_recompute && count(skipmissing(cond)) == count(ic_cond)
         _cond = BitArray(replace(cond, missing=>false))
+        @debug "Loading compatible values."
         λs = unique(db.df[_cond, :λs])
     else
         @debug "Incompatible values. Computing new values."
@@ -84,7 +85,6 @@ function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
         end
         update!(db, df, ic_cond, vals)
 
-        @debug "total size" size(db.df)
         # plots
     end
     arr_type = nonnothingtype(eltype(λs))
