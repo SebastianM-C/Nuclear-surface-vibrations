@@ -97,7 +97,6 @@ end
         @test all(db.df[:fake_data][1:6] .== fake_data[3:8])
         @test all(db.df[:fake_data][9:end] .== nothing) # was missing, but converted at read
     end
-
 end
 
 rm(TEST_DIR, force=true, recursive=true)

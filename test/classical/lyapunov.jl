@@ -114,7 +114,46 @@ end
     end
 end
 
-@testset "DB operations" begin
+@testset "Other DB operations" begin
+    λalgs = [DynSys(T=12000.)]
+    algs = [PoincareRand(n=2), PoincareUniform(n=3, m=3), InscribedCircle(n=2, m=2)]
+    counts = [2, 2, 4]
+    for λa in λalgs
+        for i ∈ eachindex(algs)
+            λs = @test_logs((:debug, "Checking compatibility with stored initial conditions"),
+                (:debug, "Loading compatible initial conditions."),
+                (:debug, "Initial conditions compat"),
+                (:debug, "Stored values compat"),
+                (:debug, "Incompatible values. Computing new values."),
+                (:debug, "Selected compatible initial conditions"),
+                (:debug, "Updating copy"),
+                (:debug, "Cloning"),
+                (:debug, "Deleting rows"),
+                min_level=Logging.Debug, match_mode=:all,
+                λmap(10., alg=algs[i], lyapunov_alg=λa))
+            @test length(λs) == counts[i]
+            @test all(0 .< λs .< 0.3)
+        end
+    end
+    db = InitialConditions.DataBase(10., params)
+    @test size(db.df, 1) == (2+2+4)*2
+
+    for λa in λalgs
+        for i ∈ eachindex(algs)
+            λs = @test_logs((:debug, "Checking compatibility with stored initial conditions"),
+                (:debug, "Incompatible initial conditions. Generating new conditions."),
+                (:debug, "Generated $(counts[i]) initial conditions."),
+                (:debug, "Deleting rows"),
+                (:debug, "Appending with missing"),
+                (:debug, "Initial conditions compat"),
+                (:debug, "Stored values compat"),
+
+                min_level=Logging.Debug, match_mode=:any,
+                λmap(20., alg=algs[i], lyapunov_alg=λa))
+            @test length(λs) == counts[i]
+            @test all(0 .< λs .< 0.4)
+        end
+    end
 
 end
 

@@ -287,16 +287,16 @@ function energy_err(q, p, E, alg, params)
     return plt
 end
 
-function save_err(plt, alg, prefix)
+function save_err(plt, alg, E, prefix)
     fn = string(typeof(alg))
     fn = replace(fn, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
-    if !isdir("$prefix/initial_energy_err")
-        mkpath("$prefix/initial_energy_err")
+    if !isdir("$prefix/E$E/initial_energy_err")
+        mkpath("$prefix/E$E/initial_energy_err")
     end
-    savefig(plt, "$prefix/initial_energy_err/$fn.pdf")
+    savefig(plt, "$prefix/E$E/initial_energy_err/$fn.pdf")
 end
 
-function build_df(q, p, E, alg)
+function build_df(q, p, E, alg, params)
     N = size(q, 1)
     n, m, border_n = unpack_with_nothing(alg)
     df = DataFrame()
@@ -307,6 +307,8 @@ function build_df(q, p, E, alg)
     df[:n] = categorical(fill(n, N))
     df[:m] = categorical((fill(m, N)))
     df[:E] = categorical(fill(E, N))
+    df[:B] = categorical(fill(params.B, N))
+    df[:D] = categorical(fill(params.D, N))
     df[:initial_cond_alg] = categorical(fill(string(typeof(alg)), N))
     df[:border_n] = categorical((fill(border_n, N)))
     allowmissing!(df)
@@ -315,7 +317,8 @@ function build_df(q, p, E, alg)
 end
 
 function DataBaseInterface.DataBase(E, params::PhysicalParameters)
-    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "initial_cond_alg", "border_n"]
+    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "B", "D",
+        "initial_cond_alg", "border_n"]
     types = [Union{Missing, Float64}, # q₀
             Union{Missing, Float64}, # q₂
             Union{Missing, Float64}, # p₀
@@ -323,11 +326,13 @@ function DataBaseInterface.DataBase(E, params::PhysicalParameters)
             Union{Missing, Int64}, # n
             Union{Missing, Int64}, # m
             Union{Missing, Float64}, # E
+            Union{Missing, Float64}, # B
+            Union{Missing, Float64}, # D
             Union{Missing, String}, # initial_cond_alg
             Union{Missing, Int64} # border_n
             ]
     columns = Dict(col_names .=> types)
-    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    prefix = "output/classical/B$(params.B)-D$(params.D)"
     location = (prefix, "z0.csv")
     # check for additional columns
     all_cols = split(readline(joinpath(location...)), ",")
@@ -374,7 +379,7 @@ end
 function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
-    @debug "Selected compatible initial conditions" icdf vals
+    @debug "Selected compatible initial conditions" icdf
     cond = compatible(icdf, vals)
     @debug "Updating copy" cond
     icdf = db.df[ic_cond, :]
@@ -386,7 +391,7 @@ end
 
 function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
         recompute=false)
-    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    prefix = "output/classical/B$(params.B)-D$(params.D)"
     if !isdir(prefix)
         mkpath(prefix)
     end
@@ -396,12 +401,12 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
     if !isfile("$prefix/z0.csv")
         @debug "No initial conditions file found. Generating new conditions."
         q, p = initial_conditions(E, alg; params=params)
-        df = build_df(q, p, E, alg)
+        df = build_df(q, p, E, alg, params)
 
         db = DataBase((prefix, "z0.csv"), df)
 
         plt = energy_err(q, p, E, alg, params)
-        save_err(plt, alg, prefix)
+        save_err(plt, alg, E, prefix)
     else
         db = DataBase(E, params)
         vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
@@ -419,7 +424,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         else
             @debug "Incompatible initial conditions. Generating new conditions."
             q, p = initial_conditions(E, alg; params=params)
-            df = build_df(q, p, E, alg)
+            df = build_df(q, p, E, alg, params)
 
             if recompute
                 DataBaseInterface.deleterows!(db, cond)
@@ -427,7 +432,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
             append_with_missing!(db, df)
             update_file(db)
             plt = energy_err(q, p, E, alg, params)
-            save_err(plt, alg, prefix)
+            save_err(plt, alg, E, prefix)
         end
     end
     arr_type = nonnothingtype(eltype(q))
