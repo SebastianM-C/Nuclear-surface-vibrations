@@ -5,12 +5,10 @@ export poincaremap, coloredpoincare
 using ..Distributed
 using ..InitialConditions
 
-using ParallelDataTransfer
 using ChaosTools
 using StaticArrays
 using Plots, LaTeXStrings
 
-include_remote("$(@__DIR__)/hamiltonian.jl")
 using ..Hamiltonian
 
 """
@@ -31,7 +29,7 @@ a Monte Carlo simulation.
 - `axis = 3`: Axis for the Poincare section
 - `sgn = 1`: The intersection direction with the plane
 """
-function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
+function poincaremap(q0, p0; params=PhysicalParameters(), t=500., axis=3, sgn=1,
         diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9), full=false)
     # temp fix for poincaresos special case
     q0[:,1] .+= eps()
@@ -48,14 +46,12 @@ function poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
 end
 
 function coloredpoincare(E, colors;
-        name="", n=500, m=nothing, alg=Val(:poincare_rand), symmetric=Val(true),
-        border_n=1000, recompute=false, params=(A=1, B=0.55, D=0.4),
-        t=500., sgn=1,
+        name="", alg=PoincareRand(n=50), params=PhysicalParameters(),
+        t=500., sgn=1, axis=3,
         diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9))
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
-    axis = isa(symmetric, Val{true}) ? 3 : 4
-    q0, p0 = initial_conditions(E, n, m, params=(A,B,D), alg=alg,
-        symmetric=symmetric, border_n=border_n, recompute=recompute)
+    axis = !isa(alg, InscribedCircle) ? (isa(alg.plane, InitialConditions.Symmetric) ? 3 : 4) : axis
+    q0, p0 = initial_conditions(E, alg=alg, params=params)
     sim = poincaremap(q0, p0; params=params, t=t, axis=axis, sgn=sgn,
         diff_eq_kwargs=diff_eq_kwargs)
 
