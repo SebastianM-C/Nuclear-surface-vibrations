@@ -7,6 +7,7 @@ include("db.jl")
 using .Classical
 include("classical/initial_conditions.jl")
 include("classical/lyapunov.jl")
+include("classical/dist.jl")
 end
 
 @testset "Quantum" begin
