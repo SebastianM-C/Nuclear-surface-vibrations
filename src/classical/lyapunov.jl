@@ -3,14 +3,14 @@ module Lyapunov
 export λmap, LyapunovAlgorithm, DynSys
 
 using ..Distributed
-using ..Parameters
+using ..Parameters: @with_kw, @unpack
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
 using ..Classical: AbstractAlgorithm
 
 using ChaosTools
-using ParallelDataTransfer
+using Plots, LaTeXStrings
 using OrdinaryDiffEq
 using StaticArrays
 using DataFrames
@@ -84,7 +84,11 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         end
         update!(db, df, ic_cond, vals)
 
-        # plots
+        plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
+        fn = string(typeof(alg)) * "_T$T" * "_hist"
+        fn = replace(fn, "NuclearSurfaceVibrations.Classical.Lyapunov." => "")
+        fn = replace(fn, "{Float64}" => "")
+        savefig(plt, "$prefix/lyapunov_$fn.pdf")
     end
     arr_type = nonnothingtype(eltype(λs))
     return disallowmissing(Array{arr_type}(λs))
@@ -104,8 +108,7 @@ function λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
     λs = pmap(eachindex(z0)) do i
             set_state!(pinteg, z0[i])
             reinit!(pinteg, pinteg.u)
-            ChaosTools.lyapunov(pinteg, T, Ttr, dt, d0,
-                upper_threshold, lower_threshold)
+            lyapunov(pinteg, T, Ttr, dt, d0, upper_threshold, lower_threshold)
         end
 
     return λs
