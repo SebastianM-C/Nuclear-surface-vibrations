@@ -4,6 +4,7 @@ export λmap, LyapunovAlgorithm, DynSys
 
 using ..Distributed
 using ..Parameters
+using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
 using ..Classical: AbstractAlgorithm
@@ -13,8 +14,6 @@ using ParallelDataTransfer
 using OrdinaryDiffEq
 using StaticArrays
 using DataFrames
-
-using ..Hamiltonian
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
 
@@ -30,7 +29,7 @@ abstract type LyapunovAlgorithm <: AbstractAlgorithm end
 end
 
 function build_df(λs, alg)
-    N = size(λs, 1)
+    N = length(λs)
     # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
     df = DataFrame()
@@ -49,36 +48,36 @@ function build_df(λs, alg)
     return df
 end
 
-function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
-        recompute=false, lyapunov_alg=DynSys(), alg_recompute=false)
+function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
+        ic_recompute=false, alg=DynSys(), recompute=false)
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
-    q0, p0 = initial_conditions(E, alg=alg, params=params, recompute=recompute)
+    q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
     db = DataBase(E, params)
-    n, m, border_n = unpack_with_nothing(alg)
+    n, m, border_n = unpack_with_nothing(ic_alg)
     ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
-                [n, m, E, string(typeof(alg)), border_n])
+                [n, m, E, string(typeof(ic_alg)), border_n])
     ic_cond = compatible(db.df, ic_vals)
     @debug "Initial conditions compat" ic_cond
-    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(lyapunov_alg)
-    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = lyapunov_alg
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
 
     vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
                 :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
-                [string(typeof(lyapunov_alg)), T, Ttr, d0, upper_threshold,
+                [string(typeof(alg)), T, Ttr, d0, upper_threshold,
                 lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
     λcond = compatible(db.df, vals)
     cond = ic_cond .& λcond
     @debug "Stored values compat" λcond cond
 
-    if !alg_recompute && count(skipmissing(cond)) == count(ic_cond)
+    if !recompute && count(skipmissing(cond)) == count(ic_cond)
         _cond = BitArray(replace(cond, missing=>false))
         @debug "Loading compatible values."
         λs = unique(db.df[_cond, :λs])
     else
         @debug "Incompatible values. Computing new values."
-        λs = λmap(q0, p0, lyapunov_alg; params=params)
-        df = build_df(λs, lyapunov_alg)
+        λs = λmap(q0, p0, alg; params=params)
+        df = build_df(λs, alg)
 
         if !haskey(db.df, :λs)
             db.df[:λs] = Array{Union{Missing, Float64}}(fill(missing, size(db.df, 1)))

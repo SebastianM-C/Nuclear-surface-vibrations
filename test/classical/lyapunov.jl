@@ -25,13 +25,13 @@ params = PhysicalParameters()
         (:debug, "Updating in-place"),
         (:debug, "Deleting rows"),
         min_level=Logging.Debug, match_mode=:all,
-        λmap(10., alg=PoincareRand(n=2)))
+        λmap(10., ic_alg=PoincareRand(n=2)))
 end
 
 @testset "Basic save / load" begin
     λalgs = [DynSys()]
     for λa in setdiff(λalgs, [DynSys()])
-        λmap(10., alg=PoincareRand(n=2), lyapunov_alg=λa)
+        λmap(10., ic_alg=PoincareRand(n=2), alg=λa)
     end
     for λa in λalgs
         algs = [PoincareUniform(n=3, m=3), InscribedCircle(n=2, m=2)]
@@ -50,7 +50,7 @@ end
                 (:debug, "Updating in-place"),
                 (:debug, "Deleting rows"),
                 min_level=Logging.Debug, match_mode=:all,
-                λmap(10., alg=algs[i], lyapunov_alg=λa))
+                λmap(10., ic_alg=algs[i], alg=λa))
 
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.3)
@@ -65,7 +65,7 @@ end
                 (:debug, "Stored values compat"),
                 (:debug, "Loading compatible values."),
                 min_level=Logging.Debug, match_mode=:all,
-                λmap(10., alg=algs[i], lyapunov_alg=λa))
+                λmap(10., ic_alg=algs[i], alg=λa))
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.3)
         end
@@ -93,7 +93,7 @@ end
                 (:debug, "Updating in-place"),
                 (:debug, "Deleting rows"),
                 min_level=Logging.Debug, match_mode=:all,
-                λmap(10., alg=algs[i], lyapunov_alg=λa, recompute=true))
+                λmap(10., ic_alg=algs[i], alg=λa, ic_recompute=true))
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.3)
 
@@ -107,7 +107,7 @@ end
                 (:debug, "Updating in-place"),
                 (:debug, "Deleting rows"),
                 min_level=Logging.Debug, match_mode=:all,
-                λmap(10., alg=algs[i], lyapunov_alg=λa, alg_recompute=true))
+                λmap(10., ic_alg=algs[i], alg=λa, recompute=true))
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.3)
         end
@@ -130,7 +130,7 @@ end
                 (:debug, "Cloning"),
                 (:debug, "Deleting rows"),
                 min_level=Logging.Debug, match_mode=:all,
-                λmap(10., alg=algs[i], lyapunov_alg=λa))
+                λmap(10., ic_alg=algs[i], alg=λa))
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.3)
         end
@@ -149,7 +149,7 @@ end
                 (:debug, "Stored values compat"),
 
                 min_level=Logging.Debug, match_mode=:any,
-                λmap(20., alg=algs[i], lyapunov_alg=λa))
+                λmap(20., ic_alg=algs[i], alg=λa))
             @test length(λs) == counts[i]
             @test all(0 .< λs .< 0.4)
         end
