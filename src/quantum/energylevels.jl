@@ -1,5 +1,3 @@
-#!/usr/bin/env julia
-
 module EnergyLevels
 
 export diagonalize, elvls, nlvls, add_max_δ, irreducible_reps

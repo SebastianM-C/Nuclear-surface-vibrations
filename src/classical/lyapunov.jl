@@ -1,49 +1,111 @@
-!contains(==, names(Main), :Hamiltonian) && @everywhere include("hamiltonian.jl")
-!contains(==, names(Main), :InitialConditions) && include("initial_conditions.jl")
+module Lyapunov
 
-using Hamiltonian, InitialConditions
-@everywhere using DynamicalSystemsBase, ChaosTools
+export λmap, LyapunovAlgorithm, DynSys
+
+using ..Distributed
+using ..Parameters
+using ..DataBaseInterface
+using ..InitialConditions
+using ..Classical: AbstractAlgorithm
+
+using ChaosTools
+using ParallelDataTransfer
+using OrdinaryDiffEq
 using StaticArrays
-using DataFrames, CSV
+using DataFrames
 
-function λmap(E; A=1, B=0.55, D=0.4, n=15, m=15, T=10000., Ttr=3000., d0=1e-9,
-               upper_threshold=1e-6, lower_threshold=1e-12,
-               inittest = ChaosTools.inittest_default(4),
-               dt=20., diff_eq_kwargs=Dict(:abstol=>1e-14, :reltol=>1e-14,
-               :maxiters=>1e9), recompute=false)
-    prefix = "../../output/classical/B$B-D$D/E$E"
-    q0, p0, N = initial_conditions(E, n, m, params=(A,B,D))
-    df = CSV.read("$prefix/z0.csv", allowmissing=:none, use_mmap=!is_windows())
-    # Workaround for https://github.com/JuliaData/CSV.jl/issues/170
-    if !haskey(df, :λs) || recompute
-        λs = _λmap(q0, p0, N; A=A, B=B, D=D, T=T, Ttr=Ttr,
-           d0=d0, upper_threshold=upper_threshold, lower_threshold=lower_threshold,
-           inittest=inittest, dt=dt, diff_eq_kwargs=diff_eq_kwargs)
-        df[:λs] = λs
-        CSV.write("$prefix/z0.csv", df)
-    else
-        df = CSV.read("$prefix/z0.csv", allowmissing=:none)
-        λs = df[:λs]
-    end
-    return λs
+using ..Hamiltonian
+
+abstract type LyapunovAlgorithm <: AbstractAlgorithm end
+
+@with_kw struct DynSys{R <: Real} <: LyapunovAlgorithm  @deftype R
+    T = 1e4
+    Ttr = 1e3
+    d0 = 1e-9
+    upper_threshold = 1e-6
+    lower_threshold = 1e-12
+    dt = 20.
+    solver::OrdinaryDiffEqAlgorithm = Vern9()
+    diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
 
-function _λmap(q0, p0, N; A=1, B=0.55, D=0.4, T=10000., Ttr=1000., d0=1e-9,
-               upper_threshold=1e-6, lower_threshold=1e-12,
-               inittest = ChaosTools.inittest_default(4),
-               dt=10., diff_eq_kwargs=Dict(:abstol=>d0, :reltol=>d0))
-    z0 = [SVector{4}(hcat(p0[i, :], q0[i, :])) for i=1:N]
-    ds = DynamicalSystemsBase.ContinuousDynamicalSystem(ż, z0[1], (A,B,D))
+function build_df(λs, alg)
+    N = size(λs, 1)
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
+    df = DataFrame()
+    df[:λs] = categorical(λs)
+    df[:lyap_alg] = categorical(fill(string(typeof(alg)), N))
+    df[:lyap_T] = categorical(fill(T, N))
+    df[:lyap_Ttr] = categorical(fill(Ttr, N))
+    df[:lyap_d0] = categorical(fill(d0, N))
+    df[:lyap_ut] = categorical(fill(upper_threshold, N))
+    df[:lyap_lt] = categorical(fill(lower_threshold, N))
+    df[:lyap_dt] = categorical(fill(dt, N))
+    df[:lyap_integ] = categorical(fill("$solver", N))
+    df[:lyap_diffeq_kw] = categorical(fill("$diff_eq_kwargs", N))
+    allowmissing!(df)
+
+    return df
+end
+
+function λmap(E; params=PhysicalParameters(), alg=PoincareRand(n=500),
+        recompute=false, lyapunov_alg=DynSys(), alg_recompute=false)
+
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    q0, p0 = initial_conditions(E, alg=alg, params=params, recompute=recompute)
+    db = DataBase(E, params)
+    n, m, border_n = unpack_with_nothing(alg)
+    ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
+                [n, m, E, string(typeof(alg)), border_n])
+    ic_cond = compatible(db.df, ic_vals)
+    @debug "Initial conditions compat" ic_cond
+    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(lyapunov_alg)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = lyapunov_alg
+
+    vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
+                :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
+                [string(typeof(lyapunov_alg)), T, Ttr, d0, upper_threshold,
+                lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
+    λcond = compatible(db.df, vals)
+    cond = ic_cond .& λcond
+    @debug "Stored values compat" λcond cond
+
+    if !alg_recompute && count(skipmissing(cond)) == count(ic_cond)
+        _cond = BitArray(replace(cond, missing=>false))
+        @debug "Loading compatible values."
+        λs = unique(db.df[_cond, :λs])
+    else
+        @debug "Incompatible values. Computing new values."
+        λs = λmap(q0, p0, lyapunov_alg; params=params)
+        df = build_df(λs, lyapunov_alg)
+
+        if !haskey(db.df, :λs)
+            db.df[:λs] = Array{Union{Missing, Float64}}(fill(missing, size(db.df, 1)))
+        end
+        update!(db, df, ic_cond, vals)
+
+        # plots
+    end
+    arr_type = nonnothingtype(eltype(λs))
+    return disallowmissing(Array{arr_type}(λs))
+end
+
+function λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
+    inittest = ChaosTools.inittest_default(4)
+    z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+    ds = ContinuousDynamicalSystem(ż, z0[1], params)
 
     pinteg = DynamicalSystemsBase.parallel_integrator(ds,
             [deepcopy(DynamicalSystemsBase.get_state(ds)),
-            inittest(DynamicalSystemsBase.get_state(ds), d0)];
-            diff_eq_kwargs=diff_eq_kwargs)
+            inittest(DynamicalSystemsBase.get_state(ds), d0)]; alg=solver,
+            diff_eq_kwargs...)
 
-    λs = pmap(1:N) do i
+    λs = pmap(eachindex(z0)) do i
             set_state!(pinteg, z0[i])
             reinit!(pinteg, pinteg.u)
-            ChaosTools._lyapunov(pinteg, T, Ttr, dt, d0,
+            ChaosTools.lyapunov(pinteg, T, Ttr, dt, d0,
                 upper_threshold, lower_threshold)
         end
 
@@ -90,7 +152,9 @@ function λ_time(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9,
                                             integrator.u.x[2][idx1] + Δq/a))
     end
     rescale = PeriodicCallback(affect!, τ, save_positions=(true,false))
-    prob_func(prob, i, repeat) = ttr≠0?DynamicalODEProblem(f1, f2, p0[i], q0[i], tspan, p, callback=rescale):dist_prob(p, p0[i], q0[i], d0, tspan, rescale)
+    prob_func(prob, i, repeat) = ttr≠0 ?
+        DynamicalODEProblem(f1, f2, p0[i], q0[i], tspan, p, callback=rescale) :
+        dist_prob(p, p0[i], q0[i], d0, tspan, rescale)
 
     function output_func(sol, i)
         λᵢ = [log(dist(s)/d0)/τ for s in sol.u]
@@ -101,3 +165,5 @@ function λ_time(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9,
     monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
     solve(monte_prob, DPRKN12(); kwargs..., saveat=τ, num_monte=n, parallel_type=parallel_type)
 end
+
+end  # module Lyapunov
