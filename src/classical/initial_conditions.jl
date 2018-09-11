@@ -371,6 +371,24 @@ function DataBaseInterface.DataBase(E, params::PhysicalParameters)
         if !isa(findfirst(isequal("lyap_diffeq_kw"), others), Nothing)
             push!(columns, "lyap_diffeq_kw"=>Union{Missing, String})
         end
+        if !isa(findfirst(isequal("d∞"), others), Nothing)
+            push!(columns, "d∞"=>Union{Missing, Float64})
+        end
+        if !isa(findfirst(isequal("dinf_alg"), others), Nothing)
+            push!(columns, "dinf_alg"=>Union{Missing, String})
+        end
+        if !isa(findfirst(isequal("dinf_T"), others), Nothing)
+            push!(columns, "dinf_T"=>Union{Missing, Float64})
+        end
+        if !isa(findfirst(isequal("dinf_d0"), others), Nothing)
+            push!(columns, "dinf_d0"=>Union{Missing, Float64})
+        end
+        if !isa(findfirst(isequal("dinf_integ"), others), Nothing)
+            push!(columns, "dinf_integ"=>Union{Missing, String})
+        end
+        if !isa(findfirst(isequal("dinf_diffeq_kw"), others), Nothing)
+            push!(columns, "dinf_diffeq_kw"=>Union{Missing, String})
+        end
         length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
     end
     DataBase(location, columns)

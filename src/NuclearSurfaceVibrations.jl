@@ -26,9 +26,11 @@ include("classical/initial_conditions.jl")
 
 include("classical/poincare.jl")
 include("classical/lyapunov.jl")
+include("classical/dist.jl")
 
 @reexport using .Poincare
 @reexport using .Lyapunov
+@reexport using .DInfty
 
 end  # module Classical
 

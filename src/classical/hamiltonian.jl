@@ -50,7 +50,7 @@ end
 end
 
 @inbounds @inline function q̇(p, q, params, t)
-    params[1] * p
+    params.A * p
 end
 
 function q̇(dq, p, q, params, t)
