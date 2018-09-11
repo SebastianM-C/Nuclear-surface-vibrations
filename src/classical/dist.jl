@@ -7,17 +7,17 @@ using ..Parameters
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
+using ..ParallelTrajectories
 using ..Classical: AbstractAlgorithm
 
+using LinearAlgebra
 using OrdinaryDiffEq
 using DiffEqMonteCarlo
 using DiffEqCallbacks
+using Plots, LaTeXStrings
 using RecursiveArrayTools
 using StaticArrays
 using DataFrames
-
-include("parallel.jl")
-using .ParallelTrajectories
 
 @with_kw struct DInftyAlgorithm{R <: Real} <: AbstractAlgorithm @deftype R
     T = 500.
@@ -31,6 +31,7 @@ function build_df(d∞, alg)
     @unpack T, d0, solver, diff_eq_kwargs = alg
     df = DataFrame()
     df[:d∞] = categorical(d∞)
+    df[:dinf_alg] = categorical(fill(string(typeof(alg)), N))
     df[:dinf_T] = categorical(fill(T, N))
     df[:dinf_d0] = categorical(fill(d0, N))
     df[:dinf_integ] = categorical(fill("$solver", N))
@@ -130,10 +131,12 @@ function d∞(E; params=PhysicalParameters(),ic_alg=PoincareRand(n=500),
     if !recompute && count(skipmissing(cond)) == count(ic_cond)
         _cond = BitArray(replace(cond, missing=>false))
         @debug "Loading compatible values."
-        λs = unique(db.df[_cond, :d∞])
+        d = unique(db.df[_cond, :d∞])
     else
         @debug "Incompatible values. Computing new values."
-        d = d∞(q0, p0, alg; params=params, parallel_type=parallel_type)
+        q0 = [SVector{2}(q0[i, :]) for i ∈ axes(q0, 1)]
+        p0 = [SVector{2}(p0[i, :]) for i ∈ axes(p0, 1)]
+        d = d∞(q0, p0, alg; params=params, parallel_type=parallel_type).u
         df = build_df(d, alg)
 
         if !haskey(db.df, :d∞)
@@ -141,17 +144,15 @@ function d∞(E; params=PhysicalParameters(),ic_alg=PoincareRand(n=500),
         end
         update!(db, df, ic_cond, vals)
 
-        # plots
+        plt = histogram(d, nbins=50, xlabel=L"d_\infty", ylabel=L"N", label="T = $T")
+        fn = string(typeof(alg)) * "_T$T" * "_hist"
+        fn = replace(fn, "NuclearSurfaceVibrations.Classical.DInfty." => "")
+        fn = replace(fn, "{Float64}" => "")
+        savefig(plt, "$prefix/dinf_$fn.pdf")
     end
-    arr_type = nonnothingtype(eltype(d∞))
-    return disallowmissing(Array{arr_type}(d∞))
+    arr_type = nonnothingtype(eltype(d))
+    return disallowmissing(Array{arr_type}(d))
 end
-
-# function Γ(E, reduction, d0, p)
-#     λ(E) = reduction(λmap(E, B=p[2], d0=d0))
-#     d_inf(E) = mean(d∞(E, p, d0))
-#     Γ(λ(E), d_inf(E))
-# end
 
 Γ(λ, d∞) = (exp(λ) - 1) / d∞
 

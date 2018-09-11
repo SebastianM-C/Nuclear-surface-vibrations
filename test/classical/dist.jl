@@ -48,21 +48,21 @@ end
             d∞(10., ic_alg=algs[i]))
 
         @test length(d) == counts[i]
-        # @test all(0 .< d .< 0.3)
+        @test all(0 .< d .< 25)
     end
 
     algs = [PoincareRand(n=2), PoincareUniform(n=3, m=3), InscribedCircle(n=2, m=2)]
     counts = [2, 2, 4]
     for i ∈ eachindex(algs)
-    d = @test_logs((:debug, "Checking compatibility with stored initial conditions"),
-        (:debug, "Loading compatible initial conditions."),
-        (:debug, "Initial conditions compat"),
-        (:debug, "Stored values compat"),
-        (:debug, "Loading compatible values."),
-        min_level=Logging.Debug, match_mode=:all,
-        d∞(10., ic_alg=algs[i]))
+        d = @test_logs((:debug, "Checking compatibility with stored initial conditions"),
+            (:debug, "Loading compatible initial conditions."),
+            (:debug, "Initial conditions compat"),
+            (:debug, "Stored values compat"),
+            (:debug, "Loading compatible values."),
+            min_level=Logging.Debug, match_mode=:all,
+            d∞(10., ic_alg=algs[i]))
     @test length(d) == counts[i]
-    # @test all(0 .< d .< 0.3)
+    @test all(0 .< d .< 25)
     end
 
 end
@@ -88,7 +88,7 @@ end
             min_level=Logging.Debug, match_mode=:all,
             d∞(10., ic_alg=algs[i], ic_recompute=true))
         @test length(d) == counts[i]
-        # @test all(0 .< d .< 0.3)
+        @test all(0 .< d .< 25)
 
         d = @test_logs((:debug, "Checking compatibility with stored initial conditions"),
             (:debug, "Loading compatible initial conditions."),
@@ -102,7 +102,7 @@ end
             min_level=Logging.Debug, match_mode=:all,
             d∞(10., ic_alg=algs[i], recompute=true))
         @test length(d) == counts[i]
-        # @test all(0 .< d .< 0.3)
+        @test all(0 .< d .< 25)
     end
 end
 
@@ -123,7 +123,7 @@ end
             min_level=Logging.Debug, match_mode=:all,
             d∞(10., ic_alg=algs[i], alg=dalg))
         @test length(d) == counts[i]
-        # @test all(0 .< d .< 0.3)
+        @test all(0 .< d .< 25)
     end
 
     db = InitialConditions.DataBase(10., params)
@@ -141,7 +141,7 @@ end
             min_level=Logging.Debug, match_mode=:any,
             d∞(20., ic_alg=algs[i], alg=dalg))
         @test length(d) == counts[i]
-        # @test all(0 .< d .< 0.4)
+        @test all(0 .< d .< 30)
     end
 
 end
