@@ -1,8 +1,10 @@
 module InitialConditions
 
 export initial_conditions, update, InitialConditionsAlgorithm, Plane,
-    PoincareRand, PoincareUniform, InscribedCircle, unpack_with_nothing
+    PoincareRand, PoincareUniform, InscribedCircle, Symmetric, Asymmetric,
+    unpack_with_nothing, db_concat
 
+using ..Utils
 using ..Hamiltonian
 using ..Parameters
 using ..DataBaseInterface
@@ -316,7 +318,7 @@ function build_df(q, p, E, alg, params)
     return df
 end
 
-function DataBaseInterface.DataBase(E, params::PhysicalParameters)
+function DataBaseInterface.DataBase(params::PhysicalParameters)
     col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "B", "D",
         "initial_cond_alg", "border_n"]
     types = [Union{Missing, Float64}, # q₀
@@ -394,6 +396,37 @@ function DataBaseInterface.DataBase(E, params::PhysicalParameters)
     DataBase(location, columns)
 end
 
+function extract_params(file, re=r"B([0-9]+\.[0-9]+)-D([0-9]\.[0-9]+)")
+    m = match(re, file)
+    PhysicalParameters(B=parse(Float64, m[1]), D=parse(Float64, m[2]))
+end
+
+function db_concat(name::Regex=r"z0.csv";
+        re::Regex=r"B([0-9]+\.[0-9]+)-D([0-9]\.[0-9]+)")
+    filenames = files(name; location="classical", re=re)
+    p1 = extract_params(filenames[1], re)
+    db = DataBase(p1)
+
+    for f in filenames
+        p = extract_params(f, re)
+        db_ = DataBase(p)
+        if size(db.df, 2) > size(db_.df, 2)
+            for c in setdiff(names(db.df), names(db_.df))
+                db_.df[c] = CategoricalArray{eltype(db.df[c])}(fill(missing, size(db_.df, 1)))
+            end
+        else
+            for c in setdiff(names(db_.df), names(db.df))
+                db.df[c] = CategoricalArray{eltype(db_.df[c])}(fill(missing, size(db.df, 1)))
+            end
+        end
+        append!(db.df, db_.df[names(db.df)])
+    end
+
+    sort!(db.df, :B)
+
+    return db
+end
+
 function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
@@ -426,7 +459,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         plt = energy_err(q, p, E, alg, params)
         save_err(plt, alg, E, prefix)
     else
-        db = DataBase(E, params)
+        db = DataBase(params)
         vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                     [n, m, E, string(typeof(alg)), border_n])
         cond = compatible(db.df, vals)

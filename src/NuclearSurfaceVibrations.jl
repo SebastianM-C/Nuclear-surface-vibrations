@@ -18,9 +18,9 @@ abstract type AbstractAlgorithm end
 module Classical
 
 using Reexport
+using ..Utils
 using ..Distributed
 using ..Parameters
-using ..Utils
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
 
 include("db.jl")

@@ -4,6 +4,12 @@ git-tree-sha1 = "8df3d36e0286777d226f4fd4956a432b73425186"
 uuid = "e6d88f4b-b52a-544c-a8d3-7a4f12cb39c3"
 version = "0.1.1"
 
+[[AbstractFFTs]]
+deps = ["Compat", "LinearAlgebra"]
+git-tree-sha1 = "8d59c3b1463b5e0ad05a3698167f85fac90e184d"
+uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
+version = "0.3.2"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "Random", "SparseArrays", "Test"]
 git-tree-sha1 = "5b046410fb617d9cf2f8bc0edd5da05a2e5a2ad4"
@@ -15,6 +21,12 @@ deps = ["ASTInterpreter2", "Base64", "CodeTools", "DocSeeker", "Hiccup", "JSON",
 git-tree-sha1 = "11e374a9e59a0af0f717dd806c55032280a3298e"
 uuid = "c52e3926-4ff0-5f6e-af25-54175e0327b1"
 version = "0.7.6"
+
+[[AxisAlgorithms]]
+deps = ["Compat", "WoodburyMatrices"]
+git-tree-sha1 = "99dabbe853e4f641ab21a676131f2cf9fb29937e"
+uuid = "13072b0f-2c55-5437-9ae7-d433b7a33950"
+version = "0.3.0"
 
 [[BandedMatrices]]
 deps = ["FillArrays", "LazyArrays", "LinearAlgebra", "Pkg", "Random", "SparseArrays", "Test"]
@@ -150,6 +162,12 @@ deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", 
 git-tree-sha1 = "ae262fa91da6a74e8937add6b613f58cd56cdad4"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "1.1.0"
+
+[[Conda]]
+deps = ["Compat", "JSON", "VersionParsing"]
+git-tree-sha1 = "a47f9a2c7b80095e6a935536795635522fe27f5d"
+uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+version = "1.0.1"
 
 [[Contour]]
 deps = ["LinearAlgebra", "StaticArrays", "Test"]
@@ -454,11 +472,29 @@ repo-url = "https://github.com/JuliaGeometry/GeometricalPredicates.jl.git"
 uuid = "fd0ad045-b25c-564e-8f9c-8ef5c5f21267"
 version = "0.1.0+"
 
+[[Graphics]]
+deps = ["Colors", "Compat", "NaNMath"]
+git-tree-sha1 = "4671f2427ea4494a5d14fd485c4aa61ec1fb7cd2"
+uuid = "a2bd30eb-e257-5431-a919-1863eab51364"
+version = "0.3.0"
+
 [[Hiccup]]
 deps = ["MacroTools", "Test"]
 git-tree-sha1 = "6187bb2d5fcbb2007c39e7ac53308b0d371124bd"
 uuid = "9fb69e20-1954-56bb-a84f-559cc56a8ff7"
 version = "0.2.2"
+
+[[ImageCore]]
+deps = ["ColorTypes", "Colors", "FFTW", "FixedPointNumbers", "Graphics", "MappedArrays", "OffsetArrays", "PaddedViews", "Pkg", "Random", "Statistics", "Test"]
+git-tree-sha1 = "b274f3abdcc10a0885187af3b7c7b2d67b73d0fe"
+uuid = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+version = "0.7.1"
+
+[[ImageMagick]]
+deps = ["BinaryProvider", "ColorTypes", "FileIO", "FixedPointNumbers", "ImageCore", "InteractiveUtils", "Libdl", "Pkg", "Random", "Test"]
+git-tree-sha1 = "0e4cc77fb131061b3525a97fd7d483b253c3aaad"
+uuid = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+version = "0.7.1"
 
 [[InteractiveUtils]]
 deps = ["LinearAlgebra", "Markdown"]
@@ -481,12 +517,6 @@ deps = ["CRlibm", "FastRounding", "LinearAlgebra", "Markdown", "Pkg", "RecipesBa
 git-tree-sha1 = "9ce05b28f218d833aedbed0a53ca35948275f336"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 version = "0.15.0"
-
-[[IntervalSets]]
-deps = ["Compat"]
-git-tree-sha1 = "1ea9a7307cfcce3664ddcceb60fe31dc82bc3019"
-uuid = "8197267c-284f-5f27-9208-e0e47529a953"
-version = "0.2.1"
 
 [[IterTools]]
 deps = ["Pkg", "SparseArrays", "Test"]
@@ -591,6 +621,12 @@ git-tree-sha1 = "c443e1c8d58a4e9f61b708ad0a88286c7042145b"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.4.4"
 
+[[MappedArrays]]
+deps = ["Test"]
+git-tree-sha1 = "923441c5ac942b60bd3a842d5377d96646bcbf46"
+uuid = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
+version = "0.2.1"
+
 [[Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
@@ -602,10 +638,10 @@ uuid = "fdba3010-5040-5b88-9595-932c9decdf73"
 version = "0.7.5"
 
 [[Measures]]
-deps = ["Compat"]
-git-tree-sha1 = "9cdd05418a7f2f7ce534014285edf01f465d6961"
+deps = ["Pkg", "Test"]
+git-tree-sha1 = "ddfd6d13e330beacdde2c80de27c1c671945e7d9"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
-version = "0.2.0"
+version = "0.3.0"
 
 [[Media]]
 deps = ["MacroTools", "Test"]
@@ -706,6 +742,12 @@ git-tree-sha1 = "9e3e7a5c9b8cfdba8c01a1bcae38fe0144936fda"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.9.5"
 
+[[PaddedViews]]
+deps = ["OffsetArrays", "Test"]
+git-tree-sha1 = "a6ecf172a704baa599ee1cc2c2953d129ce6aa31"
+uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
+version = "0.4.1"
+
 [[ParallelDataTransfer]]
 deps = ["Distributed", "Random", "Test"]
 git-tree-sha1 = "75e75900c8b0d8dfb69cbe082832b1dc9f8aacfe"
@@ -790,12 +832,6 @@ git-tree-sha1 = "7e8dff9c205f36eceaf6e62a43ff851637ca45fc"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 version = "2.0.2"
 
-[[QuartzImageIO]]
-deps = ["ColorTypes", "ColorVectorSpace", "FileIO", "FixedPointNumbers", "ImageCore", "Libdl", "Random", "Test"]
-git-tree-sha1 = "c747a56f223919b157e6cd9dc58d59c560586302"
-uuid = "dca85d43-d64c-5e67-8c65-017450d5d020"
-version = "0.5.0"
-
 [[Query]]
 deps = ["DataValues", "Documenter", "IterableTables", "MacroTools", "Pkg", "QueryOperators", "Statistics", "TableTraits", "Test"]
 git-tree-sha1 = "7325edcb632d3f910b454abf4077decd354463d5"
@@ -821,6 +857,12 @@ deps = ["InteractiveUtils", "Libdl", "Pkg", "Printf", "Random", "Test"]
 git-tree-sha1 = "292ba49037aea380eb102bb923b69bf17d16289b"
 uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
 version = "1.0.1"
+
+[[Ratios]]
+deps = ["Compat"]
+git-tree-sha1 = "fd159bead0a24e6270fd0573a340312bd4645cc2"
+uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
+version = "0.3.0"
 
 [[RecipesBase]]
 deps = ["Pkg", "Random", "Test"]
@@ -879,6 +921,11 @@ version = "0.2.0"
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
+
+[[ShowItLikeYouBuildIt]]
+git-tree-sha1 = "e562bce4b0df3ed65562ce2ec7f56cb399368daf"
+uuid = "9966252f-7483-59e3-9a4c-8607a6b2a5fe"
+version = "0.2.0"
 
 [[Showoff]]
 deps = ["Compat", "Pkg"]
@@ -1037,6 +1084,12 @@ deps = ["Distributions"]
 git-tree-sha1 = "3fdeedbc9d462a3d597606ad8183cf5907e04896"
 uuid = "0e69188a-a5d4-5622-b4e4-a72373136fc5"
 version = "0.0.2"
+
+[[VersionParsing]]
+deps = ["Compat"]
+git-tree-sha1 = "c9d5aa108588b978bd859554660c8a5c4f2f7669"
+uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
+version = "1.1.2"
 
 [[WeakRefStrings]]
 deps = ["Missings", "Random", "Test"]

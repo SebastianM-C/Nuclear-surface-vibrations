@@ -2,12 +2,13 @@ module Reductions
 
 export mean_as_function_of_B
 
-using ..Parameters
+using ..Parameters: @showprogress
 using ..DataBaseInterface
 using ..InitialConditions
 using ..Lyapunov
 using ..DInfty
 using ..Utils
+using ..Classical: AbstractAlgorithm
 
 using Plots, LaTeXStrings
 using Query, StatPlots
@@ -51,6 +52,13 @@ function DInfty.Γ(E, reduction, d0, p)
     d_inf(E) = mean(d∞(E, p, d0))
     Γ(λ(E), d_inf(E))
 end
+
+function DataBaseInterface.compatible(db::DataBase, ic_alg::AbstractAlgorithm, alg::AbstractAlgorithm)
+    n, m, border_n = unpack_with_nothing(ic_alg)
+    ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
+                [n, m, string(typeof(ic_alg)), border_n])
+    ic_cond = compatible(db.df, ic_vals)
+
 
 function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
     for D in Dlist

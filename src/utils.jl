@@ -23,7 +23,7 @@ folders
 function files(name::Regex; location="quantum",
                re=r"n[0-9]+-b[0-9]+\.[0-9]+-d[0-9]+\.[0-9]+")
     prefix = "output/$location/"
-    match_list(f) = occursin.(name, readdir(joinpath(prefix, f)))
+    match_list(f) = occursin.(Ref(name), readdir(joinpath(prefix, f)))
     folders = filter(f->occursin(re, f) && any(match_list(f)), readdir(prefix))
     fns = [joinpath.(prefix, f, readdir(joinpath(prefix, f))[match_list(f)])
         for f in folders]

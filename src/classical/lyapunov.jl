@@ -53,11 +53,12 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
-    db = DataBase(E, params)
-    n, m, border_n = unpack_with_nothing(ic_alg)
-    ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
-                [n, m, E, string(typeof(ic_alg)), border_n])
-    ic_cond = compatible(db.df, ic_vals)
+    db = DataBase(params)
+    # n, m, border_n = unpack_with_nothing(ic_alg)
+    # ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
+    #             [n, m, E, string(typeof(ic_alg)), border_n])
+    # ic_cond = compatible(db.df, ic_vals)
+    ic_cond = compatible(db.df, ic_alg)
     @debug "Initial conditions compat" ic_cond
     # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
@@ -85,7 +86,8 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         update!(db, df, ic_cond, vals)
 
         plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
-        fn = string(typeof(alg)) * "_T$T" * "_hist"
+        fn = string(typeof(ic_alg)) * string(typeof(alg)) * "_T$T" * "_hist"
+        fn = replace(fn, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
         fn = replace(fn, "NuclearSurfaceVibrations.Classical.Lyapunov." => "")
         fn = replace(fn, "{Float64}" => "")
         savefig(plt, "$prefix/lyapunov_$fn.pdf")
