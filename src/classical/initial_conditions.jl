@@ -427,11 +427,11 @@ function db_concat(name::Regex=r"z0.csv";
     return db
 end
 
-function DataBaseInterface.update!(db::DataBase, df, ic_cond, vals)
+function DataBaseInterface.update!(db::DataBase, df, ic_cond, alg)
     DataBaseInterface.fix_column_types(db, df)
     icdf = db.df[ic_cond, names(df)]
     @debug "Selected compatible initial conditions" icdf
-    cond = compatible(icdf, vals)
+    cond = compatible(icdf, alg)
     @debug "Updating copy" cond
     icdf = db.df[ic_cond, :]
     update!(icdf, df, cond)

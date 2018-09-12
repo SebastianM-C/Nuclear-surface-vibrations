@@ -1,8 +1,9 @@
 module Reductions
 
-export mean_as_function_of_B
+export mean_over_E, mean_as_function_of_B
 
-using ..Parameters: @showprogress
+using ..Parameters
+using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
 using ..Lyapunov
@@ -13,9 +14,11 @@ using ..Classical: AbstractAlgorithm
 using Plots, LaTeXStrings
 using Query, StatPlots
 using StatsBase
+using Statistics
 using DataFrames
-using ProgressMeter
+using ProgressMeter: @showprogress
 using IntervalArithmetic
+using Images: findlocalmaxima
 
 function average(x, y)
     int = 0
@@ -31,10 +34,10 @@ function edge_max(v)
     sorted[2:end][Δ .< 10][end]
 end
 
-function hist_avg(v, t=3)
+function hist_mean(v)
     hist = fit(Histogram, v, nbins=50, closed=:right)
-    threshold = hist.edges[1][t]
-    mean(v[v.>threshold])
+    firstmax = findlocalmaxima(hist.weights)[1][1]
+    mean(v[v .> hist.edges[1][firstmax+1]])
 end
 
 function hist_max(v, t=3)
@@ -53,12 +56,43 @@ function DInfty.Γ(E, reduction, d0, p)
     Γ(λ(E), d_inf(E))
 end
 
-function DataBaseInterface.compatible(db::DataBase, ic_alg::AbstractAlgorithm, alg::AbstractAlgorithm)
+function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
+        alg::LyapunovAlgorithm, Einterval::Interval=0..Inf)
     n, m, border_n = unpack_with_nothing(ic_alg)
     ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
                 [n, m, string(typeof(ic_alg)), border_n])
     ic_cond = compatible(db.df, ic_vals)
+    E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
+    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
 
+    vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
+                :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
+                [string(typeof(alg)), T, Ttr, d0, upper_threshold,
+                lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
+    λcond = compatible(db.df, vals)
+    cond = ic_cond .& λcond .& E_cond
+    cond = replace(cond, missing=>false)
+
+    db.df[cond, :]
+end
+
+function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
+        alg::DInftyAlgorithm, Einterval::Interval=0..Inf)
+    n, m, border_n = unpack_with_nothing(ic_alg)
+    ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
+                [n, m, string(typeof(ic_alg)), border_n])
+    ic_cond = compatible(db.df, ic_vals)
+    E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
+    @unpack T, d0, solver, diff_eq_kwargs = alg
+
+    vals = Dict([:dinf_alg, :dinf_T, :dinf_d0, :dinf_integ, :dinf_diffeq_kw] .=>
+                [string(typeof(alg)), T, d0, "$solver", "$diff_eq_kwargs"])
+    dcond = compatible(db.df, vals)
+    cond = ic_cond .& dcond .& E_cond
+    cond = replace(cond, missing=>false)
+
+    db.df[cond, :]
+end
 
 function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
     for D in Dlist
@@ -72,6 +106,49 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
             end
         end
     end
+end
+
+function reduce_col(df, col, r)
+    arr_type = nonnothingtype(eltype(df[col]))
+    DataFrame(val = r(Array{arr_type}(df[col])))
+end
+
+function mean_over_E(alg::LyapunovAlgorithm, params::PhysicalParameters,
+        ic_alg::InitialConditionsAlgorithm, Einterval::Interval=0..Inf;
+        reduction=hist_mean)
+    db = db_concat()
+    df = compatible(db, ic_alg, alg, Einterval)
+
+    by(df, :E, df->reduce_col(df, :λs, reduction)) |> @map({_.E, λs=_.val}) |>
+        @orderby(_.E) |> DataFrame
+end
+
+function mean_over_E(alg::DInftyAlgorithm, params::PhysicalParameters,
+        ic_alg::InitialConditionsAlgorithm, Einterval::Interval=0..Inf;
+        reduction=hist_mean)
+    db = db_concat()
+    df = compatible(db, ic_alg, alg, Einterval)
+
+    by(df, :E, df->reduce_col(df, :d∞, reduction)) |> @map({_.E, d∞=_.val}) |>
+        @orderby(_.E) |> DataFrame
+end
+
+function mean_over_E(alg::LyapunovAlgorithm, params, ic_alg; Einterval,
+        reduction, plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    mean_over_E(alg, params, ic_alg, Einterval, reduction=reduction) |>
+    @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        framestyle=:box, legend=false,
+        size=(width,height),
+        guidefont=fnt, tickfont=fnt)
+end
+
+function mean_over_E(alg::DInftyAlgorithm, params, ic_alg; Einterval,
+        reduction, plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    mean_over_E(alg, params, ic_alg, Einterval, reduction=reduction) |>
+    @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        framestyle=:box, legend=false,
+        size=(width,height),
+        guidefont=fnt, tickfont=fnt)
 end
 
 function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::Interval=0..Inf;

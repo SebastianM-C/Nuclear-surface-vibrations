@@ -47,23 +47,29 @@ function fill_diff!(df::AbstractDataFrame, cols)
     end
 end
 
-==ₘ(a, b::NamedTuple) = a == string(b)
+# ==ₘ(a, b::NamedTuple) = a .== string(b)
+#
+# ==ₘ(a, b::AbstractAlgorithm) = a .== string(typeof(b))
+#
+# ==ₘ(a, b::AbstractODEAlgorithm) = a .== string(b)
+#
+# ==ₘ(a, b) = a .== b
 
-==ₘ(a, b::AbstractAlgorithm) = a == string(typeof(b))
+# function compatible(df::AbstractDataFrame, alg::AbstractAlgorithm)
+#     vals = Dict(f=>getfield(alg, f) for f in fieldnames(typeof(alg)))
+#     compatible(df, vals)
+# end
 
-==ₘ(a, b::AbstractODEAlgorithm) = a == string(b)
+# function compatible(df::AbstractDataFrame, vals::AbstractDict)
+#     # extend with missing
+#     fill_diff!(df, keys(vals))
+#     reduce((x,y)->x.&y, [df[k] .== v for (k,v) in vals])
+# end
 
-==ₘ(a, b) = a == b
-
-function compatible(df::AbstractDataFrame, vals::AbstractDict)
+function compatible(df::AbstractDataFrame, vals::AbstractDict, ⊗= ==)
     # extend with missing
     fill_diff!(df, keys(vals))
-    reduce((x,y)->x.&y, [df[k] .==ₘ v for (k,v) in vals])
-end
-
-function compatible(df::AbstractDataFrame, alg::AbstractAlgorithm)
-    vals = Dict(f=>getfield(DynSys(), f) for f in fieldnames(DynSys))
-    compatible(df, vals)
+    reduce((x,y)->x.&y, [Array(df[k]) .⊗ v for (k,v) in vals])
 end
 
 function DataFrames.deleterows!(db::DataBase, cond)

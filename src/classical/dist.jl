@@ -10,7 +10,7 @@ using ..InitialConditions
 using ..ParallelTrajectories
 using ..Classical: AbstractAlgorithm
 
-using LinearAlgebra
+using LinearAlgebra: norm
 using OrdinaryDiffEq
 using DiffEqMonteCarlo
 using DiffEqCallbacks
