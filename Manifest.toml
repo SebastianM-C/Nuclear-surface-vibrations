@@ -622,9 +622,9 @@ version = "0.15.0"
 
 [[IntervalSets]]
 deps = ["Compat"]
-git-tree-sha1 = "1ea9a7307cfcce3664ddcceb60fe31dc82bc3019"
+git-tree-sha1 = "bf1c727a12bbe0beb4888d439ee4e91b9ba7944a"
 uuid = "8197267c-284f-5f27-9208-e0e47529a953"
-version = "0.2.1"
+version = "0.3.0"
 
 [[IterTools]]
 deps = ["Pkg", "SparseArrays", "Test"]

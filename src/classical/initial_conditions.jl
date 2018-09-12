@@ -1,6 +1,6 @@
 module InitialConditions
 
-export initial_conditions, update, InitialConditionsAlgorithm, Plane,
+export initial_conditions, InitialConditionsAlgorithm, Plane,
     PoincareRand, PoincareUniform, InscribedCircle, Symmetric, Asymmetric,
     unpack_with_nothing, db_concat
 
@@ -291,11 +291,10 @@ end
 
 function save_err(plt, alg, E, prefix)
     fn = string(typeof(alg))
-    fn = replace(fn, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
-    if !isdir("$prefix/E$E/initial_energy_err")
-        mkpath("$prefix/E$E/initial_energy_err")
+    if !isdir("$prefix/E$E/$fn")
+        mkpath("$prefix/E$E/$fn")
     end
-    savefig(plt, "$prefix/E$E/initial_energy_err/$fn.pdf")
+    savefig(plt, "$prefix/E$E/$fn/initial_energy_err.pdf")
 end
 
 function build_df(q, p, E, alg, params)

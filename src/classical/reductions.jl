@@ -1,6 +1,6 @@
 module Reductions
 
-export mean_over_E, mean_as_function_of_B
+export mean_over_E, mean_over_B, mean_as_function_of_B, compatible
 
 using ..Parameters
 using ..Hamiltonian
@@ -108,47 +108,65 @@ function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=fal
     end
 end
 
+arr_type(df, col) = nonnothingtype(eltype(df[col]))
+
 function reduce_col(df, col, r)
-    arr_type = nonnothingtype(eltype(df[col]))
-    DataFrame(val = r(Array{arr_type}(df[col])))
+    DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = levels(df[:B]))
 end
 
-function mean_over_E(alg::LyapunovAlgorithm, params::PhysicalParameters,
-        ic_alg::InitialConditionsAlgorithm, Einterval::Interval=0..Inf;
-        reduction=hist_mean)
+function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
+        Einterval::Interval=0..Inf; reduction=hist_mean)
     db = db_concat()
     df = compatible(db, ic_alg, alg, Einterval)
 
-    by(df, :E, df->reduce_col(df, :λs, reduction)) |> @map({_.E, λs=_.val}) |>
-        @orderby(_.E) |> DataFrame
+    for c in [:B, :D]
+        df[c] = categorical(Array{arr_type(df, c)}(df[c]))
+    end
+    df[:E] = Array{arr_type(df, :E)}(df[:E])
+
+    by(df, :E, df->reduce_col(df, s, reduction))
 end
 
-function mean_over_E(alg::DInftyAlgorithm, params::PhysicalParameters,
-        ic_alg::InitialConditionsAlgorithm, Einterval::Interval=0..Inf;
-        reduction=hist_mean)
-    db = db_concat()
-    df = compatible(db, ic_alg, alg, Einterval)
-
-    by(df, :E, df->reduce_col(df, :d∞, reduction)) |> @map({_.E, d∞=_.val}) |>
-        @orderby(_.E) |> DataFrame
-end
-
-function mean_over_E(alg::LyapunovAlgorithm, params, ic_alg; Einterval,
-        reduction, plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    mean_over_E(alg, params, ic_alg, Einterval, reduction=reduction) |>
-    @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+function mean_over_E(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
+        Einterval::Interval=0..Inf, reduction=hist_mean,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    df = mean_over_E(:λs, alg, ic_alg, Einterval, reduction=reduction) |>
+        @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame
+    Bcond = compatible(df, Dict(:B=>params.B))
+    df[Bcond, :] |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
         framestyle=:box, legend=false,
         size=(width,height),
         guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_E(alg::DInftyAlgorithm, params, ic_alg; Einterval,
-        reduction, plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    mean_over_E(alg, params, ic_alg, Einterval, reduction=reduction) |>
-    @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+function mean_over_E(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
+        Einterval::Interval=0..Inf, reduction=hist_mean,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    df = mean_over_E(:d∞, alg, ic_alg, Einterval, reduction=reduction) |>
+        @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame
+    Bcond = compatible(df, Dict(:B=>params.B))
+    df[Bcond, :] |> @df plot(:E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
         framestyle=:box, legend=false,
         size=(width,height),
         guidefont=fnt, tickfont=fnt)
+end
+
+function mean_over_B(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
+        Einterval::Interval=0..Inf; ic_reduction=hist_mean, reduction=average)
+    by(mean_over_E(s, alg, ic_alg, Einterval; reduction=ic_reduction) |>
+        @orderby(_.E) |> DataFrame, :B,
+        df->DataFrame(v = reduction(df[:E], df[:val]))) |>
+            @orderby(_.B) |> DataFrame
+end
+
+function mean_over_B(alg::LyapunovAlgorithm; ic_alg::InitialConditionsAlgorithm,
+        Einterval::Interval=0..Inf, ic_reduction=hist_mean, reduction=average,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    mean_over_B(:λs, alg, ic_alg, Einterval;
+        ic_reduction=ic_reduction, reduction=reduction) |>
+        @map({λ = _.v, _.B}) |> @orderby(_.B) |>
+        @df plot(:B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
+            legend=false, size=(width,height), guidefont=fnt, tickfont=fnt)
 end
 
 function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::Interval=0..Inf;

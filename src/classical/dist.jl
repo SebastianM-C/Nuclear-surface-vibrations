@@ -145,11 +145,9 @@ function d∞(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         update!(db, df, ic_cond, vals)
 
         plt = histogram(d, nbins=50, xlabel=L"d_\infty", ylabel=L"N", label="T = $T")
-        fn = string(typeof(ic_alg)) * string(typeof(alg)) * "_T$T" * "_hist"
-        fn = replace(fn, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
-        fn = replace(fn, "NuclearSurfaceVibrations.Classical.DInfty." => "")
+        fn = string(typeof(alg)) * "_T$T" * "_hist"
         fn = replace(fn, "{Float64}" => "")
-        savefig(plt, "$prefix/dinf_$fn.pdf")
+        savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/dinf_$fn.pdf")
     end
     arr_type = nonnothingtype(eltype(d))
     return disallowmissing(Array{arr_type}(d))
