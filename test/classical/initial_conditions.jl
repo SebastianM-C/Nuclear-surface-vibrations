@@ -68,8 +68,7 @@ end
 end
 
 @testset "DB operations" begin
-    E = 10.
-    db = InitialConditions.DataBase(E, params)
+    db = InitialConditions.DataBase(params)
     @test size(db.df, 1) == 2+2+4
 
     @testset "Insert after having other data" begin
@@ -83,7 +82,7 @@ end
             min_level=Logging.Debug, match_mode=:any,
             initial_conditions(10., alg=PoincareRand(n=3)))
 
-        db = InitialConditions.DataBase(E, params)
+        db = InitialConditions.DataBase(params)
         @test all(db.df[:fake_data][1:8] .== fake_data)
         @test all(db.df[:fake_data][9:end] .== nothing) # was missing, but converted at read
 
@@ -93,7 +92,7 @@ end
             min_level=Logging.Debug, match_mode=:any,
             initial_conditions(10., alg=PoincareRand(n=2), recompute=true))
 
-        db = InitialConditions.DataBase(E, params)
+        db = InitialConditions.DataBase(params)
         @test all(db.df[:fake_data][1:6] .== fake_data[3:8])
         @test all(db.df[:fake_data][9:end] .== nothing) # was missing, but converted at read
     end

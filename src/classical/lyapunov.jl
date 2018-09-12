@@ -53,7 +53,7 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
-    db = DataBase(E, params)
+    db = DataBase(params)
     n, m, border_n = unpack_with_nothing(ic_alg)
     ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                 [n, m, E, string(typeof(ic_alg)), border_n])
@@ -86,9 +86,8 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
 
         plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
         fn = string(typeof(alg)) * "_T$T" * "_hist"
-        fn = replace(fn, "NuclearSurfaceVibrations.Classical.Lyapunov." => "")
         fn = replace(fn, "{Float64}" => "")
-        savefig(plt, "$prefix/lyapunov_$fn.pdf")
+        savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
     end
     arr_type = nonnothingtype(eltype(λs))
     return disallowmissing(Array{arr_type}(λs))

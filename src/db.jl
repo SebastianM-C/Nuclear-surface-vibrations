@@ -3,6 +3,8 @@ module DataBaseInterface
 export DataBase, compatible, update!, append_with_missing!, update_file, nonnothingtype
 
 using DataFrames, CSV
+using ..Classical: AbstractAlgorithm
+using DiffEqBase: AbstractODEAlgorithm
 
 struct DataBase
     location::Tuple{String, String}
@@ -45,10 +47,29 @@ function fill_diff!(df::AbstractDataFrame, cols)
     end
 end
 
-function compatible(df::AbstractDataFrame, vals)
+# ==ₘ(a, b::NamedTuple) = a .== string(b)
+#
+# ==ₘ(a, b::AbstractAlgorithm) = a .== string(typeof(b))
+#
+# ==ₘ(a, b::AbstractODEAlgorithm) = a .== string(b)
+#
+# ==ₘ(a, b) = a .== b
+
+# function compatible(df::AbstractDataFrame, alg::AbstractAlgorithm)
+#     vals = Dict(f=>getfield(alg, f) for f in fieldnames(typeof(alg)))
+#     compatible(df, vals)
+# end
+
+# function compatible(df::AbstractDataFrame, vals::AbstractDict)
+#     # extend with missing
+#     fill_diff!(df, keys(vals))
+#     reduce((x,y)->x.&y, [df[k] .== v for (k,v) in vals])
+# end
+
+function compatible(df::AbstractDataFrame, vals::AbstractDict, ⊗= ==)
     # extend with missing
     fill_diff!(df, keys(vals))
-    reduce((x,y)->x.&y, [df[k] .== v for (k,v) in vals])
+    reduce((x,y)->x.&y, [Array(df[k]) .⊗ v for (k,v) in vals])
 end
 
 function DataFrames.deleterows!(db::DataBase, cond)

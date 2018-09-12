@@ -126,7 +126,7 @@ end
         @test all(0 .< d .< 25)
     end
 
-    db = InitialConditions.DataBase(10., params)
+    db = InitialConditions.DataBase(params)
     @test size(db.df, 1) == (2+2+4)*2
 
     for i ∈ eachindex(algs)

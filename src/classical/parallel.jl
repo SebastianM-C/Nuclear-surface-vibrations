@@ -1,6 +1,6 @@
 module ParallelTrajectories
 
-export dist_prob
+export dist_prob, create_parallel
 
 using ..Distributed
 
@@ -51,7 +51,7 @@ end
 
 function dist_prob(ṗ, q̇, p0::SVector, q0::SVector, params, d0, tspan, cb=nothing)
     f1, f2, p₀, q₀ = create_parallel(ṗ, q̇, p0, q0, params, d0)
-    DynamicalODEProblem(f1, f2, p₀, q₀, tspan, p, callback=cb)
+    DynamicalODEProblem(f1, f2, p₀, q₀, tspan, params, callback=cb)
 end
 
 end  # module ParallelTrajectories

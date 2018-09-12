@@ -10,7 +10,7 @@ using ..InitialConditions
 using ..ParallelTrajectories
 using ..Classical: AbstractAlgorithm
 
-using LinearAlgebra
+using LinearAlgebra: norm
 using OrdinaryDiffEq
 using DiffEqMonteCarlo
 using DiffEqCallbacks
@@ -109,12 +109,12 @@ function d∞(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, alg::DInftyAlg
     return sim
 end
 
-function d∞(E; params=PhysicalParameters(),ic_alg=PoincareRand(n=500),
+function d∞(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DInftyAlgorithm(), recompute=false,
         parallel_type=:pmap)
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
-    db = DataBase(E, params)
+    db = DataBase(params)
     n, m, border_n = unpack_with_nothing(ic_alg)
     ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
                 [n, m, E, string(typeof(ic_alg)), border_n])
@@ -146,9 +146,8 @@ function d∞(E; params=PhysicalParameters(),ic_alg=PoincareRand(n=500),
 
         plt = histogram(d, nbins=50, xlabel=L"d_\infty", ylabel=L"N", label="T = $T")
         fn = string(typeof(alg)) * "_T$T" * "_hist"
-        fn = replace(fn, "NuclearSurfaceVibrations.Classical.DInfty." => "")
         fn = replace(fn, "{Float64}" => "")
-        savefig(plt, "$prefix/dinf_$fn.pdf")
+        savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/dinf_$fn.pdf")
     end
     arr_type = nonnothingtype(eltype(d))
     return disallowmissing(Array{arr_type}(d))

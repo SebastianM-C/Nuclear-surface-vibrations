@@ -135,7 +135,7 @@ end
             @test all(0 .< λs .< 0.3)
         end
     end
-    db = InitialConditions.DataBase(10., params)
+    db = InitialConditions.DataBase(params)
     @test size(db.df, 1) == (2+2+4)*2
 
     for λa in λalgs
