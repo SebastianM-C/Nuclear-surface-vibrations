@@ -185,13 +185,13 @@ end
 function mean_over_E(alg, Eintervals::NTuple{N, Interval};
         ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
-        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600) where N
     for i=1:N
         plt = mean_over_E(alg, Eintervals[i]; ic_alg=ic_alg, ic_reduction=ic_reduction,
                 reduction=reduction, plt=plt, fnt=fnt, width=width, height=height,
                 label=L"$E \in "*"$(Eintervals[i])\$")
     end
-    
+
     return plt
 end
 
