@@ -1,6 +1,6 @@
 module Reductions
 
-export mean_over_E, mean_over_B, mean_as_function_of_B, compatible
+export mean_over_ic, mean_over_E, compatible
 
 using ..Parameters
 using ..Hamiltonian
