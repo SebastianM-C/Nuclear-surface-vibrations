@@ -485,6 +485,9 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
             save_err(plt, alg, E, prefix)
         end
     end
+    # FIXME
+    plt = energy_err(q, p, E, alg, params)
+    save_err(plt, alg, E, prefix)
     arr_type = nonnothingtype(eltype(q))
     return disallowmissing(Array{arr_type}(q)), disallowmissing(Array{arr_type}(p))
 end
