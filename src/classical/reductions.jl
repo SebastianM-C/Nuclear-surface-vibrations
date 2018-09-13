@@ -28,7 +28,10 @@ function average(x, y)
     int / (x[end] - x[1])
 end
 
-average(df) = average(df[:E], df[:val])
+function average(df)
+    sort!(df, :E)
+    average(df[:E], df[:val])
+end
 
 function edge_max(v)
     sorted = sort(v)
@@ -131,16 +134,15 @@ end
 function mean_over_ic(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
         params::PhysicalParameters, Einterval::Interval=0..Inf;
         reduction=hist_mean)
-    collect_data(alg, ic_alg, Einterval)
-
-    by(df |> @filter(_.B .== params.B .& _.D .== params.D) |> DataFrame, :E,
+    df = collect_data(alg, ic_alg, Einterval)
+    by(df |> @filter(_.B == params.B && _.D == params.D) |> DataFrame, :E,
         df->reduce_col(df, s, reduction))
 end
 
 function mean_over_ic(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_E(:λs, alg, ic_alg, params, Einterval, reduction=reduction) |>
+    df = mean_over_ic(:λs, alg, ic_alg, params, Einterval, reduction=reduction) |>
         @map({_.E, λ=_.val}) |> @orderby(_.E) |>
         @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
@@ -161,15 +163,18 @@ end
 
 function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
         Einterval::Interval=0..Inf; ic_reduction=hist_mean, reduction=average)
-    collect_data(alg, ic_alg, Einterval)
-    by(df, :B, df->DataFrame(v=reduction(by(df, :E,
-        df->reduce_col(df, s, ic_reduction))[[:val,:E]])))
+    df = collect_data(alg, ic_alg, Einterval)
+    result = by(df, :B, df->DataFrame(v=reduction(by(df, :E,
+        df->reduce_col(df, s, ic_reduction))[[:val, :E]])))
+    result[:B] = Array(result[:B])
+
+    return result
 end
 
 function mean_over_E(alg::LyapunovAlgorithm; ic_alg::InitialConditionsAlgorithm,
         Einterval::Interval=0..Inf, ic_reduction=hist_mean, reduction=average,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    mean_over_B(:λs, alg, ic_alg, Einterval;
+    mean_over_E(:λs, alg, ic_alg, Einterval;
         ic_reduction=ic_reduction, reduction=reduction) |>
         @map({λ = _.v, _.B}) |> @orderby(_.B) |>
         @df plot(:B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
