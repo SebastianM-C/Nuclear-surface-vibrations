@@ -89,12 +89,12 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         fn = replace(fn, "{Float64}" => "")
         savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
     end
+    arr_type = nonnothingtype(eltype(λs))
     # FIXME
-    plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
+    plt = histogram(disallowmissing(Array{arr_type}(λs)), nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
     fn = string(typeof(alg)) * "_T$T" * "_hist"
     fn = replace(fn, "{Float64}" => "")
     savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
-    arr_type = nonnothingtype(eltype(λs))
     return disallowmissing(Array{arr_type}(λs))
 end
 
