@@ -28,6 +28,8 @@ function average(x, y)
     int / (x[end] - x[1])
 end
 
+average(df) = average(df[:E], df[:val])
+
 function edge_max(v)
     sorted = sort(v)
     Δ = length(v) * diff(sorted) / (sorted[end] - sorted[1])
@@ -114,8 +116,7 @@ function reduce_col(df, col, r)
     DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = levels(df[:B]))
 end
 
-function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
-        Einterval::Interval=0..Inf; reduction=hist_mean)
+function collect_data(alg, ic_alg, Einterval)
     db = db_concat()
     df = compatible(db, ic_alg, alg, Einterval)
 
@@ -124,42 +125,48 @@ function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
     end
     df[:E] = Array{arr_type(df, :E)}(df[:E])
 
-    by(df, :E, df->reduce_col(df, s, reduction))
+    return df
 end
 
-function mean_over_E(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
+function mean_over_ic(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
+        params::PhysicalParameters, Einterval::Interval=0..Inf;
+        reduction=hist_mean)
+    collect_data(alg, ic_alg, Einterval)
+
+    by(df |> @filter(_.B .== params.B .& _.D .== params.D) |> DataFrame, :E,
+        df->reduce_col(df, s, reduction))
+end
+
+function mean_over_ic(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_E(:λs, alg, ic_alg, Einterval, reduction=reduction) |>
-        @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame
-    Bcond = compatible(df, Dict(:B=>params.B))
-    df[Bcond, :] |> @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
-        framestyle=:box, legend=false,
-        size=(width,height),
-        guidefont=fnt, tickfont=fnt)
+    df = mean_over_E(:λs, alg, ic_alg, params, Einterval, reduction=reduction) |>
+        @map({_.E, λ=_.val}) |> @orderby(_.E) |>
+        @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+            framestyle=:box, legend=false,
+            size=(width,height),
+            guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_E(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
+function mean_over_ic(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_E(:d∞, alg, ic_alg, Einterval, reduction=reduction) |>
-        @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame
-    Bcond = compatible(df, Dict(:B=>params.B))
-    df[Bcond, :] |> @df plot(:E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
-        framestyle=:box, legend=false,
-        size=(width,height),
-        guidefont=fnt, tickfont=fnt)
+    df = mean_over_E(:d∞, alg, ic_alg, params, Einterval, reduction=reduction) |>
+        @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
+        @df plot(:E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
+            framestyle=:box, legend=false,
+            size=(width,height),
+            guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_B(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
+function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
         Einterval::Interval=0..Inf; ic_reduction=hist_mean, reduction=average)
-    by(mean_over_E(s, alg, ic_alg, Einterval; reduction=ic_reduction) |>
-        @orderby(_.E) |> DataFrame, :B,
-        df->DataFrame(v = reduction(df[:E], df[:val]))) |>
-            @orderby(_.B) |> DataFrame
+    collect_data(alg, ic_alg, Einterval)
+    by(df, :B, df->DataFrame(v=reduction(by(df, :E,
+        df->reduce_col(df, s, ic_reduction))[[:val,:E]])))
 end
 
-function mean_over_B(alg::LyapunovAlgorithm; ic_alg::InitialConditionsAlgorithm,
+function mean_over_E(alg::LyapunovAlgorithm; ic_alg::InitialConditionsAlgorithm,
         Einterval::Interval=0..Inf, ic_reduction=hist_mean, reduction=average,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
     mean_over_B(:λs, alg, ic_alg, Einterval;
