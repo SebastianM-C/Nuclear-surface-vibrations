@@ -144,7 +144,7 @@ function mean_over_ic(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
     df = mean_over_ic(:λs, alg, ic_alg, params, Einterval, reduction=reduction) |>
         @map({_.E, λ=_.val}) |> @orderby(_.E) |>
-        @df plot(:E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
@@ -155,7 +155,7 @@ function mean_over_ic(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
     df = mean_over_E(:d∞, alg, ic_alg, params, Einterval, reduction=reduction) |>
         @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
-        @df plot(:E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
+        @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
@@ -171,14 +171,39 @@ function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
     return result
 end
 
-function mean_over_E(alg::LyapunovAlgorithm; ic_alg::InitialConditionsAlgorithm,
-        Einterval::Interval=0..Inf, ic_reduction=hist_mean, reduction=average,
-        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+function mean_over_E(alg::LyapunovAlgorithm, Einterval::Interval=0..Inf;
+        ic_alg::InitialConditionsAlgorithm,
+        ic_reduction=hist_mean, reduction=average,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600, label="")
     mean_over_E(:λs, alg, ic_alg, Einterval;
         ic_reduction=ic_reduction, reduction=reduction) |>
         @map({λ = _.v, _.B}) |> @orderby(_.B) |>
-        @df plot(:B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
-            legend=false, size=(width,height), guidefont=fnt, tickfont=fnt)
+        @df plot!(plt, :B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
+            label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
+end
+
+function mean_over_E(alg, Eintervals::NTuple{N, Interval};
+        ic_alg::InitialConditionsAlgorithm,
+        ic_reduction=hist_mean, reduction=average,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+    for i=1:N
+        plt = mean_over_E(alg, Eintervals[i]; ic_alg=ic_alg, ic_reduction=ic_reduction,
+                reduction=reduction, plt=plt, fnt=fnt, width=width, height=height,
+                label=L"$E \in "*"$(Eintervals[i])\$")
+    end
+    
+    return plt
+end
+
+function mean_over_E(alg::DInftyAlgorithm, Einterval::Interval=0..Inf;
+        ic_alg::InitialConditionsAlgorithm,
+        ic_reduction=hist_mean, reduction=average,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600, label="")
+    mean_over_E(:d∞, alg, ic_alg, Einterval;
+        ic_reduction=ic_reduction, reduction=reduction) |>
+        @map({d = _.v, _.B}) |> @orderby(_.B) |>
+        @df plot!(plt, :B, :d, m=2, xlabel=L"B", ylabel=L"d_\infty", framestyle=:box,
+            label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
 end
 
 function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::Interval=0..Inf;
@@ -191,48 +216,6 @@ function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::I
     df_f = @join(df_vs[1], df_vs[2], _.E, _.E, {val = f(_.val, __.val)}) |> DataFrame
     df_f[:E] = df_vs[1][:E]
     return df_f
-end
-
-"""
-    mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
-           reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
-           width=800, height=600, filename="val(E)")
-
-Compute the mean of a stored `value` as a funciton of `B` considering the
-given energy interval `Einterval`. Return the corresponding `DataFrame`
-"""
-function mean_as_function_of_B(value::Symbol, B, Einterval::Interval=0..Inf;
-        reduction=edge_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
-        width=800, height=600, filename="val(E)")
-    df = concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
-        re=r"E[0-9]+\.[0-9]+", filter=[:E, value]) |> @filter(_.E ∈ Einterval) |> DataFrame
-    df_v = by(df, :E, df->DataFrame(val = reduction(df[value]))) |>
-        @orderby(_.E) |> DataFrame
-    df_v[:B] = fill(B[1], size(df_v, 1))
-
-    df_v |> @df plot(:E, :val, m=2, xlabel=L"E", ylabel=ylabel,
-        framestyle=:box, legend=false,
-        size=(width,height),
-        guidefont=fnt, tickfont=fnt)
-    savefig("../../output/classical/B$(B[1])-D0.4/$filename.pdf")
-
-    for i in 2:length(B)
-        df = concat(r"z0.csv", location="classical/B$(B[i])-D0.4",
-            re=r"E[0-9]+\.[0-9]+", filter=[:E, value]) |> @filter(_.E ∈ Einterval) |> DataFrame
-        df_ = by(df, :E, df->DataFrame(val = reduction(df[value]))) |>
-            @orderby(_.E) |> DataFrame
-        df_ |> @df plot(:E, :val, m=2, xlabel=L"E", ylabel=ylabel,
-            framestyle=:box, legend=false,
-            size=(width,height),
-            guidefont=fnt, tickfont=fnt)
-        savefig("../../output/classical/B$(B[i])-D0.4/$filename.pdf")
-        df_[:B] = fill(B[i], size(df_, 1))
-        append!(df_v, df_[names(df_v)])
-    end
-
-    by(df_v |> @filter(_.E ∈ Einterval) |> DataFrame, :B,
-        df->DataFrame(v = average(df[:E], df[:val]))) |>
-            @orderby(_.B) |> DataFrame
 end
 
 function mean_as_function_of_B(value::Symbol, B, Eintervals::NTuple{N, Interval};
