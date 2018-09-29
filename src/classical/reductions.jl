@@ -153,7 +153,7 @@ end
 function mean_over_ic(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_E(:d∞, alg, ic_alg, params, Einterval, reduction=reduction) |>
+    df = mean_over_ic(:d∞, alg, ic_alg, params, Einterval, reduction=reduction) |>
         @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
         @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
