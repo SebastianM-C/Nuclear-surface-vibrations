@@ -31,8 +31,8 @@ H(p, q, params=PhysicalParameters()) = T(p, params.A) + V(q, params)
 
 @inbounds @inline function ż(z, p, t)
     @unpack A, B, D = p
-    p₀, p₂ = z[1:2]
-    q₀, q₂ = z[3:4]
+    p₀, p₂ = z[SVector{2}(1:2)]
+    q₀, q₂ = z[SVector{2}(3:4)]
 
     return SVector{4}(
         -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2),

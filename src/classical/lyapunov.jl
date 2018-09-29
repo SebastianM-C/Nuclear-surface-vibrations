@@ -70,7 +70,7 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
     cond = ic_cond .& λcond
     @debug "Stored values compat" λcond cond
 
-    if !recompute && count(skipmissing(cond)) == count(ic_cond)
+    if !recompute && count(skipmissing(cond)) == size(q0, 1)
         _cond = BitArray(replace(cond, missing=>false))
         @debug "Loading compatible values."
         λs = unique(db.df[_cond, :λs])
@@ -82,6 +82,21 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         if !haskey(db.df, :λs)
             db.df[:λs] = Array{Union{Missing, Float64}}(fill(missing, size(db.df, 1)))
         end
+
+        if size(q0, 1) < count(ic_cond)
+            @debug "Removing clones." size(q0, 1) count(ic_cond)
+            # then we have to continue with only on set of initial conditions
+            # clones can only appear because of a quantity that was computed
+            # with different parameters and all the clones have the same size
+            if recompute
+                ic_cond .&= λcond
+            end
+            # we will keep only the first clone
+            ic_cond = replace(ic_cond[end:-1:1], true=>false,
+                count=count(ic_cond)-size(q0, 1))[end:-1:1]
+
+        end
+
         update!(db, df, ic_cond, vals)
 
         plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
