@@ -120,7 +120,7 @@ end
 
 function append_cloned!(df1, df2, cond)
     if count(cond) > 0
-        @debug "Cloning" count(cond) cond
+        @debug "Cloning" df1, df2, count(cond) cond
         df_ = DataFrame()
         for c in names(df1)
             df_[c] = df1[c][cond]

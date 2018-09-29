@@ -467,7 +467,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         compat = count(cond) > 0 && !recompute
 
         if compat
-            unique_df = unique(view(db.df, cond))
+            unique_df = unique(view(db.df, cond)[[:q₀, :q₂, :p₀, :p₂]])
             @debug "Loading compatible initial conditions." size(db.df) size(unique_df)
             q = hcat(unique_df[:q₀], unique_df[:q₂])
             p = hcat(unique_df[:p₀], unique_df[:p₂])
