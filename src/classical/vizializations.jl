@@ -3,9 +3,9 @@ using StatsBase
 using StatMakie
 using Statistics
 using IntervalArithmetic
+using StaticArrays
 
-function plot_sim(sim, sc=Scene(resolution=(1000,1000)); ms=0.005,
-        colors=axes(sim, 1))
+function plot_sim(sim; colors=axes(sim, 1), idxs=(1,2))
     points = Point2f0[]
     all_colors = Float32[]
     m = minimum(colors)
@@ -16,13 +16,26 @@ function plot_sim(sim, sc=Scene(resolution=(1000,1000)); ms=0.005,
         simᵢ = sim[i]
         if length(sim[i]) ≠ 0
             append!(all_colors, Iterators.repeated(colors[i], length(simᵢ)))
-            append!(points, (Point2f0(simᵢ[i,1], simᵢ[i,2]) for i in axes(simᵢ, 1)))
+            append!(points, (Point2f0(simᵢ[i,idxs[1]], simᵢ[i,idxs[2]]) for i in axes(simᵢ, 1)))
         end
     end
     colormap = to_colormap(:viridis, length(colors))
     pushfirst!(colormap, RGBAf0(0.1, 0.1, 0.1, 0.1))
-    scatter!(sc, points, markersize=ms, color=all_colors, colormap=colormap,
+
+    scene = Scene(resolution=(1000, 1000))
+    ui_height = 50
+    ui = Scene(scene, lift(x-> IRect(0, 0, widths(x)[1], ui_height), pixelarea(scene)))
+    plot_scene = Scene(scene, lift(x-> IRect(0, ui_height, widths(x) .- Vec(0, ui_height)), pixelarea(scene)))
+    campixel!(ui)
+    translate!(ui, 10, 10, 0)
+    ms = AbstractPlotting.textslider(ui, range(0.001, stop=1., length=1000), "scale")
+    AbstractPlotting.vbox(ui.plots)
+    push!(ms, 0.05)
+
+    scatter!(plot_scene, points, markersize=ms, color=all_colors, colormap=colormap,
         colorrange=(m - 2Δ, M))
+
+    return scene
 end
 
 function plot_hist(hist; colors=Float32.(axes(hist.weights, 1)))
@@ -122,7 +135,7 @@ function select_bin(scene, idx, l, hist, scatter_sc, v)
 end
 
 function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, ms=0.05, rootkw=(xrtol=1e-6, atol=1e-6), n=10)
+        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6), n=10)
     q0, p0 = initial_conditions(E, alg=ic_alg)
     alg_type = typeof(alg)
     sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=alg.T, rootkw=rootkw)
@@ -137,13 +150,14 @@ function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
     replace!(colors, NaN=>0)
 
     hist_sc = plot_hist(hist, colors=colors)
-    scatter_sc = plot_sim(sim, ms=ms, colors=l1)
+    scatter_sc_with_ui = plot_sim(sim, colors=l1)
+    scatter_sc = scatter_sc_with_ui.children[2]
     if axis == 3
         scatter_sc[Axis][:names, :axisnames] = ("q₂","p₂")
     else
         scatter_sc[Axis][:names, :axisnames] = ("q₁","p₁")
     end
-    sc = AbstractPlotting.vbox(scatter_sc, hist_sc)
+    sc = AbstractPlotting.vbox(scatter_sc_with_ui, hist_sc)
 
     scatter_idx = setup_click(scatter_sc)
     hist_idx = setup_click(hist_sc)
@@ -155,18 +169,54 @@ function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
 end
 
 function poincare_explorer(E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, ms=0.05, rootkw=(xrtol=1e-6, atol=1e-6))
+        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
     scene = poincare_explorer(E, alg, λmap, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, ms=ms, rootkw=rootkw)
+        nbins=nbins, rootkw=rootkw)
     scene.children[2][Axis][:names, :axisnames] = ("λ","N")
 
     return scene
 end
 
 function poincare_explorer(E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, ms=0.05, rootkw=(xrtol=1e-6, atol=1e-6))
+        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
     poincare_explorer(E, alg, d∞, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, ms=ms, rootkw=rootkw)
+        nbins=nbins, rootkw=rootkw)
+end
+
+function plot_err(errs)
+    scene = Scene(resolution=(1000,1000))
+    points = Float32[]
+    colors = Float32[]
+
+    for i ∈ axes(errs, 1)
+        eᵢ = errs[i]
+        if length(eᵢ) ≠ 0
+            append!(colors, Iterators.repeated(i, length(eᵢ)))
+            append!(points, eᵢ)
+        end
+    end
+
+    scatter!(scene, points, color=colors)
+end
+
+function poincare_error(E, ic_alg, T=1e4; params=PhysicalParameters(), axis=3,
+        sgn=-1, rootkw=(xrtol=1e-6, atol=1e-6))
+    q0, p0 = initial_conditions(E, alg=ic_alg)
+    sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=T,
+        rootkw=rootkw, full=true)
+    err(z) = [H(zᵢ[SVector{2}(1:2)], zᵢ[SVector{2}(3:4)], params) - E for zᵢ in z]
+    errs = err.(sim)
+
+    err_sc = plot_err(errs)
+    scatter_sc_with_ui = plot_sim(sim, colors=maximum.(errs), idxs=(2,4))
+    scatter_sc = scatter_sc_with_ui.children[2]
+    if axis == 3
+        scatter_sc[Axis][:names, :axisnames] = ("q₂","p₂")
+    else
+        scatter_sc[Axis][:names, :axisnames] = ("q₁","p₁")
+    end
+
+    AbstractPlotting.vbox(scatter_sc_with_ui, err_sc)
 end
 
 # colorlegend(s1.children[2], s1.children[2][end][:colormap][], s1.children[2][end][:colorrange])
@@ -177,13 +227,20 @@ alg = DynSys()
 
 s1 = poincare_explorer(E, alg, ic_alg)
 
-s2 = poincare_explorer(E, DInftyAlgorithm(), ic_alg)
+s2 = poincare_error(E, ic_alg, 1e4)
 
 center!(s2.children[1])[Axis][:names, :axisnames] = ("q₂","p₂")
 s1.children[2][end][:color][]
 
 q0, p0 = initial_conditions(E, alg=ic_alg)
+sim = poincaremap(q0, p0, sgn=-1, axis=3, t=1e4, full=true)
 
+errs = err.(sim)
+linesegments([Float32.(errs[1]), Float32.(errs[2])])
+
+linesegments([rand(Float32, 10); rand(Float32, 10)])
+
+Float32.(errs[1])
 l1 = λmap(q0, p0, DynSys())
 l2 = λmap(q0, p0, DynSys(T=1e5))
 l3 = λmap(E, alg=DynSys(T=2e5), ic_alg=PoincareRand(n=200))
@@ -231,27 +288,35 @@ function histogram_evolution(E, alg, f, ic_alg, n; params=PhysicalParameters())
     hist_sc = plot_hist(hist, colors=colors)
 end
 
-ui_width = 260
-n = [1,4,10]
-scene = Scene(resolution = (1000, 1000))
-scatter!(rand(10))
+@everywhere using OrdinaryDiffEq
+
+using ParallelDataTransfer
+
+z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
+p = PhysicalParameters()
+sendto(workers(), z0=z0)
+sendto(workers(), p=p)
+
+# function monte_solve(q0, p0)
+prob = ODEProblem(ż, z0[1], (0, 1e4), p)
+@everywhere prob_func(prob, i, repeat) = ODEProblem(ż, z0[i], (0, 1e4), p)
+monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
+sim = solve(monte_prob, Vern9(), abstol=1e-14, reltol=0, maxiters=1e9, saveat=0.1,
+    num_monte=size(z0, 1), parallel_type=:pmap)
 
 
-ui = Scene(scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)))
-plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
-theme(ui)[:plot] = NT(raw = true)
-campixel!(ui)
-translate!(ui, 10, 50, 0)
+@fetchfrom 2 InteractiveUtils.varinfo()
 
-n_slider = AbstractPlotting.textslider(ui, n, "n")
 
-ui
-AbstractPlotting.hbox!(ui.plots)
 
-foreach(n_slider) do n
-    @show n
-    return nothing
-end
+
+
+
+
+
+
+
+
 
 import Plots
 Plots.plot(
