@@ -116,7 +116,7 @@ end
 arr_type(df, col) = nonnothingtype(eltype(df[col]))
 
 function reduce_col(df, col, r)
-    DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = levels(df[:B]))
+    DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = unique(df[:B]))
 end
 
 function collect_data(alg, ic_alg, Einterval)
