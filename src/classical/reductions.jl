@@ -135,7 +135,7 @@ function mean_over_ic(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
         params::PhysicalParameters, Einterval::Interval=0..Inf;
         reduction=hist_mean)
     df = collect_data(alg, ic_alg, Einterval)
-    by(df |> @filter(_.B == params.B && _.D == params.D) |> DataFrame, :E,
+    by(df[(df[:B] .== params.B) .& (df[:D] .== params.D), :], :E,
         df->reduce_col(df, s, reduction))
 end
 
