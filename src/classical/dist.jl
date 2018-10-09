@@ -41,26 +41,36 @@ function build_df(d∞, alg)
     return df
 end
 
-function monte_dist(f, p, u0::Array{SVector{N, T}}, d0, t, dt=0.01;
-    parallel_type=:none,
-    kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9)) where {N, T}
+function parallel_evolution(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
+        params=PhysicalParameters(), parallel_type=:none,
+        output_func=(sol, i)->(sol, false),
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
 
     n = length(u0)
     tspan = (0., t)
-    prob = dist_prob(f, p, u0[1], d0, tspan)
+    prob = parallel_problem(ż, [u0[1], u0[1].+d0/√N], tspan, params)
 
-    prob_func(prob, i, repeat) = dist_prob(f, p, u0[i], d0, tspan)
-    function output_func(sol, i)
-        idx1 = SVector{N}(1:N)
-        idx2 = SVector{N}(N+1:2N)
-
-        d = DiffEqArray([norm(s[idx1] - s[idx2]) for s in sol.u],sol.t)
-        return d, false
-    end
+    prob_func(prob, i, repeat) = parallel_problem(ż, [u0[i], u0[i].+d0/√N], tspan, params)
     monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
     sim = solve(monte_prob, Vern9(); kwargs..., saveat=dt, num_monte=n, parallel_type=parallel_type)
 
     return sim
+end
+
+function monte_dist(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
+        params=PhysicalParameters(), parallel_type=:none,
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
+
+    function output_func(sol, i)
+        idx1 = SVector{N}(1:N)
+        idx2 = SVector{N}(N+1:2N)
+
+        d = DiffEqArray([norm(s[idx1] - s[idx2]) for s in sol.u], sol.t)
+        return d, false
+    end
+
+    parallel_evolution(u0, d0, t, dt, params=params, parallel_type=parallel_type,
+        output_func=output_func, kwargs=kwargs)
 end
 
 function monte_dist(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t, dt=0.01;
