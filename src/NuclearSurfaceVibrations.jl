@@ -40,8 +40,10 @@ include("classical/dist.jl")
 @reexport using .DInfty
 
 include("classical/reductions.jl")
+include("classical/diagnostics.jl")
 
 @reexport using .Reductions
+@reexport using .Diagnostics
 
 end  # module Classical
 
