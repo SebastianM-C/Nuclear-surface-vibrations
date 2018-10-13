@@ -30,14 +30,11 @@ a Monte Carlo simulation.
 - `sgn = 1`: The intersection direction with the plane
 """
 function poincaremap(q0, p0; params=PhysicalParameters(), t=500., axis=3, sgn=1,
-        diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9),
+        diff_eq_kwargs=(abstol=1e-14, reltol=0, maxiters=1e9),
         rootkw=(xrtol=1e-6, atol=1e-6), full=false)
-    # temp fix for poincaresos special case
-    q0[:,1] .+= eps()
     z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
     idxs = full ? (1:4) : (axis==3) ? [4,2] : [3,1]
     output = pmap(eachindex(z0)) do i
-        @debug "idx" i
         ds = ChaosTools.ContinuousDynamicalSystem(Hamiltonian.ż, z0[i], params)
         poincaresos(ds, (axis, 0), t; direction=sgn, idxs=idxs,
             diff_eq_kwargs...)
