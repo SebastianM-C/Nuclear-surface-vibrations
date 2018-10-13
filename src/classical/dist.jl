@@ -41,37 +41,77 @@ function build_df(d∞, alg)
     return df
 end
 
-function monte_dist(f, p, u0::Array{SVector{N, T}}, d0, t, dt=0.01;
-    parallel_type=:none,
-    kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9)) where {N, T}
+function parallel_evolution(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
+        params=PhysicalParameters(), parallel_type=:none,
+        alg=Vern9(), output_func=(sol, i)->(sol, false), cb=nothing,
+        save_start=true, save_everystep=true,
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
 
     n = length(u0)
-    tspan = (0., t)
-    prob = dist_prob(f, p, u0[1], d0, tspan)
+    tspan = (zero(typeof(t)), t)
+    prob = parallel_problem(ż, [u0[1], u0[1].+d0/√N], tspan, params, cb)
 
-    prob_func(prob, i, repeat) = dist_prob(f, p, u0[i], d0, tspan)
-    function output_func(sol, i)
-        idx1 = SVector{N}(1:N)
-        idx2 = SVector{N}(N+1:2N)
-
-        d = DiffEqArray([norm(s[idx1] - s[idx2]) for s in sol.u],sol.t)
-        return d, false
-    end
+    prob_func(prob, i, repeat) = parallel_problem(ż, [u0[i], u0[i].+d0/√N],
+        tspan, params, cb)
     monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    sim = solve(monte_prob, Vern9(); kwargs..., saveat=dt, num_monte=n, parallel_type=parallel_type)
+    if save_start==false && save_everystep==false
+        dt = eltype(prob.tspan)[]
+    end
+    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
+        save_start=save_start, save_everystep=save_everystep,
+        parallel_type=parallel_type)
 
     return sim
 end
 
-function monte_dist(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t, dt=0.01;
-    parallel_type=:none,
-    kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9)) where {N, T}
+function parallel_evolution(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}},
+        d0, t, dt=0.01; params=PhysicalParameters(), parallel_type=:none,
+        alg=DPRKN12(), output_func=(sol, i)->(sol, false), cb=nothing,
+        save_start=true, save_everystep=true,
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
 
+    @assert length(q0) == length(p0)
     n = length(q0)
-    tspan = (0., t)
-    prob = dist_prob(p, p0[1], q0[1], d0, tspan)
+    tspan = (zero(typeof(t)), t)
+    prob = parallel_problem(ṗ, q̇, [p0[1], p0[1].+d0/√(2N)], [q0[1], q0[1].+d0/√(2N)],
+        tspan, params, cb)
 
-    prob_func(prob, i, repeat) = dist_prob(p, p0[i], q0[i], d0, tspan)
+    prob_func(prob, i, repeat) = parallel_problem(ṗ, q̇, [p0[i], p0[i].+d0/√(2N)],
+        [q0[i], q0[i].+d0/√(2N)], tspan, params, cb)
+    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
+    if save_start==false && save_everystep==false
+        dt = eltype(prob.tspan)[]
+    end
+    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
+        save_start=save_start, save_everystep=save_everystep,
+        parallel_type=parallel_type)
+
+    return sim
+end
+
+function monte_dist(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
+        params=PhysicalParameters(), parallel_type=:none,
+        save_start=true, save_everystep=true, alg=Vern9(),
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
+
+    function output_func(sol, i)
+        idx1 = SVector{N}(1:N)
+        idx2 = SVector{N}(N+1:2N)
+
+        d = DiffEqArray([norm(s[idx1] - s[idx2]) for s in sol.u], sol.t)
+        return d, false
+    end
+
+    parallel_evolution(u0, d0, t, dt, params=params, parallel_type=parallel_type,
+        output_func=output_func, save_start=save_start, save_everystep=save_everystep,
+        alg=alg, kwargs=kwargs)
+end
+
+function monte_dist(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t, dt=0.01;
+    params=PhysicalParameters(), parallel_type=:none,
+    save_start=true, save_everystep=true, alg=DPRKN12(),
+    kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
+
     function output_func(sol, i)
         idx1 = SVector{N}(1:N)
         idx2 = SVector{N}(N+1:2N)
@@ -79,10 +119,28 @@ function monte_dist(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t
         d = DiffEqArray([norm(vcat(s[1,:][idx1] - s[1,:][idx2], s[2,:][idx1] - s[2,:][idx2])) for s in sol.u],sol.t)
         return d, false
     end
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    sim = solve(monte_prob, DPRKN12(); kwargs..., saveat=dt, num_monte=n, parallel_type=parallel_type)
 
-    return sim
+    parallel_evolution(p0, q0, d0, t, dt, params=params, parallel_type=parallel_type,
+        output_func=output_func, save_start=save_start, save_everystep=save_everystep,
+        alg=alg, kwargs=kwargs)
+end
+
+function d∞(z0::Array{SVector{N, T}}, alg::DInftyAlgorithm;
+    params=PhysicalParameters(), parallel_type=:none) where {N, T}
+
+    @unpack d0, solver, diff_eq_kwargs = alg
+    t = alg.T
+
+    function output_func(sol, i)
+        idx1 = SVector{N}(1:N)
+        idx2 = SVector{N}(N+1:2N)
+
+        d = norm(sol[end][idx1] - sol[end][idx2])
+        return d, false
+    end
+    parallel_evolution(z0, d0, t, params=params, parallel_type=parallel_type,
+        output_func=output_func, save_start=false, save_everystep=false,
+        alg=solver, kwargs=diff_eq_kwargs)
 end
 
 function d∞(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, alg::DInftyAlgorithm;
@@ -90,23 +148,18 @@ function d∞(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, alg::DInftyAlg
 
     @unpack d0, solver, diff_eq_kwargs = alg
     t = alg.T
-    n = length(q0)
-    tspan = (0., t)
-    prob = dist_prob(ṗ, q̇, p0[1], q0[1], params, d0, tspan)
 
-    prob_func(prob, i, repeat) = dist_prob(ṗ, q̇, p0[i], q0[i], params, d0, tspan)
     function output_func(sol, i)
         idx1 = SVector{N}(1:N)
         idx2 = SVector{N}(N+1:2N)
 
-        d = norm(vcat(sol[1][1,:][idx1] - sol[1][1,:][idx2], sol[1][2,:][idx1] - sol[1][2,:][idx2]))
+        d = norm(vcat(sol[end][1,:][idx1] - sol[end][1,:][idx2],
+                      sol[end][2,:][idx1] - sol[end][2,:][idx2]))
         return d, false
     end
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    sim = solve(monte_prob, solver; diff_eq_kwargs..., save_start=false, save_everystep=false,
-        num_monte=n, parallel_type=parallel_type)
-
-    return sim
+    parallel_evolution(p0, q0, d0, t, params=params, parallel_type=parallel_type,
+        output_func=output_func, save_start=false, save_everystep=false,
+        alg=solver, kwargs=diff_eq_kwargs)
 end
 
 function d∞(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
