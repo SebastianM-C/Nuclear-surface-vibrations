@@ -1,6 +1,6 @@
 module DInfty
 
-export d∞, Γ, DInftyAlgorithm
+export monte_dist, d∞, Γ, DInftyAlgorithm
 
 using ..Distributed
 using ..Parameters
@@ -41,72 +41,7 @@ function build_df(d∞, alg)
     return df
 end
 
-function parallel_evolution(u0, t;
-        params=PhysicalParameters(), parallel_type=:none,
-        alg=Vern9(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true, saveat=typeof(t)[],
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9))
-
-    n = length(u0)
-    tspan = (zero(typeof(t)), t)
-    prob = parallel_problem(ż, u0[1], tspan, params, cb)
-
-    prob_func(prob, i, repeat) = parallel_problem(ż, u0[i], tspan, params, cb)
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
-        save_start=save_start, save_everystep=save_everystep,
-        parallel_type=parallel_type)
-
-    return sim
-end
-
-function parallel_evolution(z0::Array{SVector{N, T}}, d0, t;
-        params=PhysicalParameters(), parallel_type=:none,
-        alg=Vern9(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true, saveat=typeof(t)[],
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
-
-    u0 = [(z, z.+d0/√N) for z ∈ z0]
-    parallel_evolution(u0, t, params=params, parallel_type=parallel_type,
-        alg=alg, output_func=output_func, cb=cb, save_start=save_start,
-        save_everystep=save_everystep, saveat=saveat, kwargs=kwargs)
-end
-
-function parallel_evolution(u1, u2, t;
-        params=PhysicalParameters(), parallel_type=:none,
-        alg=DPRKN12(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true, saveat=typeof(t)[],
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9))
-
-    @assert length(u1) == length(u2)
-    n = length(u1)
-    tspan = (zero(typeof(t)), t)
-    prob = parallel_problem(ṗ, q̇, u1[1], u2[1], tspan, params, cb)
-
-    prob_func(prob, i, repeat) = parallel_problem(ṗ, q̇, u1[i], u2[i], tspan, params, cb)
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
-        save_start=save_start, save_everystep=save_everystep,
-        parallel_type=parallel_type)
-
-    return sim
-end
-
-function parallel_evolution(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}},
-        d0, t; params=PhysicalParameters(), parallel_type=:none,
-        alg=DPRKN12(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true, saveat=typeof(t)[],
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
-
-    u1 = [(p[i], p[i].+d0/√(2N)) for p ∈ p0]
-    u2 = [(q[i], q[i].+d0/√(2N)) for q ∈ q0]
-
-    parallel_evolution(u1, u2, t, params=params, parallel_type=parallel_type,
-        alg=alg, output_func=output_func, cb=cb, save_start=save_start,
-        save_everystep=save_everystep, saveat=saveat, kwargs=kwargs)
-end
-
-function monte_dist(u0::Array{SVector{N, T}}, d0, t;
+function monte_dist(z0::Array{SVector{N, T}}, d0, t;
         params=PhysicalParameters(), parallel_type=:none, alg=Vern9(),
         save_start=true, save_everystep=true, saveat=typeof(t)[],
         kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
@@ -119,7 +54,7 @@ function monte_dist(u0::Array{SVector{N, T}}, d0, t;
         return d, false
     end
 
-    parallel_evolution(u0, d0, t, params=params, parallel_type=parallel_type,
+    parallel_evolution(ż, z0, d0, t, params=params, parallel_type=parallel_type,
         output_func=output_func, save_start=save_start, save_everystep=save_everystep,
         saveat=saveat, alg=alg, kwargs=kwargs)
 end
@@ -138,7 +73,7 @@ function monte_dist(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t;
         return d, false
     end
 
-    parallel_evolution(p0, q0, d0, t, params=params, parallel_type=parallel_type,
+    parallel_evolution(ṗ, q̇, p0, q0, d0, t, params=params, parallel_type=parallel_type,
         output_func=output_func, save_start=save_start, save_everystep=save_everystep,
         saveat=saveat, alg=alg, kwargs=kwargs)
 end

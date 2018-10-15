@@ -1,6 +1,6 @@
 module Lyapunov
 
-export λmap, LyapunovAlgorithm, DynSys
+export λmap, λproblem, LyapunovAlgorithm, DynSys, TimeRescaling
 
 using ..Distributed
 using ..Parameters: @with_kw, @unpack
@@ -8,12 +8,17 @@ using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
 using ..Classical: AbstractAlgorithm
+using ..DInfty: monte_dist
+using ..ParallelTrajectories
 
 using ChaosTools
 using Plots, LaTeXStrings
 using OrdinaryDiffEq
+using DiffEqCallbacks
+using RecursiveArrayTools
 using StaticArrays
 using DataFrames
+using LinearAlgebra: norm
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
 
@@ -24,6 +29,15 @@ abstract type LyapunovAlgorithm <: AbstractAlgorithm end
     upper_threshold = 1e-6
     lower_threshold = 1e-12
     dt = 20.
+    solver::OrdinaryDiffEqAlgorithm = Vern9()
+    diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
+end
+
+@with_kw struct TimeRescaling{R <: Real} <: LyapunovAlgorithm  @deftype R
+    T = 1e4
+    Ttr = 1e3
+    τ = 5.
+    d0 = 1e-9
     solver::OrdinaryDiffEqAlgorithm = Vern9()
     diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
@@ -133,7 +147,114 @@ function λmap(q0, p0, alg::DynSys; params=PhysicalParameters())
     return λs
 end
 
-function λ_time(p, p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9, t=1e4, ttr=100., τ=5.;
+# Too slow
+#
+# function λmap(q0::Array{SVector{N, X}}, p0::Array{SVector{N, X}}, alg::TimeRescaling,
+#         timeseries::Val=Val(false); params=PhysicalParameters(), parallel_type=:none) where {N, X}
+#     @unpack T, Ttr, d0, τ, solver, diff_eq_kwargs = alg
+#
+#     idx1 = SVector{N}(1:N)
+#     idx2 = SVector{N}(N+1:2N)
+#     @assert length(p0) == length(q0)
+#     n = length(p0)
+#
+#     @inbounds dist(u) =
+#         norm(vcat(u[1,:][idx1] - u[1,:][idx2], u[2,:][idx1] - u[2,:][idx2]))
+#
+#     function affect!(integrator)
+#         a = dist(integrator.u)/d0
+#         Δp = integrator.u[1,:][idx1] - integrator.u[1,:][idx2]
+#         Δq = integrator.u[2,:][idx1] - integrator.u[2,:][idx2]
+#         integrator.u = ArrayPartition(vcat(integrator.u.x[1][idx1],
+#                                             integrator.u.x[1][idx1] + Δp/a),
+#                                       vcat(integrator.u.x[2][idx1],
+#                                             integrator.u.x[2][idx1] + Δq/a))
+#     end
+#     rescale = PeriodicCallback(affect!, τ, save_positions=(true, false))
+#
+#     function output_func_full(sol, i)
+#         λᵢ = [log(dist(s)/d0)/τ for s in sol.u]
+#         n = length(sol.t)
+#         λ_series = DiffEqArray([sum(λᵢ[1:i]) for i in eachindex(λᵢ)]./(1:n), sol.t)
+#         return λ_series, false
+#     end
+#
+#     function output_func_end(sol, i)
+#         λ = sum(log.(dist.(sol.u ./ d0))) / (length(sol) * τ)
+#         return λ, false
+#     end
+#
+#     output_func = timeseries == Val(false) ? output_func_end : output_func_full
+#
+#     if Ttr ≠ 0
+#         sim_tr = parallel_evolution(ṗ, q̇, p0, q0, d0, Ttr, params=params, parallel_type=parallel_type,
+#             save_start=false, save_everystep=false, alg=solver, kwargs=diff_eq_kwargs)
+#         p0 = [sim_tr.u[i].u[end][1,:] for i=1:n]
+#         q0 = [sim_tr.u[i].u[end][2,:] for i=1:n]
+#
+#         parallel_evolution(ṗ, q̇, p0, q0, T, params=params, parallel_type=parallel_type,
+#             alg=solver, saveat=τ, output_func=output_func, cb=rescale, kwargs=diff_eq_kwargs)
+#     else
+#         parallel_evolution(ṗ, q̇, p0, q0, d0, T, params=params, parallel_type=parallel_type,
+#             alg=solver, saveat=τ, output_func=output_func, cb=rescale, kwargs=diff_eq_kwargs)
+#     end
+# end
+
+function λproblem(p0::SVector{N}, q0::SVector{N}, alg::TimeRescaling;
+        params=PhysicalParameters()) where {N}
+    @unpack T, Ttr, d0, τ, solver, diff_eq_kwargs = alg
+
+    idx1 = SVector{N}(1:N)
+    idx2 = SVector{N}(N+1:2N)
+    @assert length(p0) == length(q0)
+
+    @inbounds dist(u) =
+        norm(vcat(u[1,:][idx1] - u[1,:][idx2], u[2,:][idx1] - u[2,:][idx2]))
+
+    function affect!(integrator)
+        a = dist(integrator.u)/d0
+        Δp = integrator.u[1,:][idx1] - integrator.u[1,:][idx2]
+        Δq = integrator.u[2,:][idx1] - integrator.u[2,:][idx2]
+        integrator.u = ArrayPartition(vcat(integrator.u.x[1][idx1],
+                                            integrator.u.x[1][idx1] + Δp/a),
+                                      vcat(integrator.u.x[2][idx1],
+                                            integrator.u.x[2][idx1] + Δq/a))
+    end
+    rescale = PeriodicCallback(affect!, τ, save_positions=(false, false))
+    a = SavedValues(typeof(T), eltype(q0[1]))
+    save_func(u, t, integrator) = log(dist(u) / d0)
+    sc = SavingCallback(save_func, a, saveat=zero(T):τ:T)
+    cs = CallbackSet(sc, rescale)
+    f1, f2 = create_parallel(ṗ, q̇)
+
+    if Ttr ≠ 0
+        prob_tr = parallel_problem(ṗ, q̇, [p0, p0.+d0/√(2N)], [q0, q0.+d0/√(2N)], Ttr, params)
+        sol_tr = solve(prob_tr, solver; diff_eq_kwargs..., save_start=false, save_everystep=false)
+
+        remake(prob_tr, tspan=T, callback=cs, u0=sol_tr[end])
+    else
+        parallel_problem(ṗ, q̇, [p0, p0.+d0/√(2N)], [q0, q0.+d0/√(2N)], T, params, cs)
+    end
+end
+
+function λ(sol)
+    a = sol.prob.callback.discrete_callbacks[1].affect!.saved_values
+    τ = a.t[2] - a.t[1]
+    DiffEqArray([sum(a.saveval[1:i]) / (τ*i) for i in eachindex(a.saveval)], a.t)
+end
+
+function λmap(q0::Array{SVector{N, X}}, p0::Array{SVector{N, X}}, alg::TimeRescaling;
+        params=PhysicalParameters(), parallel_type=:none) where {N, X}
+    λprob = λproblem(p0[1], q0[1], alg)
+    prob_func(prob, i, repeat) = λproblem(p0[i], q0[i], alg)
+    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
+    sim = solve(monte_prob, solver; diff_eq_kwargs..., num_monte=length(p0),
+        save_start=false, save_everystep=false, parallel_type=parallel_type)
+
+    λs = [λ(sim[i]) for i ∈ eachindex(sim)]
+end
+
+function λ_time(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0=1e-9, t=1e4, ttr=100., τ=5.;
     parallel_type=:none,
     kwargs=Dict(:abstol=>1e-14, :reltol=>0, :maxiters=>1e9)) where {N, T}
 
