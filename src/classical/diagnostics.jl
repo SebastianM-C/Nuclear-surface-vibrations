@@ -6,6 +6,7 @@ using ..Parameters
 using ..Hamiltonian
 using ..ParallelTrajectories
 using ..DInfty: parallel_evolution
+using ..Lyapunov
 
 using OrdinaryDiffEq
 using DiffEqMonteCarlo
@@ -53,6 +54,34 @@ function monte_err(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t, dt
     parallel_evolution(p0, q0, d0, t, dt, params=params, parallel_type=parallel_type,
         output_func=output_func, save_start=save_start, save_everystep=save_everystep,
         alg=alg, kwargs=kwargs)
+end
+
+function λ_parameter_variation(p0::SVector, q0::SVector,
+        algs::Vector{TimeRescaling{R}}; params=PhysicalParameters(),
+        parallel_type=:none) where {R}
+    @unpack T, Ttr, d0, τ, solver, diff_eq_kwargs = algs[1]
+
+    prob = λproblem(p0, q0, algs[1])
+    prob_func(prob, i, repeat) = λproblem(p0, q0, algs[i])
+    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
+    sim = solve(monte_prob, solver; diff_eq_kwargs..., num_monte=length(algs),
+        save_start=false, save_everystep=false, parallel_type=parallel_type)
+
+    λs = [Lyapunov.λ(sim[i]) for i ∈ eachindex(sim)]
+
+    return λs
+end
+
+function λ_τ_variation(p0::SVector, q0::SVector, τs;
+        T=1e4, Ttr=1e3, d0=1e-9, solver=DPRKN12(),
+        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9),
+        params=PhysicalParameters(), parallel_type=:none)
+
+    algs = [TimeRescaling(T, Ttr, τ, d0, solver, kwargs) for τ in τs]
+    λs = λ_parameter_variation(p0, q0, algs, params=params,
+        parallel_type=parallel_type)
+
+    return [λ.u[end] for λ ∈ λs]
 end
 
 end  # module Diagnostics

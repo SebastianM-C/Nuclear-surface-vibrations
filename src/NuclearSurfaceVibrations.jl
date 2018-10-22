@@ -32,12 +32,12 @@ include("classical/initial_conditions.jl")
 using .ParallelTrajectories
 
 include("classical/poincare.jl")
-include("classical/lyapunov.jl")
 include("classical/dist.jl")
+include("classical/lyapunov.jl")
 
 @reexport using .Poincare
-@reexport using .Lyapunov
 @reexport using .DInfty
+@reexport using .Lyapunov
 
 include("classical/reductions.jl")
 include("classical/diagnostics.jl")

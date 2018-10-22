@@ -1,6 +1,6 @@
 module DInfty
 
-export d∞, Γ, DInftyAlgorithm
+export monte_dist, d∞, Γ, DInftyAlgorithm
 
 using ..Distributed
 using ..Parameters
@@ -41,57 +41,9 @@ function build_df(d∞, alg)
     return df
 end
 
-function parallel_evolution(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
-        params=PhysicalParameters(), parallel_type=:none,
-        alg=Vern9(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true,
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
-
-    n = length(u0)
-    tspan = (zero(typeof(t)), t)
-    prob = parallel_problem(ż, [u0[1], u0[1].+d0/√N], tspan, params, cb)
-
-    prob_func(prob, i, repeat) = parallel_problem(ż, [u0[i], u0[i].+d0/√N],
-        tspan, params, cb)
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    if save_start==false && save_everystep==false
-        dt = eltype(prob.tspan)[]
-    end
-    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
-        save_start=save_start, save_everystep=save_everystep,
-        parallel_type=parallel_type)
-
-    return sim
-end
-
-function parallel_evolution(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}},
-        d0, t, dt=0.01; params=PhysicalParameters(), parallel_type=:none,
-        alg=DPRKN12(), output_func=(sol, i)->(sol, false), cb=nothing,
-        save_start=true, save_everystep=true,
-        kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
-
-    @assert length(q0) == length(p0)
-    n = length(q0)
-    tspan = (zero(typeof(t)), t)
-    prob = parallel_problem(ṗ, q̇, [p0[1], p0[1].+d0/√(2N)], [q0[1], q0[1].+d0/√(2N)],
-        tspan, params, cb)
-
-    prob_func(prob, i, repeat) = parallel_problem(ṗ, q̇, [p0[i], p0[i].+d0/√(2N)],
-        [q0[i], q0[i].+d0/√(2N)], tspan, params, cb)
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=output_func)
-    if save_start==false && save_everystep==false
-        dt = eltype(prob.tspan)[]
-    end
-    sim = solve(monte_prob, alg; kwargs..., saveat=dt, num_monte=n,
-        save_start=save_start, save_everystep=save_everystep,
-        parallel_type=parallel_type)
-
-    return sim
-end
-
-function monte_dist(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
-        params=PhysicalParameters(), parallel_type=:none,
-        save_start=true, save_everystep=true, alg=Vern9(),
+function monte_dist(z0::Array{SVector{N, T}}, d0, t;
+        params=PhysicalParameters(), parallel_type=:none, alg=Vern9(),
+        save_start=true, save_everystep=true, saveat=typeof(t)[],
         kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
 
     function output_func(sol, i)
@@ -102,27 +54,28 @@ function monte_dist(u0::Array{SVector{N, T}}, d0, t, dt=0.01;
         return d, false
     end
 
-    parallel_evolution(u0, d0, t, dt, params=params, parallel_type=parallel_type,
+    parallel_evolution(ż, z0, d0, t, params=params, parallel_type=parallel_type,
         output_func=output_func, save_start=save_start, save_everystep=save_everystep,
-        alg=alg, kwargs=kwargs)
+        saveat=saveat, alg=alg, kwargs=kwargs)
 end
 
-function monte_dist(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t, dt=0.01;
-    params=PhysicalParameters(), parallel_type=:none,
-    save_start=true, save_everystep=true, alg=DPRKN12(),
+function monte_dist(p0::Array{SVector{N, T}}, q0::Array{SVector{N, T}}, d0, t;
+    params=PhysicalParameters(), parallel_type=:none, alg=DPRKN12(),
+    save_start=true, save_everystep=true, saveat=typeof(t)[],
     kwargs=(abstol=1e-14, reltol=0, maxiters=1e9)) where {N, T}
 
     function output_func(sol, i)
         idx1 = SVector{N}(1:N)
         idx2 = SVector{N}(N+1:2N)
 
-        d = DiffEqArray([norm(vcat(s[1,:][idx1] - s[1,:][idx2], s[2,:][idx1] - s[2,:][idx2])) for s in sol.u],sol.t)
+        d = DiffEqArray([norm(vcat(s[1,:][idx1] - s[1,:][idx2],
+                                   s[2,:][idx1] - s[2,:][idx2])) for s in sol.u],sol.t)
         return d, false
     end
 
-    parallel_evolution(p0, q0, d0, t, dt, params=params, parallel_type=parallel_type,
+    parallel_evolution(ṗ, q̇, p0, q0, d0, t, params=params, parallel_type=parallel_type,
         output_func=output_func, save_start=save_start, save_everystep=save_everystep,
-        alg=alg, kwargs=kwargs)
+        saveat=saveat, alg=alg, kwargs=kwargs)
 end
 
 function d∞(z0::Array{SVector{N, T}}, alg::DInftyAlgorithm;
