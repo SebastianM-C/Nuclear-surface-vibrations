@@ -27,6 +27,7 @@ include("db.jl")
 include("classical/hamiltonian.jl")
 include("classical/parallel.jl")
 include("classical/initial_conditions.jl")
+include("classical/custom.jl")
 @reexport using .InitialConditions
 @reexport using .Hamiltonian
 using .ParallelTrajectories

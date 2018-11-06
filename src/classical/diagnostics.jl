@@ -63,13 +63,9 @@ function λ_parameter_variation(p0::SVector, q0::SVector,
 
     prob = λproblem(p0, q0, algs[1])
     prob_func(prob, i, repeat) = λproblem(p0, q0, algs[i])
-    monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
+    monte_prob = MonteCarloProblem(prob, prob_func=prob_func, output_func=Lyapunov.output_λ)
     sim = solve(monte_prob, solver; diff_eq_kwargs..., num_monte=length(algs),
         save_start=false, save_everystep=false, parallel_type=parallel_type)
-
-    λs = [Lyapunov.λ(sim[i]) for i ∈ eachindex(sim)]
-
-    return λs
 end
 
 function λ_τ_variation(p0::SVector, q0::SVector, τs;
