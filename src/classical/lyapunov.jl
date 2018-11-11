@@ -331,7 +331,8 @@ end
 function λmap(p0, q0, alg::TimeRescaling; params::PhysicalParameters)
     p0 = [SVector{2}(p0[i, :]) for i ∈ axes(p0, 1)]
     q0 = [SVector{2}(q0[i, :]) for i ∈ axes(q0, 1)]
-    λmap(p0, q0, alg, params=params, parallel_type=:pmap).u
+    z0 = [vcat(p0[i], q0[i]) for i ∈ axes(q0, 1)]
+    λmap(z0, alg, params=params, parallel_type=:pmap).u
 end
 
 function λmap(p0, q0, alg::DynSys; params::PhysicalParameters)

@@ -57,18 +57,18 @@ end
     params.A * p
 end
 
-function q̇(dq, p, q, params, t)
-    A = params
-    p₀, p₂ = p
-    dq[1] = A * p₀
-    dq[2] = A * p₂
-end
-
-function ṗ(dq, p, q, params, t)
-    A, B, D = params
-    q₀, q₂ = q
-    dp[1] = -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2)
-    dp[2] = -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2))
-end
+# function q̇(dq, p, q, params, t)
+#     A = params
+#     p₀, p₂ = p
+#     dq[1] = A * p₀
+#     dq[2] = A * p₂
+# end
+#
+# function ṗ(dq, p, q, params, t)
+#     A, B, D = params
+#     q₀, q₂ = q
+#     dp[1] = -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2)
+#     dp[2] = -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2))
+# end
 
 end  # module Hamiltonian

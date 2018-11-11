@@ -15,7 +15,7 @@ using ..Hamiltonian
     poincaremap(q0, p0; params=(A=1, B=0.55, D=0.4), t=500., axis=3, sgn=1,
             diff_eq_kwargs=(abstol=1e-14,reltol=0,maxiters=1e9), full=false)
 
-Create a Poincare map at the given energy for the given parameters through
+Create a Poincaré map at the given energy for the given parameters through
 a Monte Carlo simulation.
 
 ## Arguments
