@@ -1,6 +1,6 @@
 using Makie
 using StatsBase
-using StatMakie
+using StatsMakie
 using Statistics
 using IntervalArithmetic
 using StaticArrays
@@ -23,18 +23,12 @@ function plot_sim(sim; colors=axes(sim, 1), idxs=(1,2))
     pushfirst!(colormap, RGBAf0(0.1, 0.1, 0.1, 0.1))
 
     scene = Scene(resolution=(1000, 1000))
-    ui_height = 50
-    ui = Scene(scene, lift(x-> IRect(0, 0, widths(x)[1], ui_height), pixelarea(scene)))
-    plot_scene = Scene(scene, lift(x-> IRect(0, ui_height, widths(x) .- Vec(0, ui_height)), pixelarea(scene)))
-    campixel!(ui)
-    translate!(ui, 10, 10, 0)
-    ms = AbstractPlotting.textslider(ui, range(0.001, stop=1., length=1000), "scale")
-    AbstractPlotting.vbox(ui.plots)
-    push!(ms, 0.05)
 
-    scatter!(plot_scene, points, markersize=ms, color=all_colors, colormap=colormap,
+    ui, ms = AbstractPlotting.textslider(range(0.001, stop=1., length=1000), "scale", start=0.05)
+
+    data = scatter(points, markersize=ms, color=all_colors, colormap=colormap,
         colorrange=(m - 2Δ, M))
-
+    hbox(ui, data, parent=scene)
     return scene
 end
 
@@ -136,20 +130,21 @@ end
 
 function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6), n=10)
-    q0, p0 = initial_conditions(E, alg=ic_alg)
+    q0, p0 = initial_conditions(E, ic_alg)
     alg_type = typeof(alg)
     sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=alg.T, rootkw=rootkw)
     l1 = f(E, alg=alg, ic_alg=ic_alg, params=params)
-    l2 = f(E, alg=alg_type(T=n*alg.T), ic_alg=ic_alg, params=params)
+    # l2 = f(E, alg=alg_type(T=n*alg.T), ic_alg=ic_alg, params=params)
     # l1 = f(q0, p0, alg, params=params)
     # l2 = f(q0, p0, alg_type(T=n*alg.T), params=params)
     hist = fit(StatsBase.Histogram, l1, nbins=nbins, closed=:left)
 
-    Δλ = abs.(l1-l2)./l1
-    colors = [mean(Δλ[idxs_in_bin(b, hist, l1)]) for b in axes(hist.weights, 1)]
-    replace!(colors, NaN=>0)
+    # Δλ = abs.(l1-l2)./l1
+    # colors = [mean(Δλ[idxs_in_bin(b, hist, l1)]) for b in axes(hist.weights, 1)]
 
-    hist_sc = plot_hist(hist, colors=colors)
+    # replace!(colors, NaN=>0)
+
+    hist_sc = plot_hist(hist)#, colors=l1)
     scatter_sc_with_ui = plot_sim(sim, colors=l1)
     scatter_sc = scatter_sc_with_ui.children[2]
     if axis == 3
@@ -159,11 +154,11 @@ function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
     end
     sc = AbstractPlotting.vbox(scatter_sc_with_ui, hist_sc)
 
-    scatter_idx = setup_click(scatter_sc)
-    hist_idx = setup_click(hist_sc)
-
-    select_series(sim, scatter_sc, scatter_idx, hist_sc, l1, hist)
-    select_bin(hist_sc, hist_idx, l1, hist, scatter_sc, sim)
+    # scatter_idx = setup_click(scatter_sc)
+    # hist_idx = setup_click(hist_sc)
+    #
+    # select_series(sim, scatter_sc, scatter_idx, hist_sc, l1, hist)
+    # select_bin(hist_sc, hist_idx, l1, hist, scatter_sc, sim)
 
     return sc
 end
@@ -220,7 +215,7 @@ function poincare_error(E, ic_alg, T=1e4; params=PhysicalParameters(), axis=3,
 end
 
 # colorlegend(s1.children[2], s1.children[2][end][:colormap][], s1.children[2][end][:colorrange])
-E = 1000.
+E = 120.
 ic_alg = PoincareRand(n=200)
 ic_alg = PoincareUniform(n=9,m=9)
 alg = DynSys()
@@ -228,36 +223,6 @@ alg = DynSys()
 s1 = poincare_explorer(E, alg, ic_alg)
 
 s2 = poincare_error(E, ic_alg, 1e4)
-
-center!(s2.children[1])[Axis][:names, :axisnames] = ("q₂","p₂")
-s1.children[2][end][:color][]
-
-q0, p0 = initial_conditions(E, alg=ic_alg)
-sim = poincaremap(q0, p0, sgn=-1, axis=3, t=1e4, full=true)
-
-errs = err.(sim)
-linesegments([Float32.(errs[1]), Float32.(errs[2])])
-
-linesegments([rand(Float32, 10); rand(Float32, 10)])
-
-Float32.(errs[1])
-l1 = λmap(q0, p0, DynSys())
-l2 = λmap(q0, p0, DynSys(T=1e5))
-l3 = λmap(E, alg=DynSys(T=2e5), ic_alg=PoincareRand(n=200))
-
-hist = fit(StatsBase.Histogram, l1, nbins=50, closed=:left)
-Δλ = abs.(l1-l2)./l1
-colors = [mean(Δλ[idxs_in_bin(b, hist, l1)]) for b in axes(hist.weights, 1)]
-replace!(colors, NaN=>0)
-
-m = minimum(colors)
-M = maximum(colors)
-Δ = (M-m) / length(colors)
-colormap = to_colormap(:viridis, length(colors))
-pushfirst!(colormap, RGBAf0(0.1, 0.1, 0.1, 0.1))
-p=plot(hist, color=colors, colormap=colormap,
-    colorrange=(m - 2Δ, M))
-Plots.scatter(q0[:,2], p0[:,2], mz=Δλ)
 
 
 p1=plot(fit(StatsBase.Histogram, l1, nbins=50, closed=:left))
@@ -287,43 +252,3 @@ function histogram_evolution(E, alg, f, ic_alg, n; params=PhysicalParameters())
 
     hist_sc = plot_hist(hist, colors=colors)
 end
-
-@everywhere using OrdinaryDiffEq
-
-using ParallelDataTransfer
-
-z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
-p = PhysicalParameters()
-sendto(workers(), z0=z0)
-sendto(workers(), p=p)
-
-# function monte_solve(q0, p0)
-prob = ODEProblem(ż, z0[1], (0, 1e4), p)
-@everywhere prob_func(prob, i, repeat) = ODEProblem(ż, z0[i], (0, 1e4), p)
-monte_prob = MonteCarloProblem(prob, prob_func=prob_func)
-sim = solve(monte_prob, Vern9(), abstol=1e-14, reltol=0, maxiters=1e9, saveat=0.1,
-    num_monte=size(z0, 1), parallel_type=:pmap)
-
-
-@fetchfrom 2 InteractiveUtils.varinfo()
-
-
-
-
-
-
-
-
-
-
-
-
-import Plots
-Plots.plot(
-    Plots.histogram(l1, nbins=50, xlims=(-0.01,0.23)),
-    Plots.histogram(l2, nbins=50, xlims=(-0.01,0.23)),
-    Plots.histogram(l3, nbins=50, xlims=(-0.01,0.23)),
-    layout=(1,3), size=(1400,500)
-)
-
-using Reactive
