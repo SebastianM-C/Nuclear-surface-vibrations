@@ -148,31 +148,33 @@ function poincare_explorer(E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParam
 end
 
 function plot_err(errs)
-    scene = Scene(resolution=(1000,1000))
-    points = Float32[]
-    colors = Float32[]
+    scene = Scene()
+    colors = to_colormap(:viridis, size(errs, 1))
 
-    for i ∈ axes(errs, 1)
-        eᵢ = errs[i]
-        if length(eᵢ) ≠ 0
-            append!(colors, Iterators.repeated(i, length(eᵢ)))
-            append!(points, eᵢ)
+    series_alpha = map(eachindex(errs)) do i
+        alpha = Node(1.0)
+        if length(errs[i]) ≠ 0
+            c = lift(α-> RGBAf0.(color.(fill(colors[i])), α), alpha)
+            lines!(scene, errs[i], color=c)
         end
+        alpha
     end
+    scene[Axis][:names, :axisnames] = ("Intersection index", "Energy error")
 
-    scatter!(scene, points, color=colors)
+    return scene, series_alpha
 end
 
-function poincare_error(E, ic_alg, T=1e4; params=PhysicalParameters(), axis=3,
+function poincare_error(E, ic_alg, t=1e4; params=PhysicalParameters(), axis=3,
         sgn=-1, rootkw=(xrtol=1e-6, atol=1e-6))
     q0, p0 = initial_conditions(E, alg=ic_alg)
-    sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=T,
+    sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t,
         rootkw=rootkw, full=true)
     err(z) = [H(zᵢ[SVector{2}(1:2)], zᵢ[SVector{2}(3:4)], params) - E for zᵢ in z]
     errs = err.(sim)
 
-    err_sc = plot_err(errs)
-    scatter_sc_with_ui = plot_sim(sim, colors=maximum.(errs), idxs=(2,4))
+    err_sc, err_α = plot_err(errs)
+    idxs = axis == 3 ? (2,4) : (1,3)
+    scatter_sc_with_ui, scatter_α = plot_sim(sim, colors=maximum.(errs), idxs=idxs)
     scatter_sc = scatter_sc_with_ui.children[2]
     if axis == 3
         scatter_sc[Axis][:names, :axisnames] = ("q₂","p₂")
@@ -180,7 +182,25 @@ function poincare_error(E, ic_alg, T=1e4; params=PhysicalParameters(), axis=3,
         scatter_sc[Axis][:names, :axisnames] = ("q₁","p₁")
     end
 
-    AbstractPlotting.vbox(scatter_sc_with_ui, err_sc)
+    selected_plot = setup_click(scatter_sc, 1)
+    # err_idx = setup_click(err_sc, 1)
+
+    series_idx = map(get_series_idx, selected_plot, scatter_sc)
+    on(series_idx) do i
+        if !isa(i, Nothing)
+            scatter_α[i - 1][] = 1.
+            change_α(scatter_α, setdiff(axes(scatter_α, 1), i - 1))
+            err_α[i - 1][] = 1.
+            change_α(err_α, setdiff(axes(err_α, 1), i - 1))
+        else
+            change_α(scatter_α, axes(scatter_α, 1), 1.)
+            change_α(err_α, axes(err_α, 1), 1.)
+        end
+        return nothing
+    end
+
+    scene = Scene()
+    AbstractPlotting.vbox(scatter_sc_with_ui, err_sc, parent=scene)
 end
 
 E = 120.
@@ -189,7 +209,7 @@ ic_alg = PoincareUniform(n=9,m=9)
 alg = DynSys()
 
 s1 = poincare_explorer(E, alg, ic_alg)
-# s2 = poincare_error(E, ic_alg, 1e4)
+s2 = poincare_error(E, ic_alg, 1e4)
 
 a = poincare_explorer(E, alg, λmap, ic_alg)
 
