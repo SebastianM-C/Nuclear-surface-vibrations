@@ -32,13 +32,13 @@ function plot_hist(hist)
     cmap = to_colormap(:viridis, length(hist.weights))
     hist_α = [Node(1.) for i in cmap]
     bincolor(αs...) = RGBAf0.(color.(cmap), αs)
-    αcmap = lift(bincolor, hist_α...)
-    hist_sc = plot(hist, color=Float32.(axes(hist.weights, 1)), colormap=αcmap)
+    colors = lift(bincolor, hist_α...)
+    hist_sc = plot(hist, color=colors)
 
     return hist_sc, hist_α
 end
 
-function change_α(series_alpha, idxs, α=0.01)
+function change_α(series_alpha, idxs, α=0.005)
     foreach(i-> series_alpha[i][] = α, idxs)
 end
 
