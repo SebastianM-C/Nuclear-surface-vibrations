@@ -93,9 +93,9 @@ version = "0.7.0"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "DataStreams", "Dates", "Mmap", "Parsers", "Profile", "Random", "Tables", "Test", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "6dd974f0da3adb8b610cbbba5c95f5efbfa7a4df"
+git-tree-sha1 = "b92c6f626a044cc9619156d54994b94084d40abe"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.4.2"
+version = "0.4.3"
 
 [[Calculus]]
 deps = ["Compat"]
@@ -885,9 +885,9 @@ version = "0.10.1"
 
 [[Parsers]]
 deps = ["Dates", "Mmap", "Test", "WeakRefStrings"]
-git-tree-sha1 = "03375f006e75773b58cbc293bd958aae4152ed1b"
+git-tree-sha1 = "949ca36d47010bee093254467166487c921d490b"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "0.2.13"
+version = "0.2.14"
 
 [[PenaltyFunctions]]
 deps = ["InteractiveUtils", "LearnBase", "LinearAlgebra", "RecipesBase", "Reexport", "Test"]
@@ -981,9 +981,9 @@ version = "0.10.1"
 
 [[QueryOperators]]
 deps = ["DataStructures", "IteratorInterfaceExtensions", "TableShowUtils", "Test"]
-git-tree-sha1 = "22cf30f1972da9936f7bc675d024280fcfe10f36"
+git-tree-sha1 = "922c98a442e4352e1985b267284b6c17035015fe"
 uuid = "2aef5ad7-51ca-5a8f-8e88-e75cf067b44b"
-version = "0.4.0"
+version = "0.5.0"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]

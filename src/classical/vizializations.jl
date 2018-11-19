@@ -28,6 +28,16 @@ function plot_sim(sim; colors=axes(sim, 1), idxs=[1,2])
     return scene, series_alpha
 end
 
+function plot_hist(hist)
+    cmap = to_colormap(:viridis, length(hist.weights))
+    hist_α = [Node(1.) for i in cmap]
+    bincolor(αs...) = RGBAf0.(color.(cmap), αs)
+    αcmap = lift(bincolor, hist_α...)
+    hist_sc = plot(hist, color=Float32.(axes(hist.weights, 1)), colormap=αcmap)
+
+    return hist_sc, hist_α
+end
+
 function change_α(series_alpha, idxs, α=0.01)
     foreach(i-> series_alpha[i][] = α, idxs)
 end
@@ -50,17 +60,6 @@ function setup_click(scene, idx=1)
     return selection
 end
 
-function select_series(scene, selected_plot, series_alpha, hist_sc, vals, hist)
-    series_idx = map(get_series_idx, selected_plot, scene)
-    on(series_idx) do i
-        if !isa(series_idx[], Nothing)
-            change_α(series_alpha, setdiff(axes(series_alpha, 1), series_idx[] - 1))
-        else
-            change_α(series_alpha, axes(series_alpha, 1), 1.)
-        end
-    end
-end 
-
 bin_with_val(val, hist) = searchsortedfirst(hist.edges[1], val) - 1
 
 function idxs_in_bin(i, hist, val)
@@ -70,51 +69,54 @@ function idxs_in_bin(i, hist, val)
     return idx
 end
 
-function select_bin(scene, idx, l, hist, scatter_sc, v)
-    original_sc_colors = copy(scatter_sc[end][:colormap][])
-    original_hist_colors = copy(scene[end][:colormap][])
-    # zero_sc = minimum(scatter_sc[end][:colorrange][])
-    # zero_hist = minimum(scene[end][:colorrange][])
-
-    on(idx) do click_idx
-        println("histogram ", click_idx)
-        if click_idx ≠ 0
-            l_idx = idxs_in_bin(click_idx, hist, l)
-            len = 1
-            splot = scatter_sc[end]
-            for i in axes(v, 1)
-                if i ∉ l_idx
-                    # splot[:color][][len:len+size(v[i], 1)-1] .= zero_sc
-                    # splot[:color][] = splot[:color][]
-                    change_colormap(splot[:colormap], i:i, 0.01)
-                end
-                len += size(v[i], 1)
-            end
-            # scene[end][:color][][setdiff(axes(scene[end][:color][], 1), click_idx)] .= zero_hist
-            # scene[end][:color][] = scene[end][:color][]
-            # change_colormap(scene[end][:colormap], setdiff(axes(scene[end][:colormap][], 1), click_idx))
+function select_series(scene, selected_plot, scatter_α, hist_α, data, hist)
+    series_idx = map(get_series_idx, selected_plot, scene)
+    on(series_idx) do i
+        if !isa(i, Nothing)
+            scatter_α[i - 1][] = 1.
+            change_α(scatter_α, setdiff(axes(scatter_α, 1), i - 1))
+            selected_bin = bin_with_val(data[i-1], hist)
+            hist_α[selected_bin][] = 1.
+            change_α(hist_α, setdiff(axes(hist_α, 1), selected_bin))
         else
-            println("outside")
-            scatter_sc[end][:colormap][] = copy(original_sc_colors)
-            scene[end][:colormap][] = copy(original_hist_colors)
+            change_α(scatter_α, axes(scatter_α, 1), 1.)
+            change_α(hist_α, axes(hist_α, 1), 1.)
         end
         return nothing
     end
 end
-# scatter_sc_with_ui.children[2][end][:colormap]
+
+function select_bin(hist_idx, hist, hist_α, scatter_α, data)
+    on(hist_idx) do i
+        if i ≠ 0
+            hist_α[i][] = 1.
+            change_α(hist_α, setdiff(axes(hist.weights, 1), i))
+            change_α(scatter_α, idxs_in_bin(i, hist, data), 1.)
+            change_α(scatter_α, setdiff(axes(scatter_α, 1), idxs_in_bin(i, hist, data)))
+        else
+            change_α(scatter_α, axes(scatter_α, 1), 1.)
+            change_α(hist_α, axes(hist_α, 1), 1.)
+        end
+        return nothing
+    end
+end
+
 function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
     q0, p0 = initial_conditions(E, ic_alg)
     alg_type = typeof(alg)
     sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=alg.T, rootkw=rootkw)
-    # f=λmap
+
     vals = f(E, alg=alg, ic_alg=ic_alg, params=params)
     hist = fit(StatsBase.Histogram, vals, nbins=nbins, closed=:left)
 
     colors = Float32.(axes(hist.weights, 1))
-    hist_sc = plot(hist, color=colors, colormap=to_colormap(:viridis, length(colors)))
-    scatter_sc_with_ui, series_alpha = plot_sim(sim, colors=vals)
+
+    scatter_sc_with_ui, scatter_α = plot_sim(sim, colors=vals)
     scatter_sc = scatter_sc_with_ui.children[2]
+
+    hist_sc, hist_α = plot_hist(hist)
+
     if axis == 3
         scatter_sc[Axis][:names, :axisnames][] = ("q₂","p₂")
     else
@@ -125,10 +127,10 @@ function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
     selected_plot = setup_click(scatter_sc, 1)
     hist_idx = setup_click(hist_sc, 2)
 
-    select_series(scatter_sc, selected_plot, series_alpha, hist_sc, vals, hist)
-    # select_bin(hist_sc, hist_idx, l1, hist, scatter_sc, sim)
+    select_series(scatter_sc, selected_plot, scatter_α, hist_α, vals, hist)
+    select_bin(hist_idx, hist, hist_α, scatter_α, vals)
 
-    return sc, selected_plot, series_alpha, hist_idx
+    return sc
 end
 
 function poincare_explorer(E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
@@ -183,22 +185,17 @@ end
 
 E = 120.
 # ic_alg = PoincareRand(n=200)
-ic_alg = PoincareUniform(n=4,m=4)
+ic_alg = PoincareUniform(n=9,m=9)
 alg = DynSys()
 
-# s1 = poincare_explorer(E, alg, ic_alg)
+s1 = poincare_explorer(E, alg, ic_alg)
 # s2 = poincare_error(E, ic_alg, 1e4)
 
 a = poincare_explorer(E, alg, λmap, ic_alg)
-a[1]
-a[2]
-change_colormap(a[1].children[1].children[2][end][:colormap], 1:1, 1)
-a[1].children[1].children[2][end][:color][]
-### Random data
-p1 = a[1].children[1].children[2].plots[2]
-findfirst(map(p->p1===p, a[1].children[1].children[2].plots))
 
-=== a[1].children[1].children[2].plots[3]
+
+### Random data
+
 scene = Scene(resolution=(1000, 1000))
 # ui, ms = AbstractPlotting.textslider(range(0.001, stop=1., length=1000), "scale", start=0.05)
 sim = [rand(5,2), rand(7,2), rand(3,2)]
