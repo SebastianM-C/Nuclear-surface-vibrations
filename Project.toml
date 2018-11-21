@@ -6,6 +6,7 @@ repository = "https://github.com/SebastianM-C/Nuclear-surface-vibrations.git"
 version = "0.1.0"
 
 [deps]
+AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 ChaosTools = "608a59af-f2a3-5ad4-90b4-758bdf3122a7"
@@ -27,6 +28,7 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
@@ -48,6 +50,7 @@ StatPlots = "60ddc479-9b66-56df-82fc-76a74619b69c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+StatsMakie = "9d48ccf0-4268-5716-84ff-21228f561db3"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [extras]
