@@ -42,9 +42,11 @@ include("classical/lyapunov.jl")
 
 include("classical/reductions.jl")
 include("classical/diagnostics.jl")
+include("classical/visualizations.jl")
 
 @reexport using .Reductions
-@reexport using .Diagnostics
+export Diagnostics
+export Visualizations
 
 end  # module Classical
 
