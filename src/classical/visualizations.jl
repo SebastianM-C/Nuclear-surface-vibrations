@@ -1,6 +1,7 @@
 module Visualizations
 
-export poincare_explorer
+export poincare_explorer, animate, animate_solution, θϕ_sections,
+    scene_limits2D, scene_limits3D
 
 using ..Hamiltonian
 using ..InitialConditions
@@ -8,13 +9,53 @@ using ..Poincare
 using ..Lyapunov
 using ..DInfty
 
-using Makie
+using AbstractPlotting, GLMakie
 using StatsBase
 using StatsMakie
 using Statistics
 using IntervalArithmetic
 using StaticArrays
+using OrdinaryDiffEq
+using RecursiveArrayTools
+using DiffEqBase
 using Colors: color
+
+x(r, θ, ϕ) = r*sin(θ)*cos(ϕ)
+y(r, θ, ϕ) = r*sin(θ)*sin(ϕ)
+z(r, θ, ϕ) = r*cos(θ)
+
+function R(a₀, a₂, θ, ϕ; R₀=1)
+    ξ = x(1,θ,ϕ)
+    η = y(1,θ,ϕ)
+    ζ = z(1,θ,ϕ)
+
+    return R₀*(1 + √(5/4π)*(√(3/2)*((-a₀/√6 + a₂)*ξ^2 - (a₀/√6 + a₂)*η^2) + a₀*ζ^2))
+end
+
+R(sol::DiffEqBase.AbstractODESolution, t, θ, ϕ; R₀=1) = lift(t->R.(sol(t, idxs=3), sol(t, idxs=4)*√2, θ, ϕ, R₀=R₀), t)
+
+function scene_limits3D(x, y, z)
+    xm, xM = extrema(x)
+    ym, yM = extrema(y)
+    zm, zM = extrema(z)
+
+    FRect3D((xm,ym,zm), (xM-xm,yM-ym,zM-zm))
+end
+
+function scene_limits3D(sol, idxs=[1,2,3])
+    scene_limits3D(sol[idxs[1],:], sol[idxs[2],:], sol[idxs[3],:])
+end
+
+function scene_limits2D(x, y)
+    xm, xM = extrema(x)
+    ym, yM = extrema(y)
+
+    FRect2D((xm,ym), (xM-xm,yM-ym))
+end
+
+function scene_limits2D(sol; idxs=[1,2])
+    scene_limits2D(sol[idxs[1],:], sol[idxs[2],:])
+end
 
 function plot_sim(sim; colors=axes(sim, 1), idxs=[1,2])
     ui, ms = AbstractPlotting.textslider(range(0.001, stop=1., length=1000), "scale", start=0.05)
@@ -211,6 +252,68 @@ function poincare_error(E, ic_alg, t=1e4; params=PhysicalParameters(), axis=3,
 
     scene = Scene()
     AbstractPlotting.vbox(scatter_sc_with_ui, err_sc, parent=scene)
+end
+
+function grids(N=100; θ_range=(0,π), ϕ_range=(0,2π))
+    θ = range(θ_range..., length=N)
+    ϕ = range(ϕ_range..., length=2N)
+    Θ = [ϑ for ϑ in θ, φ in ϕ]
+    Φ = [φ for ϑ in θ, φ in ϕ]
+
+    return Θ, Φ
+end
+
+function animate_solution(sol, t; θ_range=(0,π), ϕ_range=(0,2π), R₀=1)
+    θ, ϕ = grids(θ_range=θ_range, ϕ_range=ϕ_range)
+
+    r = R(sol, t, θ, ϕ)
+    X = lift(r->x.(r,θ,ϕ), r)
+    Y = lift(r->y.(r,θ,ϕ), r)
+    Z = lift(r->z.(r,θ,ϕ), r)
+
+    q₀(t) = sol(t, idxs=3)
+    q₂(t) = sol(t, idxs=4)
+    all_r = [R.(q₀(t), q₂(t), θ, ϕ, R₀=R₀) for t ∈ sol.t]
+    ex = convert(Matrix, VectorOfArray([[extrema(x.(r,θ,ϕ))...] for r in all_r]))
+    ey = convert(Matrix, VectorOfArray([[extrema(y.(r,θ,ϕ))...] for r in all_r]))
+    ez = convert(Matrix, VectorOfArray([[extrema(z.(r,θ,ϕ))...] for r in all_r]))
+    limits = scene_limits3D(ex, ey, ez)
+
+    return surface(X, Y, Z, limits=limits, scale_plot=false)
+end
+
+function animate(t, tspan, Δt=0.02)
+    for tᵢ in range(tspan..., step=Δt)
+        push!(t, tᵢ)
+        sleep(1/120)
+    end
+end
+
+function θ_section(sol, t, N=100; θ=π/2, ϕ=range(0, 2π, length=N), limits, R₀=1)
+    r = R(sol, t, θ, ϕ)
+
+    X = lift(r->x.(r,θ,ϕ), r)
+    Y = lift(r->y.(r,θ,ϕ), r)
+
+    return lines(X, Y, axis=(names=(axisnames=("x","y"),),), limits=limits, scale_plot=false)
+end
+
+function ϕ_section(sol, t, N=100; θ=range(-π, π, length=N), ϕ=0, limits, R₀=1)
+    r = R(sol, t, θ, ϕ)
+    X = lift(r->x.(r,θ,ϕ), r)
+    Z = lift(r->z.(r,θ,ϕ), r)
+
+    return lines(X, Z, axis=(names=(axisnames=("x","z"),),), limits=limits, scale_plot=false)
+end
+
+function θϕ_sections(sol, t, limits)
+    xm, xw = limits.origin[1], limits.widths[1]
+    ym, yw = minimum(limits.origin[2:3]), maximum(limits.widths[2:3])
+    lim = FRect2D((xm,ym), (xw,yw))
+    θ_sc = θ_section(sol, t, limits=lim)
+    ϕ_sc = ϕ_section(sol, t, limits=lim)
+
+    return hbox(θ_sc, ϕ_sc)
 end
 
 end  # module Visualizations
