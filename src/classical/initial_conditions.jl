@@ -1,8 +1,7 @@
 module InitialConditions
 
 export initial_conditions, InitialConditionsAlgorithm, Plane,
-    PoincareRand, PoincareUniform, InscribedCircle, Symmetric, Asymmetric,
-    unpack_with_nothing, db_concat
+    PoincareRand, PoincareUniform, InscribedCircle, Symmetric, Asymmetric
 
 using ..Utils
 using ..Hamiltonian
@@ -13,7 +12,6 @@ using ..Classical: AbstractAlgorithm
 using Logging, Random
 using NLsolve, NLopt, Roots
 using Plots, LaTeXStrings
-using DataFrames, CSV
 using GeometricalPredicates
 
 abstract type InitialConditionsAlgorithm <: AbstractAlgorithm end
@@ -297,146 +295,35 @@ function save_err(plt, alg, E, prefix)
     savefig(plt, "$prefix/E$E/$fn/initial_energy_err.pdf")
 end
 
-function build_df(q, p, E, alg, params)
-    N = size(q, 1)
-    n, m, border_n = unpack_with_nothing(alg)
-    df = DataFrame()
-    df[:q₀] = categorical(q[:,1])
-    df[:q₂] = categorical(q[:,2])
-    df[:p₀] = categorical(p[:,1])
-    df[:p₂] = categorical(p[:,2])
-    df[:n] = categorical(fill(n, N))
-    df[:m] = categorical((fill(m, N)))
-    df[:E] = categorical(fill(E, N))
-    df[:B] = categorical(fill(params.B, N))
-    df[:D] = categorical(fill(params.D, N))
-    df[:initial_cond_alg] = categorical(fill(string(typeof(alg)), N))
-    df[:border_n] = categorical((fill(border_n, N)))
-    allowmissing!(df)
-
-    return df
-end
-
-function DataBaseInterface.DataBase(params::PhysicalParameters)
-    col_names = ["q₀", "q₂", "p₀", "p₂", "n", "m", "E", "B", "D",
-        "initial_cond_alg", "border_n"]
-    types = [Union{Missing, Float64}, # q₀
-            Union{Missing, Float64}, # q₂
-            Union{Missing, Float64}, # p₀
-            Union{Missing, Float64}, # p₂
-            Union{Missing, Int64}, # n
-            Union{Missing, Int64}, # m
-            Union{Missing, Float64}, # E
-            Union{Missing, Float64}, # B
-            Union{Missing, Float64}, # D
-            Union{Missing, String}, # initial_cond_alg
-            Union{Missing, Int64} # border_n
-            ]
-    columns = Dict(col_names .=> types)
-    prefix = "output/classical/B$(params.B)-D$(params.D)"
-    location = (prefix, "z0.csv")
-    # check for additional columns
-    all_cols = split(readline(joinpath(location...)), ",")
-    if length(all_cols) > length(col_names)
-        standard_col_idx = findfirst.(isequal.(col_names, Ref(all_cols)))
-        others = all_cols[setdiff(axes(all_cols, 1), standard_col_idx)]
-        # @debug "other cols" others all_cols
-        # register types
-        if !isa(findfirst(isequal("λs"), others), Nothing)
-            push!(columns, "λs"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_alg"), others), Nothing)
-            push!(columns, "lyap_alg"=>Union{Missing, String})
-        end
-        if !isa(findfirst(isequal("lyap_T"), others), Nothing)
-            push!(columns, "lyap_T"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_Ttr"), others), Nothing)
-            push!(columns, "lyap_Ttr"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_d0"), others), Nothing)
-            push!(columns, "lyap_d0"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_ut"), others), Nothing)
-            push!(columns, "lyap_ut"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_lt"), others), Nothing)
-            push!(columns, "lyap_lt"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_dt"), others), Nothing)
-            push!(columns, "lyap_dt"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("lyap_integ"), others), Nothing)
-            push!(columns, "lyap_integ"=>Union{Missing, String})
-        end
-        if !isa(findfirst(isequal("lyap_diffeq_kw"), others), Nothing)
-            push!(columns, "lyap_diffeq_kw"=>Union{Missing, String})
-        end
-        if !isa(findfirst(isequal("d∞"), others), Nothing)
-            push!(columns, "d∞"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("dinf_alg"), others), Nothing)
-            push!(columns, "dinf_alg"=>Union{Missing, String})
-        end
-        if !isa(findfirst(isequal("dinf_T"), others), Nothing)
-            push!(columns, "dinf_T"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("dinf_d0"), others), Nothing)
-            push!(columns, "dinf_d0"=>Union{Missing, Float64})
-        end
-        if !isa(findfirst(isequal("dinf_integ"), others), Nothing)
-            push!(columns, "dinf_integ"=>Union{Missing, String})
-        end
-        if !isa(findfirst(isequal("dinf_diffeq_kw"), others), Nothing)
-            push!(columns, "dinf_diffeq_kw"=>Union{Missing, String})
-        end
-        length(all_cols) ≠ length(columns) && ErrorException("Unknown columns found in $others")
-    end
-    DataBase(location, columns)
-end
-
 function extract_params(file, re=r"B([0-9]+\.[0-9]+)-D([0-9]\.[0-9]+)")
     m = match(re, file)
     PhysicalParameters(B=parse(Float64, m[1]), D=parse(Float64, m[2]))
 end
 
-function db_concat(name::Regex=r"z0.csv";
-        re::Regex=r"B([0-9]+\.[0-9]+)-D([0-9]\.[0-9]+)")
-    filenames = files(name; location="classical", re=re)
-    p1 = extract_params(filenames[1], re)
-    db = DataBase(p1)
-
-    for f in filenames
-        p = extract_params(f, re)
-        db_ = DataBase(p)
-        if size(db.df, 2) > size(db_.df, 2)
-            for c in setdiff(names(db.df), names(db_.df))
-                db_.df[c] = CategoricalArray{eltype(db.df[c])}(fill(missing, size(db_.df, 1)))
-            end
-        else
-            for c in setdiff(names(db_.df), names(db.df))
-                db.df[c] = CategoricalArray{eltype(db_.df[c])}(fill(missing, size(db.df, 1)))
-            end
-        end
-        append!(db.df, db_.df[names(db.df)])
-    end
-
-    sort!(db.df, :B)
-
-    return db
+function depchain(p::PhysicalParameters, E, alg::InitialConditionsAlgorithm)
+    ((A=p.A,),(D=p.D,),(B=p.B,),(E=E,),(ic_alg=alg,))
 end
 
-function DataBaseInterface.update!(db::DataBase, df, ic_cond, alg)
-    DataBaseInterface.fix_column_types(db, df)
-    icdf = db.df[ic_cond, names(df)]
-    @debug "Selected compatible initial conditions" icdf
-    cond = compatible(icdf, alg)
-    @debug "Updating copy" cond
-    icdf = db.df[ic_cond, :]
-    update!(icdf, df, cond)
-    deleterows!(db, ic_cond)
-    append!(db.df, icdf[names(db.df)])
-    update_file(db)
+function get_or_compute(g, ic_deps)
+    ic_alg = ic_deps[end].ic_alg
+    lastn, cpaths = walkdep(g, foldr(=>, ic_deps))
+    if lastn == ic_deps[end] && length(cpaths) > 0
+        nodes = get_prop.(Ref(g), g[foldr(=>, ic_deps)])
+        q = Array{eltype(nodes[1].q₀)}(undef, ic_alg.n, 2)
+        p = Array{eltype(nodes[1].p₀)}(undef, ic_alg.n, 2)
+        for (i, n) in enumerate(nodes)
+            q[i, :] .= (n.q₀, n.q₂)
+            p[i, :] .= (n.p₀, n.p₂)
+        end
+    else
+        E = ic_deps[end-1].E
+        params = PhysicalParameters(A=ic_deps[1].A, D=ic_deps[2].D, B=ic_deps[3].B)
+        q, p = initial_conditions(E, ic_alg; params=params)
+        add_bulk!(g, foldr(=>, ic_deps), (q₀=q[:,1],q₂=q[:,2], p₀=p[:,1],p₂=p[:,2]))
+        savechanges(g)
+    end
+
+    return q, p
 end
 
 function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
@@ -446,50 +333,11 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         mkpath(prefix)
     end
 
-    n, m, border_n = unpack_with_nothing(alg)
+    g = initalize()
+    ic_deps = depchain(params, E, alg)
+    q, p = get_or_compute(g, ic_deps)
 
-    if !isfile("$prefix/z0.csv")
-        @debug "No initial conditions file found. Generating new conditions."
-        q, p = initial_conditions(E, alg; params=params)
-        df = build_df(q, p, E, alg, params)
-
-        db = DataBase((prefix, "z0.csv"), df)
-
-        plt = energy_err(q, p, E, alg, params)
-        save_err(plt, alg, E, prefix)
-    else
-        db = DataBase(params)
-        vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
-                    [n, m, E, string(typeof(alg)), border_n])
-        cond = compatible(db.df, vals)
-        @debug "Checking compatibility with stored initial conditions" cond
-
-        compat = count(cond) > 0 && !recompute
-
-        if compat
-            unique_df = unique(view(db.df, cond)[[:q₀, :q₂, :p₀, :p₂]])
-            @debug "Loading compatible initial conditions." size(db.df) size(unique_df)
-            q = hcat(unique_df[:q₀], unique_df[:q₂])
-            p = hcat(unique_df[:p₀], unique_df[:p₂])
-        else
-            @debug "Incompatible initial conditions. Generating new conditions."
-            q, p = initial_conditions(E, alg; params=params)
-            df = build_df(q, p, E, alg, params)
-
-            if recompute
-                DataBaseInterface.deleterows!(db, cond)
-            end
-            append_with_missing!(db, df)
-            update_file(db)
-            plt = energy_err(q, p, E, alg, params)
-            save_err(plt, alg, E, prefix)
-        end
-    end
-    arr_type = nonnothingtype(eltype(q))
-    # FIXME
-    plt = energy_err(disallowmissing(Array{arr_type}(q)), disallowmissing(Array{arr_type}(p)), E, alg, params)
-    save_err(plt, alg, E, prefix)
-    return disallowmissing(Array{arr_type}(q)), disallowmissing(Array{arr_type}(p))
+    return q, p
 end
 
 end  # module InitialConditions
