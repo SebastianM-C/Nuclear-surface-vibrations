@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using DiffEqCallbacks
 using RecursiveArrayTools
 using StaticArrays
-using DataFrames
+using LightGraphs: outneighbors
 using LinearAlgebra: norm
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
@@ -42,89 +42,30 @@ end
     diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
 
-function build_df(λs, alg)
-    N = length(λs)
-    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
-    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
-    df = DataFrame()
-    df[:λs] = categorical(λs)
-    df[:lyap_alg] = categorical(fill(string(typeof(alg)), N))
-    df[:lyap_T] = categorical(fill(T, N))
-    df[:lyap_Ttr] = categorical(fill(Ttr, N))
-    df[:lyap_d0] = categorical(fill(d0, N))
-    df[:lyap_ut] = categorical(fill(upper_threshold, N))
-    df[:lyap_lt] = categorical(fill(lower_threshold, N))
-    df[:lyap_dt] = categorical(fill(dt, N))
-    df[:lyap_integ] = categorical(fill("$solver", N))
-    df[:lyap_diffeq_kw] = categorical(fill("$diff_eq_kwargs", N))
-    allowmissing!(df)
-
-    return df
-end
-
 function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DynSys(), recompute=false)
 
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    g = initalize()
     q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
-    db = DataBase(params)
-    n, m, border_n = unpack_with_nothing(ic_alg)
-    ic_vals = Dict([:n, :m, :E, :initial_cond_alg, :border_n] .=>
-                [n, m, E, string(typeof(ic_alg)), border_n])
-    ic_cond = compatible(db.df, ic_vals)
-    @debug "Initial conditions compat" ic_cond
-    # T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = unpack_with_nothing(alg)
-    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
 
-    vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
-                :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
-                [string(typeof(alg)), T, Ttr, d0, upper_threshold,
-                lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
-    λcond = compatible(db.df, vals)
-    cond = ic_cond .& λcond
-    @debug "Stored values compat" λcond cond
-
-    if !recompute && count(skipmissing(cond)) == size(q0, 1)
-        _cond = BitArray(replace(cond, missing=>false))
-        @debug "Loading compatible values."
-        λs = unique(db.df[_cond, :λs])
+    ic_deps = InitialConditions.depchain(params, E, ic_alg)
+    pahs = paths_through(g, foldr(=>, ic_deps))
+    if mapreduce(v->has_prop(g, v, :λ_alg), &, outneighbors(g, g[ic_deps[end]]))
+        λs = g[:λ, ic_deps..., (λ_alg=alg,)]
     else
-        @debug "Incompatible values. Computing new values."
         λs = λmap(p0, q0, alg; params=params)
-        df = build_df(λs, alg)
-
-        if !haskey(db.df, :λs)
-            db.df[:λs] = Array{Union{Missing, Float64}}(fill(missing, size(db.df, 1)))
-        end
-
-        if size(q0, 1) < count(ic_cond)
-            @debug "Removing clones." size(q0, 1) count(ic_cond)
-            # then we have to continue with only on set of initial conditions
-            # clones can only appear because of a quantity that was computed
-            # with different parameters and all the clones have the same size
-            if recompute
-                ic_cond .&= λcond
-            end
-            # we will keep only the first clone
-            ic_cond = replace(ic_cond[end:-1:1], true=>false,
-                count=count(ic_cond)-size(q0, 1))[end:-1:1]
-
-        end
-
-        update!(db, df, ic_cond, vals)
-
-        plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
-        fn = string(typeof(alg)) * "_T$T" * "_hist"
-        fn = replace(fn, "{Float64}" => "")
-        savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
+        add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
+        savechanges(g)
     end
-    arr_type = nonnothingtype(eltype(λs))
-    # FIXME
-    plt = histogram(disallowmissing(Array{arr_type}(λs)), nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
-    fn = string(typeof(alg)) * "_T$T" * "_hist"
-    fn = replace(fn, "{Float64}" => "")
-    savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
-    return disallowmissing(Array{arr_type}(λs))
+
+    return λs
+    # # FIXME
+    # plt = histogram(disallowmissing(Array{arr_type}(λs)), nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
+    # fn = string(typeof(alg)) * "_T$T" * "_hist"
+    # fn = replace(fn, "{Float64}" => "")
+    # savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
+    # return disallowmissing(Array{arr_type}(λs))
 end
 
 # Too slow
