@@ -67,7 +67,7 @@ function plot_sim(sim; colors=axes(sim, 1), idxs=[1,2])
         alpha = Node(1.0)
         if length(sim[i]) ≠ 0
             cmap = lift(α-> RGBAf0.(color.(fill(get_color(i), size(simᵢ, 1))), α), alpha)
-            scatter!(data, [Point2f0(simᵢ[i, idxs[1]], simᵢ[i, idxs[2]]) for i in axes(simᵢ, 1)],
+            scatter!(data, [Point2f0(simᵢ[i, idxs[1]], simᵢ[i, idxs[2]]) for i in axes(simᵢ)[1]],
             colormap=cmap, color=fill(colors[i], size(simᵢ, 1)), markersize=ms)
         end
         alpha
@@ -104,7 +104,7 @@ function setup_click(scene, idx=1)
     selection = Node{Any}(0)
     on(scene.events.mousebuttons) do buttons
         if ispressed(scene, Mouse.left) && AbstractPlotting.is_mouseinside(scene)
-            plt, click_idx = Makie.mouse_selection(scene)
+            plt, click_idx = AbstractPlotting.mouse_selection(scene)
             selection[] = (plt, click_idx)[idx]
         end
     end
