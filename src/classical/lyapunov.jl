@@ -48,7 +48,7 @@ function computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
     λs, t = @timed λmap(p0, q0, alg; params=params)
     @debug "Computing values took $t seconds."
     _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
-    @debug "Adding to graph took $t seconds."
+    @debug "Adding λs to graph took $t seconds."
     savechanges(g)
 
     T = alg.T
@@ -82,8 +82,8 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         # right ones
         λ_algs = union(outneighbors.(Ref(g), ic_vertices)...)
         if mapreduce(a->g[a] == (λ_alg=alg,), |, λ_algs)
-            @debug "Loading saved values"
-            λs = g[:λ, ic_deps..., (λ_alg=alg,)]
+            λs, t = @timed g[:λ, ic_deps..., (λ_alg=alg,)]
+            @debug "Loading saved λs took $t seconds."
         else
             λs = computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
         end

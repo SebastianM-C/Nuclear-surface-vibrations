@@ -318,8 +318,10 @@ function get_or_compute(g, ic_deps)
     else
         E = ic_deps[end-1].E
         params = PhysicalParameters(A=ic_deps[1].A, D=ic_deps[2].D, B=ic_deps[3].B)
-        q, p = initial_conditions(E, ic_alg; params=params)
-        add_bulk!(g, foldr(=>, ic_deps), (q₀=q[:,1],q₂=q[:,2], p₀=p[:,1],p₂=p[:,2]))
+        (q, p), t = @timed initial_conditions(E, ic_alg; params=params)
+        @debug "Generating initial conditions took $t seconds."
+        _, t = @timed add_bulk!(g, foldr(=>, ic_deps), (q₀=q[:,1],q₂=q[:,2], p₀=p[:,1],p₂=p[:,2]))
+        @debug "Adding initial conditions to graph took $t seconds."
         savechanges(g)
     end
 
