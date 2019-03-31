@@ -44,30 +44,54 @@ end
     diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
 
+function computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
+    λs, t = @timed λmap(p0, q0, alg; params=params)
+    @debug "Computing values took $t seconds."
+    _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
+    @debug "Adding to graph took $t seconds."
+    savechanges(g)
+
+    T = alg.T
+    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
+    plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
+    fn = string(typeof(alg)) * "_T$T" * "_hist"
+    fn = replace(fn, "{Float64}" => "")
+    dir = "$prefix/"*string(typeof(ic_alg))
+    if !isdir(dir)
+        mkpath(dir)
+    end
+    savefig(plt, dir*"/lyapunov_$fn.pdf")
+
+    return λs
+end
+
 function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DynSys(), recompute=false)
 
-    prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
-    g = initalize()
     q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
+    g = initalize()
 
     ic_deps = InitialConditions.depchain(params, E, ic_alg)
     pahs = paths_through(g, foldr(=>, ic_deps))
-    if mapreduce(v->has_prop(g, v, :λ_alg), &, outneighbors(g, g[ic_deps[end]]))
-        λs = g[:λ, ic_deps..., (λ_alg=alg,)]
+    # outneighbors(g, g[ic_deps[end]]) are all the compatible initial conditions
+    # we need to check that for each initial condition all the
+    # outneighbors have at least a λ computed
+    ic_vertices = outneighbors(g, g[ic_deps[end]])
+    if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :λ_alg)), &, ic_vertices)
+        # we have some λs computed, we now have to check if they are the
+        # right ones
+        λ_algs = union(outneighbors.(Ref(g), ic_vertices)...)
+        if mapreduce(a->g[a] == (λ_alg=alg,), |, λ_algs)
+            @debug "Loading saved values"
+            λs = g[:λ, ic_deps..., (λ_alg=alg,)]
+        else
+            λs = computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
+        end
     else
-        λs = λmap(p0, q0, alg; params=params)
-        add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
-        savechanges(g)
+        λs = computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
     end
 
     return λs
-    # # FIXME
-    # plt = histogram(disallowmissing(Array{arr_type}(λs)), nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
-    # fn = string(typeof(alg)) * "_T$T" * "_hist"
-    # fn = replace(fn, "{Float64}" => "")
-    # savefig(plt, "$prefix/"*string(typeof(ic_alg))*"/lyapunov_$fn.pdf")
-    # return disallowmissing(Array{arr_type}(λs))
 end
 
 function λ_timeseries_problem(p0::SVector{N}, q0::SVector{N}, alg::TimeRescaling;
