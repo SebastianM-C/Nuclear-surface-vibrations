@@ -29,42 +29,46 @@ end
 
 H(p, q, params=PhysicalParameters()) = T(p, params.A) + V(q, params)
 
-@inbounds @inline function ż(z, p, t)
-    @unpack A, B, D = p
-    p₀, p₂ = z[SVector{2}(1:2)]
-    q₀, q₂ = z[SVector{2}(3:4)]
+@inline function ż(z, p, t)
+    @inbounds begin
+        @unpack A, B, D = p
+        p₀, p₂ = z[1], z[2]
+        q₀, q₂ = z[3], z[4]
 
-    return SVector{4}(
-        -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2),
-        -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2)),
-        A * p₀,
-        A * p₂
-    )
+        return SVector{4}(
+            -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2),
+            -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2)),
+            A * p₀,
+            A * p₂
+        )
+    end
 end
 
-@inbounds @inline function ṗ(p, q, params, t)
-    @unpack A, B, D = params
-    dp1 = -A * q[1] - 3 * B / √2 * (q[2]^2 - q[1]^2) - D * q[1] * (q[1]^2 + q[2]^2)
-    dp2 = -q[2] * (A + 3 * √2 * B * q[1] + D * (q[1]^2 + q[2]^2))
-    return SVector{2}(dp1, dp2)
+@inline function ṗ(p, q, params, t)
+    @inbounds begin
+        @unpack A, B, D = params
+        dp1 = -A * q[1] - 3 * B / √2 * (q[2]^2 - q[1]^2) - D * q[1] * (q[1]^2 + q[2]^2)
+        dp2 = -q[2] * (A + 3 * √2 * B * q[1] + D * (q[1]^2 + q[2]^2))
+        return SVector{2}(dp1, dp2)
+    end
 end
 
-@inbounds @inline function q̇(p, q, params, t)
+@inline function q̇(p, q, params, t)
     params.A * p
 end
 
-function q̇(dq, p, q, params, t)
-    A = params
-    p₀, p₂ = p
-    dq[1] = A * p₀
-    dq[2] = A * p₂
-end
-
-function ṗ(dq, p, q, params, t)
-    A, B, D = params
-    q₀, q₂ = q
-    dp[1] = -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2)
-    dp[2] = -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2))
-end
+# function q̇(dq, p, q, params, t)
+#     A = params
+#     p₀, p₂ = p
+#     dq[1] = A * p₀
+#     dq[2] = A * p₂
+# end
+#
+# function ṗ(dq, p, q, params, t)
+#     A, B, D = params
+#     q₀, q₂ = q
+#     dp[1] = -A * q₀ - 3 * B / √2 * (q₂^2 - q₀^2) - D * q₀ * (q₀^2 + q₂^2)
+#     dp[2] = -q₂ * (A + 3 * √2 * B * q₀ + D * (q₀^2 + q₂^2))
+# end
 
 end  # module Hamiltonian

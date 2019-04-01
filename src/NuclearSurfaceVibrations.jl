@@ -1,5 +1,3 @@
-__precompile__(false)
-
 module NuclearSurfaceVibrations
 
 export Classical, Quantum
@@ -10,8 +8,10 @@ using Distributed
 include("utils.jl")
 using .Utils
 
-@everywhere using Pkg
-@everywhere Pkg.activate(".")
+# Use the JULIA_PROJECT environment variable to pass the environment to the
+# workers. See https://github.com/JuliaLang/julia/issues/28781
+# @everywhere using Pkg
+# @everywhere Pkg.activate(".")
 
 abstract type AbstractAlgorithm end
 
@@ -22,11 +22,14 @@ using ..Utils
 using ..Distributed
 using ..Parameters
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
+# Fix for https://github.com/JuliaIO/ImageMagick.jl/issues/140
+using ImageMagick
 
 include("db.jl")
 include("classical/hamiltonian.jl")
 include("classical/parallel.jl")
 include("classical/initial_conditions.jl")
+include("classical/custom.jl")
 @reexport using .InitialConditions
 @reexport using .Hamiltonian
 using .ParallelTrajectories
@@ -41,9 +44,11 @@ include("classical/lyapunov.jl")
 
 include("classical/reductions.jl")
 include("classical/diagnostics.jl")
+include("classical/visualizations.jl")
 
 @reexport using .Reductions
-@reexport using .Diagnostics
+export Diagnostics
+export Visualizations
 
 end  # module Classical
 

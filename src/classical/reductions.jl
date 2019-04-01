@@ -12,7 +12,7 @@ using ..Utils
 using ..Classical: AbstractAlgorithm
 
 using Plots, LaTeXStrings
-using Query, StatPlots
+using Query, StatsPlots
 using StatsBase
 using Statistics
 using DataFrames
@@ -61,43 +61,43 @@ function DInfty.Γ(E, reduction, d0, p)
     Γ(λ(E), d_inf(E))
 end
 
-function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
-        alg::LyapunovAlgorithm, Einterval::Interval=0..Inf)
-    n, m, border_n = unpack_with_nothing(ic_alg)
-    ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
-                [n, m, string(typeof(ic_alg)), border_n])
-    ic_cond = compatible(db.df, ic_vals)
-    E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
-    @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
-
-    vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
-                :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
-                [string(typeof(alg)), T, Ttr, d0, upper_threshold,
-                lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
-    λcond = compatible(db.df, vals)
-    cond = ic_cond .& λcond .& E_cond
-    cond = replace(cond, missing=>false)
-
-    db.df[cond, :]
-end
-
-function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
-        alg::DInftyAlgorithm, Einterval::Interval=0..Inf)
-    n, m, border_n = unpack_with_nothing(ic_alg)
-    ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
-                [n, m, string(typeof(ic_alg)), border_n])
-    ic_cond = compatible(db.df, ic_vals)
-    E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
-    @unpack T, d0, solver, diff_eq_kwargs = alg
-
-    vals = Dict([:dinf_alg, :dinf_T, :dinf_d0, :dinf_integ, :dinf_diffeq_kw] .=>
-                [string(typeof(alg)), T, d0, "$solver", "$diff_eq_kwargs"])
-    dcond = compatible(db.df, vals)
-    cond = ic_cond .& dcond .& E_cond
-    cond = replace(cond, missing=>false)
-
-    db.df[cond, :]
-end
+# function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
+#         alg::LyapunovAlgorithm, Einterval::Interval=0..Inf)
+#     n, m, border_n = unpack_with_nothing(ic_alg)
+#     ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
+#                 [n, m, string(typeof(ic_alg)), border_n])
+#     ic_cond = compatible(db.df, ic_vals)
+#     E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
+#     @unpack T, Ttr, d0, upper_threshold, lower_threshold, dt, solver, diff_eq_kwargs = alg
+#
+#     vals = Dict([:lyap_alg, :lyap_T, :lyap_Ttr, :lyap_d0, :lyap_ut,
+#                 :lyap_lt, :lyap_dt, :lyap_integ, :lyap_diffeq_kw] .=>
+#                 [string(typeof(alg)), T, Ttr, d0, upper_threshold,
+#                 lower_threshold, dt, "$solver", "$diff_eq_kwargs"])
+#     λcond = compatible(db.df, vals)
+#     cond = ic_cond .& λcond .& E_cond
+#     cond = replace(cond, missing=>false)
+#
+#     db.df[cond, :]
+# end
+#
+# function DataBaseInterface.compatible(db::DataBase, ic_alg::InitialConditionsAlgorithm,
+#         alg::DInftyAlgorithm, Einterval::Interval=0..Inf)
+#     n, m, border_n = unpack_with_nothing(ic_alg)
+#     ic_vals = Dict([:n, :m, :initial_cond_alg, :border_n] .=>
+#                 [n, m, string(typeof(ic_alg)), border_n])
+#     ic_cond = compatible(db.df, ic_vals)
+#     E_cond = compatible(db.df, Dict(:E => Einterval), ∈)
+#     @unpack T, d0, solver, diff_eq_kwargs = alg
+#
+#     vals = Dict([:dinf_alg, :dinf_T, :dinf_d0, :dinf_integ, :dinf_diffeq_kw] .=>
+#                 [string(typeof(alg)), T, d0, "$solver", "$diff_eq_kwargs"])
+#     dcond = compatible(db.df, vals)
+#     cond = ic_cond .& dcond .& E_cond
+#     cond = replace(cond, missing=>false)
+#
+#     db.df[cond, :]
+# end
 
 function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
     for D in Dlist
