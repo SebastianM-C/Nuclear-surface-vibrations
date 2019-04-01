@@ -1,7 +1,6 @@
 module DataBaseInterface
 
-export initalize, savechanges, walkdep, add_bulk!, add_derived_values!, get_prop,
-    paths_through, has_prop
+export initalize, savechanges
 
 using StorageGraphs
 using LightGraphs

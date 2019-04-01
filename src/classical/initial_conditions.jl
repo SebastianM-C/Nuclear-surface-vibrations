@@ -13,6 +13,7 @@ using Logging, Random
 using NLsolve, NLopt, Roots
 using Plots, LaTeXStrings
 using GeometricalPredicates
+using StorageGraphs
 
 abstract type InitialConditionsAlgorithm <: AbstractAlgorithm end
 abstract type Plane end
@@ -304,7 +305,7 @@ function depchain(p::PhysicalParameters, E, alg::InitialConditionsAlgorithm)
     ((A=p.A,),(D=p.D,),(B=p.B,),(E=E,),(ic_alg=alg,))
 end
 
-function get_or_compute(g, ic_deps)
+function get_or_compute(g::StorageGraph, ic_deps)
     ic_alg = ic_deps[end].ic_alg
     lastn, cpaths = walkdep(g, foldr(=>, ic_deps))
     if lastn == ic_deps[end] && length(cpaths) > 0
@@ -312,8 +313,10 @@ function get_or_compute(g, ic_deps)
         q = Array{eltype(nodes[1].q₀)}(undef, ic_alg.n, 2)
         p = Array{eltype(nodes[1].p₀)}(undef, ic_alg.n, 2)
         for (i, n) in enumerate(nodes)
-            q[i, :] .= (n.q₀, n.q₂)
-            p[i, :] .= (n.p₀, n.p₂)
+            q[i, 1] = n.q₀
+            q[i, 2] = n.q₂
+            p[i, 1] = n.p₀
+            p[i, 2] = n.p₂
         end
     else
         E = ic_deps[end-1].E

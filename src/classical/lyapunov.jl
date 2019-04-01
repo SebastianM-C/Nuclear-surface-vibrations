@@ -21,6 +21,7 @@ using RecursiveArrayTools
 using StaticArrays
 using LightGraphs: outneighbors
 using LinearAlgebra: norm
+using StorageGraphs
 
 abstract type LyapunovAlgorithm <: AbstractAlgorithm end
 

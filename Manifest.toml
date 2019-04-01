@@ -1003,9 +1003,9 @@ version = "0.3.0"
 
 [[PlotUtils]]
 deps = ["Colors", "Dates", "Printf", "Random", "Reexport", "Test"]
-git-tree-sha1 = "fd28f30a294a38ec847de95d8ac7ac916ccd7c06"
+git-tree-sha1 = "c93a471a55fe44e8e6ef5c750769fee15334bccf"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "0.5.5"
+version = "0.5.6"
 
 [[PlotlyBase]]
 deps = ["Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Requires", "Statistics", "Test", "UUIDs"]
@@ -1021,9 +1021,9 @@ version = "0.12.3"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "FixedPointNumbers", "GR", "JSON", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "Reexport", "Requires", "Showoff", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "Test", "UUIDs"]
-git-tree-sha1 = "30ba6839fca563b9753f6e77085b408265b36598"
+git-tree-sha1 = "5bcc6dbc8b7fe0823d9a63dde87d7d4542149693"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "0.23.2"
+version = "0.24.0"
 
 [[PoissonRandom]]
 deps = ["Random", "Statistics", "Test"]
@@ -1273,8 +1273,10 @@ uuid = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 version = "6.1.1"
 
 [[StorageGraphs]]
-deps = ["GraphPlot", "JLD", "LightGraphs", "LinearAlgebra", "Logging", "Random", "Serialization", "Test"]
-git-tree-sha1 = "cb84da1fe68013f93759a8f721b2450cf4a6d47d"
+deps = ["GraphPlot", "JLD", "LightGraphs", "Serialization"]
+git-tree-sha1 = "fd803e6f2069241c38f328c9e9e1cac102885f46"
+repo-rev = "master"
+repo-url = "https://github.com/SebastianM-C/StorageGraphs.jl.git"
 uuid = "fa9e2bbc-20aa-512b-a47b-5a4d8687aaeb"
 version = "0.1.1"
 
@@ -1397,9 +1399,9 @@ version = "1.5.2"
 
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections", "Test"]
-git-tree-sha1 = "843a440fc2e715ace09adcbfc765018c43cd828d"
+git-tree-sha1 = "9c65a62fa26d9e10752db0b828db460855fdc6e4"
 uuid = "cc8bc4a8-27d6-5769-a93b-9d913e69aa62"
-version = "0.5.1"
+version = "0.6.0"
 
 [[WinRPM]]
 deps = ["BinDeps", "Compat", "HTTPClient", "LibExpat", "Libdl", "Libz", "URIParser"]
