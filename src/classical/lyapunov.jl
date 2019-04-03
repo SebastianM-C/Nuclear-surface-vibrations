@@ -8,7 +8,7 @@ using ..Parameters: @with_kw, @unpack
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
-using ..InitialConditions: depchain, initial_conditions!
+using ..InitialConditions: depchain, initial_conditions!, extract_ics
 using ..Classical: AbstractAlgorithm
 using ..DInfty: monte_dist
 using ..ParallelTrajectories
@@ -46,7 +46,9 @@ end
     diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
 
-function computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
+function computeλ(nodes, alg, ic_alg, ic_deps, params, E, g)
+    (q0, p0), t = @timed extract_ics(nodes, ic_alg)
+    @debug "Extracting initial conditions from nodes took $t seconds."
     λs, t = @timed λmap(p0, q0, alg; params=params)
     @debug "Computing values took $t seconds."
     _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
@@ -72,16 +74,13 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
 
     g, t = @timed initalize()
     @debug "Loaded graph $g in $t seconds."
-    q0, p0 = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
+    ic_nodes = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
 
     ic_deps = depchain(params, E, ic_alg)
-    paths = paths_through(g, foldr(=>, ic_deps))
     # ic_vertices are all the compatible initial conditions
     # we need to check that for each initial condition all the
     # outneighbors have at least a λ computed
-    ic_vertices, t = @timed walkpath(g, paths, g[ic_deps[1]], stopcond=(g,v)->has_prop(g,v,:q₀))
-    # filter out the cases where it stopped before reaching stopcond
-    filter!(v->has_prop(g,v,:q₀), ic_vertices)
+    ic_vertices, t = @timed get.(Ref(g.index), ic_nodes, 0)
     @debug "Found $(length(ic_vertices)) compatible initial conditions in $t seconds"
     @assert length(ic_vertices) == ic_alg.n
     if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :λ_alg)), &, ic_vertices)
@@ -98,10 +97,10 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
             λs, t = @timed g[:λ, ic_deps..., (λ_alg=alg,)]
             @debug "Loading saved λs took $t seconds."
         else
-            λs = computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
+            λs = computeλ(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
         end
     else
-        λs = computeλ(p0, q0, alg, ic_alg, ic_deps, params, E, g)
+        λs = computeλ(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
     end
 
     return λs

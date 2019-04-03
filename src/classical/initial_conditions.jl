@@ -305,8 +305,7 @@ function depchain(p::PhysicalParameters, E, alg::InitialConditionsAlgorithm)
     ((A=p.A,),(D=p.D,),(B=p.B,),(E=E,),(ic_alg=alg,))
 end
 
-function read_ics(g, ic_deps, ic_alg)
-    nodes = get_prop.(Ref(g), g[foldr(=>, ic_deps)])
+function extract_ics(nodes, ic_alg)
     q = Array{eltype(nodes[1].q₀)}(undef, ic_alg.n, 2)
     p = Array{eltype(nodes[1].p₀)}(undef, ic_alg.n, 2)
     for (i, n) in enumerate(nodes)
@@ -318,7 +317,7 @@ function read_ics(g, ic_deps, ic_alg)
     return q, p
 end
 
-function get_or_compute(g::StorageGraph, ic_deps)
+function compute_if_needed(g::StorageGraph, ic_deps)
     ic_alg = ic_deps[end].ic_alg
     lastn, cpaths = walkdep(g, foldr(=>, ic_deps))
     if lastn ≠ ic_deps[end] || length(cpaths) == 0
@@ -330,24 +329,28 @@ function get_or_compute(g::StorageGraph, ic_deps)
         @debug "Adding initial conditions to graph took $t seconds."
     end
 
-    (q, p), t = @timed read_ics(g, ic_deps, ic_alg)
-    @debug "Reading initial conditions from graph took $t seconds."
-    return q, p
+    return nothing
 end
 
 function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
         recompute=false)
     g = initalize()
-    initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
+    nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
+    (q, p), t = @timed extract_ics(nodes, ic_alg)
+    @debug "Extracting initial conditions from nodes took $t seconds."
     savechanges(g)
+
+    return q, p
 end
 
 function initial_conditions!(g::StorageGraph, E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
         recompute=false)
     ic_deps = depchain(params, E, alg)
-    q, p = get_or_compute(g, ic_deps)
+    compute_if_needed(g, ic_deps)
+    nodes, t = @timed get_prop.(Ref(g), g[foldr(=>, ic_deps)])
+    @debug "Finding initial conditions nodes took $t seconds"
 
-    return q, p
+    return nodes
 end
 
 end  # module InitialConditions
