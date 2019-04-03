@@ -46,36 +46,35 @@ end
     diff_eq_kwargs::NamedTuple = (abstol=1e-14, reltol=1e-14, maxiters=1e9)
 end
 
-function computeλ(nodes, alg, ic_alg, ic_deps, params, E, g)
-    (q0, p0), t = @timed extract_ics(nodes, ic_alg)
-    @debug "Extracting initial conditions from nodes took $t seconds."
-    λs, t = @timed λmap(p0, q0, alg; params=params)
-    @debug "Computing values took $t seconds."
-    _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
-    @debug "Adding λs to graph took $t seconds."
-    savechanges(g)
-
+function λhist(λs, params, alg, E, ic_alg)
     T = alg.T
     prefix = "output/classical/B$(params.B)-D$(params.D)/E$E"
     plt = histogram(λs, nbins=50, xlabel=L"\lambda", ylabel=L"N", label="T = $T")
     fn = string(typeof(alg)) * "_T$T" * "_hist"
     fn = replace(fn, "{Float64}" => "")
+    fn = replace(fn, "NuclearSurfaceVibrations.Classical.Lyapunov." => "")
     dir = "$prefix/"*string(typeof(ic_alg))
+    dir = replace(dir, "NuclearSurfaceVibrations.Classical.InitialConditions." => "")
     if !isdir(dir)
         mkpath(dir)
     end
+    @debug "Saving plot"
     savefig(plt, dir*"/lyapunov_$fn.pdf")
+end
+
+function computeλ(nodes, alg, ic_alg, ic_deps, params, E, g)
+    q0, p0 = extract_ics(nodes, ic_alg)
+    λs, t = @timed λmap(p0, q0, alg; params=params)
+    @debug "Computing values took $t seconds."
+    _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
+    @debug "Adding λs to graph took $t seconds."
 
     return λs
 end
 
-function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
+function λmap!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DynSys(), recompute=false)
-
-    g, t = @timed initalize()
-    @debug "Loaded graph $g in $t seconds."
     ic_nodes = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
-
     ic_deps = depchain(params, E, ic_alg)
     # ic_vertices are all the compatible initial conditions
     # we need to check that for each initial condition all the
@@ -102,6 +101,17 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
     else
         λs = computeλ(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
     end
+
+    return λs
+end
+
+function λmap(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
+        ic_recompute=false, alg=DynSys(), recompute=false)
+    g, t = @timed initalize()
+    @debug "Loaded graph $g in $t seconds."
+    λs = λmap!(E, params=params, ic_alg=ic_alg, ic_recompute=ic_recompute, alg=alg, recompute=recompute)
+    remote_do(λhist, rand(workers()), λs, params, alg, E, ic_alg)
+    savechanges(g)
 
     return λs
 end
