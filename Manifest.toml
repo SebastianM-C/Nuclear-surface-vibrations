@@ -284,12 +284,6 @@ version = "1.0.2"
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
-[[DiffBase]]
-deps = ["StaticArrays"]
-git-tree-sha1 = "38522d70e417cf9ace93848f17eb9fff20d486d2"
-uuid = "c5cfe0b6-c10a-51a5-87e3-fd79235949f0"
-version = "0.3.2"
-
 [[DiffEqBase]]
 deps = ["Compat", "IteratorInterfaceExtensions", "LinearAlgebra", "RecipesBase", "RecursiveArrayTools", "Requires", "Roots", "SparseArrays", "StaticArrays", "Statistics", "SuiteSparse", "TableTraits", "Test", "TreeViews"]
 git-tree-sha1 = "69e00a95b2686c182a3a733e375a3c28c307be65"
@@ -507,9 +501,9 @@ version = "0.0.5"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test"]
-git-tree-sha1 = "41bd911efffb56957b45366770eaaa443de3f782"
+git-tree-sha1 = "08c4fc28ae58479f93616d5df164ab6b73541f2d"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.38.1"
+version = "0.39.0"
 
 [[GenericSVD]]
 deps = ["LinearAlgebra", "Random", "Test"]
@@ -896,10 +890,10 @@ uuid = "76087f3c-5699-56af-9a33-bf431cd00edd"
 version = "0.5.1"
 
 [[NLsolve]]
-deps = ["DiffBase", "DiffEqDiffTools", "Distances", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "Printf", "Reexport", "SparseArrays", "Test"]
-git-tree-sha1 = "0e046f4f72801c9782d64db972ce66a85d3473f1"
+deps = ["DiffEqDiffTools", "Distances", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "Printf", "Random", "Reexport", "SparseArrays", "Test"]
+git-tree-sha1 = "413e54f04a4cbe9804089794eec6b06b2a43bc47"
 uuid = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
-version = "3.0.1"
+version = "4.0.0"
 
 [[NaNMath]]
 deps = ["Compat"]
@@ -1003,9 +997,9 @@ version = "0.3.0"
 
 [[PlotUtils]]
 deps = ["Colors", "Dates", "Printf", "Random", "Reexport", "Test"]
-git-tree-sha1 = "c93a471a55fe44e8e6ef5c750769fee15334bccf"
+git-tree-sha1 = "5da9a79a138db46558e6e08f649865b4c1f1ce93"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "0.5.6"
+version = "0.5.7"
 
 [[PlotlyBase]]
 deps = ["Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Requires", "Statistics", "Test", "UUIDs"]
@@ -1273,8 +1267,8 @@ uuid = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 version = "6.1.1"
 
 [[StorageGraphs]]
-deps = ["GraphPlot", "JLD", "LightGraphs", "Serialization"]
-git-tree-sha1 = "93353f12b423755dfc7e22897c9161793ae6a2d7"
+deps = ["Distributed", "GraphPlot", "JLD", "LightGraphs", "Serialization", "SharedArrays"]
+git-tree-sha1 = "41b8ff2ac2296c2da54c4978d5659134921faaa0"
 repo-rev = "sets"
 repo-url = "https://github.com/SebastianM-C/StorageGraphs.jl.git"
 uuid = "fa9e2bbc-20aa-512b-a47b-5a4d8687aaeb"

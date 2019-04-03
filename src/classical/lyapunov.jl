@@ -8,6 +8,7 @@ using ..Parameters: @with_kw, @unpack
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
+using ..InitialConditions: depchain, initial_conditions!
 using ..Classical: AbstractAlgorithm
 using ..DInfty: monte_dist
 using ..ParallelTrajectories
@@ -69,20 +70,31 @@ end
 function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DynSys(), recompute=false)
 
-    q0, p0 = initial_conditions(E, alg=ic_alg, params=params, recompute=ic_recompute)
-    g = initalize()
+    g, t = @timed initalize()
+    @debug "Loaded graph $g in $t seconds."
+    q0, p0 = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
 
-    ic_deps = InitialConditions.depchain(params, E, ic_alg)
-    pahs = paths_through(g, foldr(=>, ic_deps))
-    # outneighbors(g, g[ic_deps[end]]) are all the compatible initial conditions
+    ic_deps = depchain(params, E, ic_alg)
+    paths = paths_through(g, foldr(=>, ic_deps))
+    # ic_vertices are all the compatible initial conditions
     # we need to check that for each initial condition all the
     # outneighbors have at least a λ computed
-    ic_vertices = outneighbors(g, g[ic_deps[end]])
+    ic_vertices, t = @timed walkpath(g, paths, g[ic_deps[1]], stopcond=(g,v)->has_prop(g,v,:q₀))
+    # filter out the cases where it stopped before reaching stopcond
+    filter!(v->has_prop(g,v,:q₀), ic_vertices)
+    @debug "Found $(length(ic_vertices)) compatible initial conditions in $t seconds"
+    @assert length(ic_vertices) == ic_alg.n
     if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :λ_alg)), &, ic_vertices)
         # we have some λs computed, we now have to check if they are the
         # right ones
-        λ_algs = union(outneighbors.(Ref(g), ic_vertices)...)
+        @debug "Looking for available λ_algs"
+        λ_algs = Int[]
+        for v in ic_vertices
+            union!(λ_algs, outneighbors(g, v))
+        end
+        @debug "Checking for compatible λ_algs"
         if mapreduce(a->g[a] == (λ_alg=alg,), |, λ_algs)
+            @debug "Found compatible λs"
             λs, t = @timed g[:λ, ic_deps..., (λ_alg=alg,)]
             @debug "Loading saved λs took $t seconds."
         else
