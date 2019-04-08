@@ -18,18 +18,23 @@ end
 dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
 E = 10.
-q0, p0 = initial_conditions(E, alg=PoincareRand(n=10))
 g = Classical.DataBaseInterface.initalize()
 
-@profiler λmap(E, ic_alg=PoincareRand(n=100), params=PhysicalParameters(B=0.55))
+@profiler Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.2))
 
 with_logger(dbg) do
-    @time λmap(E, ic_alg=PoincareRand(n=100), params=PhysicalParameters(B=0.2), alg=DynSys())
+    @time Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.21), alg=DynSys())
 end
 
-@progress for E in 10.:10.:1e3
-    λmap(E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.55), alg=DynSys())
+times = Float64[]
+@progress for E in 10.:10.:1000
+    λ, t = @timed Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.55), alg=DynSys())
+    push!(times, t)
 end
+Classical.DataBaseInterface.savechanges(g)
+
+using Plots
+plot(times)
 
 using .Visualizations
 
