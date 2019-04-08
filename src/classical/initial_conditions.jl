@@ -336,7 +336,7 @@ function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParamete
         recompute=false)
     g = initalize()
     nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
-    (q, p), t = @timed extract_ics(nodes, ic_alg)
+    (q, p), t = @timed extract_ics(nodes, alg)
     @debug "Extracting initial conditions from nodes took $t seconds."
     savechanges(g)
 

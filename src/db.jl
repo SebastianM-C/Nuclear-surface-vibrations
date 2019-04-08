@@ -17,7 +17,7 @@ end
 function savechanges(g)
     path = (@__DIR__) * "/../output/classical/"
     savegraph(path * "graph.jls", g, SGNativeFormat())
-    # savegraph(path * "graph.jld", g, "g", SGJLDFormat())
+    savegraph(path * "graph.bson", g, :g, SGBSONFormat())
 end
 
 end  # module DataBaseInterface

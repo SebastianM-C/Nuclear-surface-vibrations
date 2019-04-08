@@ -48,6 +48,12 @@ git-tree-sha1 = "2e2536e9e6f27c4f8d09d8442b61a7ae0b910c28"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.3.0"
 
+[[BSON]]
+deps = ["Profile", "Test"]
+git-tree-sha1 = "6453cef4f9cb8ded8e28e4d6d12e11e20eb692ea"
+uuid = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+version = "0.2.3"
+
 [[BandedMatrices]]
 deps = ["FillArrays", "LazyArrays", "LinearAlgebra", "MatrixFactorizations", "Random", "SparseArrays", "Test"]
 git-tree-sha1 = "1249cc93e4a685e8f0aaf1aa858fdd636551c754"
@@ -113,6 +119,12 @@ deps = ["Libdl", "Test"]
 git-tree-sha1 = "805164abcd31facf3a7e5b7d803a0d16b23329bc"
 uuid = "96374032-68de-5a5b-8d9e-752f78720389"
 version = "0.7.1"
+
+[[CSTParser]]
+deps = ["LibGit2", "Test", "Tokenize"]
+git-tree-sha1 = "437c93bc191cd55957b3f8dee7794b6131997c56"
+uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
+version = "0.5.2"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "DataStreams", "Dates", "Mmap", "Parsers", "Profile", "Random", "Tables", "Test", "Unicode", "WeakRefStrings"]
@@ -793,10 +805,10 @@ version = "0.5.0"
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MacroTools]]
-deps = ["Compat"]
-git-tree-sha1 = "3fd1a3022952128935b449c33552eb65895380c1"
+deps = ["CSTParser", "Compat", "DataStructures", "Test"]
+git-tree-sha1 = "daecd9e452f38297c686eba90dba2a6d5da52162"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.4.5"
+version = "0.5.0"
 
 [[Makie]]
 deps = ["AbstractPlotting", "FileIO", "GLMakie", "ImageMagick", "Test"]
@@ -1150,10 +1162,10 @@ uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
 version = "0.5.0"
 
 [[Roots]]
-deps = ["Compat", "Printf"]
-git-tree-sha1 = "2e7171b6f3b58b81201ba37d9e1220aff6d904a1"
+deps = ["Printf", "Statistics", "Test"]
+git-tree-sha1 = "c25321e281c2aa5c8ea965bfa5fa27b98a5f4601"
 uuid = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
-version = "0.7.4"
+version = "0.8.0"
 
 [[Rotations]]
 deps = ["LinearAlgebra", "Random", "StaticArrays", "Statistics", "Test"]
@@ -1267,8 +1279,8 @@ uuid = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 version = "6.1.1"
 
 [[StorageGraphs]]
-deps = ["Distributed", "GraphPlot", "JLD", "LightGraphs", "Serialization", "SharedArrays"]
-git-tree-sha1 = "41b8ff2ac2296c2da54c4978d5659134921faaa0"
+deps = ["BSON", "Distributed", "GraphPlot", "JLD", "LightGraphs", "Serialization", "SharedArrays"]
+git-tree-sha1 = "61d52c7bd81a7833a2ed26b3dfc34d69226ac793"
 repo-rev = "sets"
 repo-url = "https://github.com/SebastianM-C/StorageGraphs.jl.git"
 uuid = "fa9e2bbc-20aa-512b-a47b-5a4d8687aaeb"
@@ -1329,6 +1341,12 @@ deps = ["Crayons", "Printf", "Test", "Unicode"]
 git-tree-sha1 = "b80671c06f8f8bae08c55d67b5ce292c5ae2660c"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 version = "0.5.0"
+
+[[Tokenize]]
+deps = ["Printf", "Test"]
+git-tree-sha1 = "3e83f60b74911d3042d3550884ca2776386a02b8"
+uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
+version = "0.5.3"
 
 [[TranscodingStreams]]
 deps = ["Pkg", "Random", "Test"]
@@ -1393,9 +1411,9 @@ version = "1.5.2"
 
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections", "Test"]
-git-tree-sha1 = "9c65a62fa26d9e10752db0b828db460855fdc6e4"
+git-tree-sha1 = "c53befc70c6b91eaa2a9888c2f6ac2d92720a81b"
 uuid = "cc8bc4a8-27d6-5769-a93b-9d913e69aa62"
-version = "0.6.0"
+version = "0.6.1"
 
 [[WinRPM]]
 deps = ["BinDeps", "Compat", "HTTPClient", "LibExpat", "Libdl", "Libz", "URIParser"]
