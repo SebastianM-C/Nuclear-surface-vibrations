@@ -4,7 +4,7 @@ using StorageGraphs
 
 @testset "Initial Conditions" begin
 
-TEST_DIR = (@__DIR__)*"/../output/classical/B0.55-D0.4/"
+TEST_DIR = (@__DIR__)*"/../output"
 
 if isdir(TEST_DIR)
     rm(TEST_DIR, force=true, recursive=true)
@@ -13,17 +13,20 @@ end
 params = PhysicalParameters()
 r = (@__DIR__)*"/../output/classical"
 
-if isfile(r * "/graph.jls")
-    rm(r * "/graph.jls")
-end
-if isfile(r * "/graph.bson")
-    rm(r * "/graph.bson")
-end
-
 @testset "No files" begin
     q0, p0 = @test_logs((:debug, "Generated 2 initial conditions."),
         min_level=Logging.Debug, match_mode=:any,
         initial_conditions(10., alg=PoincareRand(n=2), root=r))
+    for i in axes(q0, 1)
+        @test H(p0[i,:], q0[i,:], params) - 10. ≈ 0 atol=1e-12
+    end
+end
+
+@testset "BSON Backup" begin
+    g = initalize(r)
+    savechanges(g, backup=true)
+    rm(r*"/graph.jls")
+    q0, p0 = initial_conditions(10., alg=PoincareRand(n=2), root=r)
     for i in axes(q0, 1)
         @test H(p0[i,:], q0[i,:], params) - 10. ≈ 0 atol=1e-12
     end
@@ -72,9 +75,5 @@ end
 # end
 #
 
-
-rm(TEST_DIR, force=true, recursive=true)
-rm(r * "/graph.jls")
-rm(r * "/graph.bson")
 
 end

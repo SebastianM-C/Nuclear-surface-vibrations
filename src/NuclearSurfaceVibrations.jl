@@ -9,7 +9,9 @@ using Distributed
 using ImageMagick
 
 include("utils.jl")
+include("db.jl")
 using .Utils
+using .DataBaseInterface
 
 # Use the JULIA_PROJECT environment variable to pass the environment to the
 # workers. See https://github.com/JuliaLang/julia/issues/28781
@@ -25,8 +27,8 @@ using ..Utils
 using ..Distributed
 using ..Parameters
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
+using ..DataBaseInterface
 
-include("db.jl")
 include("classical/hamiltonian.jl")
 include("classical/parallel.jl")
 include("classical/initial_conditions.jl")

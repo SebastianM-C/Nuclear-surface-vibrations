@@ -1,10 +1,10 @@
 using Distributed
 
-@progress for i in 1:5
+@progress for i in 1:7
     addprocs([("cn$i", 40)], exename="/mnt/storage/julia.sh")
 end
 
-# addprocs(20)
+addprocs(12)
 
 @time using NuclearSurfaceVibrations
 using .Classical
@@ -18,7 +18,7 @@ end
 dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
 E = 10.
-g = Classical.DataBaseInterface.initalize()
+g = initalize()
 
 @profiler Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.2))
 
