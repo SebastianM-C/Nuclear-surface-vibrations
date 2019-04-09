@@ -306,8 +306,8 @@ function depchain(p::PhysicalParameters, E, alg::InitialConditionsAlgorithm)
 end
 
 function extract_ics(nodes, ic_alg)
-    q = Array{eltype(nodes[1].q₀)}(undef, ic_alg.n, 2)
-    p = Array{eltype(nodes[1].p₀)}(undef, ic_alg.n, 2)
+    q = Array{eltype(nodes[1].q₀)}(undef, length(nodes), 2)
+    p = Array{eltype(nodes[1].p₀)}(undef, length(nodes), 2)
     for (i, n) in enumerate(nodes)
         q[i, 1] = n.q₀
         q[i, 2] = n.q₂
@@ -332,18 +332,18 @@ function compute_if_needed(g::StorageGraph, ic_deps)
     return nothing
 end
 
-function initial_conditions(E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
-        recompute=false)
-    g = initalize()
+function initial_conditions(E; alg=PoincareRand(n=500), params=PhysicalParameters(),
+        recompute=false, root=(@__DIR__)*"/../../output/classical")
+    g = initalize(root)
     nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
     (q, p), t = @timed extract_ics(nodes, alg)
     @debug "Extracting initial conditions from nodes took $t seconds."
-    savechanges(g)
+    savechanges(g, root)
 
     return q, p
 end
 
-function initial_conditions!(g::StorageGraph, E; alg=PoincareRand(n=5000), params=PhysicalParameters(),
+function initial_conditions!(g::StorageGraph, E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false)
     ic_deps = depchain(params, E, alg)
     compute_if_needed(g, ic_deps)

@@ -81,7 +81,6 @@ function λmap!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=Poincare
     # outneighbors have at least a λ computed
     ic_vertices, t = @timed get.(Ref(g.index), ic_nodes, 0)
     @debug "Found $(length(ic_vertices)) compatible initial conditions in $t seconds"
-    @assert length(ic_vertices) == ic_alg.n
     if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :λ_alg)), &, ic_vertices)
         # we have some λs computed, we now have to check if they are the
         # right ones
@@ -105,13 +104,13 @@ function λmap!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=Poincare
     return λs
 end
 
-function λmap(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
-        ic_recompute=false, alg=DynSys(), recompute=false)
-    g, t = @timed initalize()
+function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
+        ic_recompute=false, alg=DynSys(), recompute=false, root=(@__DIR__)*"/../../output/classical")
+    g, t = @timed initalize(root)
     @debug "Loaded graph $g in $t seconds."
-    λs = λmap!(E, params=params, ic_alg=ic_alg, ic_recompute=ic_recompute, alg=alg, recompute=recompute)
+    λs = λmap!(g, E, params=params, ic_alg=ic_alg, ic_recompute=ic_recompute, alg=alg, recompute=recompute)
     remote_do(λhist, rand(workers()), λs, params, alg, E, ic_alg)
-    savechanges(g)
+    savechanges(g, root)
 
     return λs
 end

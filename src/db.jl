@@ -5,8 +5,8 @@ export initalize, savechanges
 using StorageGraphs
 using LightGraphs
 
-function initalize()
-    path = (@__DIR__) * "/../output/classical/graph.jls"
+function initalize(root=(@__DIR__)*"../output/classical")
+    path = root * "/graph.jls"
     if isfile(path)
         return loadgraph(path, SGNativeFormat())
     else
@@ -14,10 +14,9 @@ function initalize()
     end
 end
 
-function savechanges(g)
-    path = (@__DIR__) * "/../output/classical/"
-    savegraph(path * "graph.jls", g, SGNativeFormat())
-    savegraph(path * "graph.bson", g, :g, SGBSONFormat())
+function savechanges(g, root=(@__DIR__)*"../output/classical")
+    savegraph(root * "/graph.jls", g, SGNativeFormat())
+    savegraph(root * "/graph.bson", g, :g, SGBSONFormat())
 end
 
 end  # module DataBaseInterface

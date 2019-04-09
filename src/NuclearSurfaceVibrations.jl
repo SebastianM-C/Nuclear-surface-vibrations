@@ -5,6 +5,9 @@ export Classical, Quantum
 using Parameters
 using Distributed
 
+# Fix for https://github.com/JuliaIO/ImageMagick.jl/issues/140
+using ImageMagick
+
 include("utils.jl")
 using .Utils
 
@@ -22,8 +25,6 @@ using ..Utils
 using ..Distributed
 using ..Parameters
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
-# Fix for https://github.com/JuliaIO/ImageMagick.jl/issues/140
-using ImageMagick
 
 include("db.jl")
 include("classical/hamiltonian.jl")
