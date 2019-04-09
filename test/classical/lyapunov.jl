@@ -1,6 +1,6 @@
 using Test
 using Logging
-using StorageGraph
+using StorageGraphs
 
 @testset "Lyapunov" begin
 

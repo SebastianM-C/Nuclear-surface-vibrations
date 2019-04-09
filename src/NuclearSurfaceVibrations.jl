@@ -11,7 +11,7 @@ using ImageMagick
 include("utils.jl")
 include("db.jl")
 using .Utils
-@reexport using .DataBaseInterface
+using .DataBaseInterface
 
 # Use the JULIA_PROJECT environment variable to pass the environment to the
 # workers. See https://github.com/JuliaLang/julia/issues/28781

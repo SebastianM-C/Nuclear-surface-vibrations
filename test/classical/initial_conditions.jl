@@ -23,7 +23,7 @@ r = (@__DIR__)*"/../output/classical"
 end
 
 @testset "BSON Backup" begin
-    g = initialize(r)
+    g = DataBaseInterface.initialize(r)
     savechanges(g, backup=true)
     rm(r*"/graph.jls")
     q0, p0 = initial_conditions(10., alg=PoincareRand(n=2), root=r)
