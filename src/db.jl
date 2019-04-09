@@ -1,11 +1,11 @@
 module DataBaseInterface
 
-export initalize, savechanges
+export initialize, savechanges
 
 using StorageGraphs
 using LightGraphs
 
-function initalize(root=(@__DIR__)*"../output/classical")
+function initialize(root=(@__DIR__)*"/../output/classical")
     path = root * "/graph.jls"
     if isfile(path)
         try
@@ -35,7 +35,7 @@ function initalize(root=(@__DIR__)*"../output/classical")
     end
 end
 
-function savechanges(g, root=(@__DIR__)*"../output/classical"; backup=false)
+function savechanges(g, root=(@__DIR__)*"/../output/classical"; backup=false)
     if !ispath(root)
         mkpath(root)
     end

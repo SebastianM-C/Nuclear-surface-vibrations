@@ -11,6 +11,7 @@ using .Classical
 using StorageGraphs
 using LightGraphs
 using Logging, LoggingExtras
+using ProgressMeter
 
 function module_filter(level, message, _module, group, id, file, line; kwargs...)
     Base.moduleroot(_module) == NuclearSurfaceVibrations
@@ -18,7 +19,7 @@ end
 dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
 E = 10.
-g = initalize()
+g = initialize()
 
 @profiler Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.2))
 
@@ -27,7 +28,7 @@ with_logger(dbg) do
 end
 
 times = Float64[]
-@progress for E in 10.:10.:1000
+@progress for E in 10.:10.:100
     λ, t = @timed Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.55), alg=DynSys())
     push!(times, t)
 end

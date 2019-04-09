@@ -334,7 +334,7 @@ end
 
 function initial_conditions(E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false, root=(@__DIR__)*"/../../output/classical")
-    g = initalize(root)
+    g = initialize(root)
     nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
     (q, p), t = @timed extract_ics(nodes, alg)
     @debug "Extracting initial conditions from nodes took $t seconds."

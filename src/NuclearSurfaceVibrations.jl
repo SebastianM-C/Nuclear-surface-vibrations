@@ -3,7 +3,7 @@ module NuclearSurfaceVibrations
 export Classical, Quantum
 
 using Parameters
-using Distributed
+using Reexport
 
 # Fix for https://github.com/JuliaIO/ImageMagick.jl/issues/140
 using ImageMagick
@@ -11,7 +11,7 @@ using ImageMagick
 include("utils.jl")
 include("db.jl")
 using .Utils
-using .DataBaseInterface
+@reexport using .DataBaseInterface
 
 # Use the JULIA_PROJECT environment variable to pass the environment to the
 # workers. See https://github.com/JuliaLang/julia/issues/28781
@@ -23,9 +23,9 @@ abstract type AbstractAlgorithm end
 module Classical
 
 using Reexport
+using Distributed
+using Parameters
 using ..Utils
-using ..Distributed
-using ..Parameters
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
 using ..DataBaseInterface
 

@@ -5,6 +5,6 @@ include("../src/db.jl")
 using .DataBaseInterface
 
 @testset "DB loading" begin
-    g = initalize()
+    g = initialize()
     @test typeof(g) <: StorageGraph
 end

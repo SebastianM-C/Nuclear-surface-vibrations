@@ -1,6 +1,6 @@
 using Test
 using Logging
-using DataFrames, CSV
+using StorageGraph
 
 @testset "Lyapunov" begin
 
