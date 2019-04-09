@@ -18,6 +18,22 @@ using ProgressMeter
 function module_filter(level, message, _module, group, id, file, line; kwargs...)
     Base.moduleroot(_module) == NuclearSurfaceVibrations
 end
+
+function compute(g, Elist, Blist, T)
+    times = Float64[]
+
+    @time @showprogress for B in Blist
+        @showprogress for E in Elist
+            λ, t = @timed Classical.Lyapunov.λmap!(g, E, params=PhysicalParameters(B=B), alg=DynSys(T=T))
+            push!(times, t)
+        end
+        savechanges(g)
+    end
+    @info "Done"
+    @time savechanges(g, backup=true)
+    return times
+end
+
 dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
 E = 10.
@@ -29,13 +45,7 @@ with_logger(dbg) do
     @time Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.21), alg=DynSys())
 end
 
-times = Float64[]
-@progress for E in 10.:10.:100
-    λ, t = @timed Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.55), alg=DynSys())
-    push!(times, t)
-end
-savechanges(g)
-@time savechanges(g, backup=true)
+times = compute(g, 10:10:3000, (0.55), 1e4)
 
 using Plots
 plot(times)
