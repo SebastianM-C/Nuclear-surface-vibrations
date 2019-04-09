@@ -3,7 +3,6 @@ module NuclearSurfaceVibrations
 export Classical, Quantum
 
 using Parameters
-using Reexport
 
 # Fix for https://github.com/JuliaIO/ImageMagick.jl/issues/140
 using ImageMagick
@@ -27,7 +26,7 @@ using Distributed
 using Parameters
 using ..Utils
 using ..NuclearSurfaceVibrations: AbstractAlgorithm
-using ..DataBaseInterface
+@reexport using ..DataBaseInterface
 
 include("classical/hamiltonian.jl")
 include("classical/parallel.jl")

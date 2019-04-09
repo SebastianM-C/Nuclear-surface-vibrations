@@ -32,7 +32,8 @@ times = Float64[]
     λ, t = @timed Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.55), alg=DynSys())
     push!(times, t)
 end
-Classical.DataBaseInterface.savechanges(g)
+savechanges(g)
+savechanges(g, backup=true)
 
 using Plots
 plot(times)
