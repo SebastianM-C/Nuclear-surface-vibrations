@@ -23,10 +23,12 @@ r = (@__DIR__)*"/../output/classical"
 end
 
 @testset "BSON Backup" begin
-    g = DataBaseInterface.initialize(r)
-    savechanges(g, backup=true)
+    g = initialize(r)
+    savechanges(g, r, backup=true)
     rm(r*"/graph.jls")
-    q0, p0 = initial_conditions(10., alg=PoincareRand(n=2), root=r)
+    q0, p0 = @test_logs((:info, ".jls file not found, trying backup"),
+        min_level=Logging.Info, match_mode=:all,
+        initial_conditions(10., alg=PoincareRand(n=2), root=r))
     for i in axes(q0, 1)
         @test H(p0[i,:], q0[i,:], params) - 10. ≈ 0 atol=1e-12
     end

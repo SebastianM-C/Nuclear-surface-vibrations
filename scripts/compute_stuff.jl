@@ -1,10 +1,12 @@
 using Distributed
 
-@progress for i in 1:7
+@progress for i in 2:8
     addprocs([("cn$i", 40)], exename="/mnt/storage/julia.sh")
 end
 
 addprocs(12)
+addprocs([("headnode:35011", 40)], exename="/mnt/storage/julia.sh",
+    tunnel=true, dir="/mnt/storage/Nuclear-surface-vibrations")
 
 @time using NuclearSurfaceVibrations
 using .Classical
@@ -33,7 +35,7 @@ times = Float64[]
     push!(times, t)
 end
 savechanges(g)
-savechanges(g, backup=true)
+@time savechanges(g, backup=true)
 
 using Plots
 plot(times)
