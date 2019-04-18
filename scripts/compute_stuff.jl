@@ -28,28 +28,32 @@ function compute(g, Elist, Blist, T)
             push!(times, t)
         end
         savechanges(g)
+        if isfile("$(@__DIR__)../STOP")
+            @info "Stopping now at $B, $E"
+            rm("$(@__DIR__)../STOP")
+            break
+        end
     end
     @info "Done"
-    @time savechanges(g, backup=true)
     return times
 end
 
 dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
 E = 10.
-g = initialize()
+ic_alg=PoincareRand(n=500)
+@time g = initialize()
 
-@profiler Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.2))
+@profiler Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
 
 with_logger(dbg) do
-    @time Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=500), params=PhysicalParameters(B=0.21), alg=DynSys())
+    @time Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.22), alg=DynSys(T=1e5))
 end
 
-times = compute(g, 10:10:3000, (0.55), 1e4)
+times = compute(g, 10:10:3000, 0.55, 1e6)
+
+varinfo()
 
 using Plots
-plot(times)
-
-using .Visualizations
-
-poincare_explorer(E, DynSys(), PoincareRand(n=10))
+plot(times, ylabel="compute+add to graph time", xlabel="run number", legend=nothing)
+savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run_B0.1-0.6_E10-3000_T1e6.pdf")
