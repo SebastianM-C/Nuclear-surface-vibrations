@@ -319,7 +319,8 @@ end
 
 function compute_if_needed(g::StorageGraph, ic_deps)
     ic_alg = ic_deps[end].ic_alg
-    lastn, cpaths = walkdep(g, foldr(=>, ic_deps))
+    (lastn, cpaths), t = @timed walkdep(g, foldr(=>, ic_deps))
+    @debug "Finding last node on path took $t seconds."
     if lastn ≠ ic_deps[end] || length(cpaths) == 0
         E = ic_deps[end-1].E
         params = PhysicalParameters(A=ic_deps[1].A, D=ic_deps[2].D, B=ic_deps[3].B)

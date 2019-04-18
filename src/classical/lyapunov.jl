@@ -110,7 +110,8 @@ function λmap(E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
     @debug "Loaded graph $g in $t seconds."
     λs = λmap!(g, E, params=params, ic_alg=ic_alg, ic_recompute=ic_recompute, alg=alg, recompute=recompute)
     remote_do(λhist, rand(workers()), λs, params, alg, E, ic_alg)
-    savechanges(g, root)
+    _, t = @timed savechanges(g, root)
+    @debug "Saving graph took $t seconds."
 
     return λs
 end
