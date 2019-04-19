@@ -14,7 +14,7 @@ function initialize(root=(@__DIR__)*"/../output/classical")
             @warn "Got an exception trying to load files" e
             try
                 @debug "Loading from BSON backup"
-                return loadgraph(root * "/graph.bson", SGBSONFormat())
+                return loadgraph(root * "/graph.bson", :g, SGBSONFormat())
             catch e
                 @debug "Couldn't restore any saved data" e
                 return StorageGraph()
@@ -24,7 +24,7 @@ function initialize(root=(@__DIR__)*"/../output/classical")
         @info ".jls file not found, trying backup"
         try
             @debug "Loading from BSON backup"
-            return loadgraph(root * "/graph.bson", SGBSONFormat())
+            return loadgraph(root * "/graph.bson", :g, SGBSONFormat())
         catch e
             @debug "Couldn't restore any saved data" e
                 return StorageGraph()

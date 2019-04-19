@@ -8,6 +8,7 @@ using ..InitialConditions
 using ..Poincare
 using ..Lyapunov
 using ..DInfty
+using ..DataBaseInterface
 
 using AbstractPlotting, GLMakie
 using StatsBase
@@ -67,7 +68,7 @@ function plot_sim(sim; colors=axes(sim, 1), idxs=[1,2])
         alpha = Node(1.0)
         if length(sim[i]) ≠ 0
             cmap = lift(α-> RGBAf0.(color.(fill(get_color(i), size(simᵢ, 1))), α), alpha)
-            scatter!(data, [Point2f0(simᵢ[i, idxs[1]], simᵢ[i, idxs[2]]) for i in axes(simᵢ)[1]],
+            scatter!(data, [Point2f0(simᵢ[i][idxs[1]], simᵢ[i][idxs[2]]) for i in axes(simᵢ)[1]],
             colormap=cmap, color=fill(colors[i], size(simᵢ, 1)), markersize=ms)
         end
         alpha
@@ -152,13 +153,23 @@ function select_bin(hist_idx, hist, hist_α, scatter_α, data)
     end
 end
 
-function poincare_explorer(E, alg, f, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    q0, p0 = initial_conditions(E, ic_alg)
+function poincare_explorer(E, name, alg, ic_alg; params=PhysicalParameters(),
+        axis=3, sgn=-1, nbins=50, t=values(alg)[1].T, rootkw=(xrtol=1e-6, atol=1e-6))
+    q0, p0 = initial_conditions(E, alg=ic_alg)
     alg_type = typeof(alg)
-    sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=alg.T, rootkw=rootkw)
+    g, t_ = @timed initialize()
+    @debug "Loading graph took $t_ seconds."
 
-    vals = f(E, alg=alg, ic_alg=ic_alg, params=params)
+    sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
+    @debug "Poincaré map took $t_ seconds."
+
+    ic_dep = InitialConditions.depchain(params, E, ic_alg)
+    vals, t_ = @timed g[name, ic_dep..., alg]
+    if length(vals) == 0
+        @warn "No alues found!"
+        return nothing
+    end
+    @debug "Loading values took $t_ seconds."
     hist = fit(StatsBase.Histogram, vals, nbins=nbins, closed=:left)
 
     colors = Float32.(axes(hist.weights, 1))
@@ -186,7 +197,7 @@ end
 
 function poincare_explorer(E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    scene = poincare_explorer(E, alg, λmap, ic_alg; params=params, axis=axis, sgn=sgn,
+    scene = poincare_explorer(E, :λ, (λ_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
         nbins=nbins, rootkw=rootkw)
     scene.children[2][Axis][:names, :axisnames][] = ("λ", "N")
     return scene
@@ -194,7 +205,7 @@ end
 
 function poincare_explorer(E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    poincare_explorer(E, alg, d∞, ic_alg; params=params, axis=axis, sgn=sgn,
+    poincare_explorer(E, :d∞, (d∞_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
         nbins=nbins, rootkw=rootkw)
 end
 
