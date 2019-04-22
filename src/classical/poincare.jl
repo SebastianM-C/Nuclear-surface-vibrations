@@ -2,10 +2,11 @@ module Poincare
 
 export poincaremap, coloredpoincare
 
-using ..Distributed
+using Distributed
 using ..InitialConditions
 
 using OrdinaryDiffEq
+using DynamicalSystemsBase
 using ChaosTools
 using StaticArrays
 using Plots, LaTeXStrings
@@ -40,8 +41,8 @@ function poincaremap(q0, p0; params=PhysicalParameters(), t=500., axis=3, sgn=1,
     ds = ContinuousDynamicalSystem(Hamiltonian.ż, z0[1], params)
     integ = DynamicalSystemsBase.integrator(ds; diff_eq_kwargs...)
     output = pmap(eachindex(z0)) do i
-        reinit!(integ, z0[i])
-        poincaresos(integ, PlaneCrossing((axis, 0), false), t, 0, idxs, rootkw)
+        DynamicalSystemsBase.reinit!(integ, z0[i])
+        ChaosTools.poincaresos(integ, ChaosTools.PlaneCrossing((axis, 0), false), t, 0, idxs, rootkw)
     end
 
     return output

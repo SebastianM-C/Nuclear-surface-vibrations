@@ -1,8 +1,8 @@
 using Distributed
 
 addprocs(12)
-# addprocs([("headnode:35011", 40)], exename="/mnt/storage/julia.sh",
-#     tunnel=true, dir="/mnt/storage/Nuclear-surface-vibrations")
+addprocs([("headnode:35011", 40)], exename="/mnt/storage/julia.sh",
+    tunnel=true, dir="/mnt/storage/Nuclear-surface-vibrations")
 
 @time using NuclearSurfaceVibrations
 using .Classical
@@ -11,29 +11,28 @@ using .Visualizations
 using Logging, LoggingExtras
 using ProgressMeter
 
-function module_filter(level, message, _module, group, id, file, line; kwargs...)
+function module_filter((level, _module, group, id))
     Base.moduleroot(_module) == NuclearSurfaceVibrations
 end
 
-dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
+dbg = EarlyFilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
 
-E = 10.
+E = 50.
 p = PhysicalParameters(B=0.55)
 ic_alg = PoincareRand(n=500)
 dep = Classical.InitialConditions.depchain(p,E,ic_alg)
 g = initialize()
-g[dep..., (λ_alg=DynSys(T=1e6),)]
-poincare_explorer(E, DynSys(), ic_alg)
+g[dep..., (λ_alg=DynSys(),)]
 
 with_logger(dbg) do
-    λmap(E, alg=DynSys(), ic_alg=PoincareRand(n=500))
+    @time poincare_explorer(E, DynSys(), ic_alg)
 end
 
 with_logger(dbg) do
-    @time Classical.Lyapunov.λmap!(g, E, ic_alg=PoincareRand(n=50), alg=DynSys())
+    @time Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, alg=DynSys())
 end
-
-@time g[foldr(=>, dep)]
+savechanges(g)
+@time g[foldr(=>, dep), :q₂]
 
 @time walkdep(g, foldr(=>, dep))
 
