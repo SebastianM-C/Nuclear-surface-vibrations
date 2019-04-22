@@ -1,6 +1,6 @@
 module Reductions
 
-export mean_over_ic, mean_over_E, compatible
+export mean_over_ic, mean_over_E
 
 using ..Parameters
 using ..Hamiltonian
@@ -11,11 +11,13 @@ using ..DInfty
 using ..Utils
 using ..Classical: AbstractAlgorithm
 
+using Distributed
 using Plots, LaTeXStrings
 using Query, StatsPlots
 using StatsBase
 using Statistics
 using DataFrames
+using StorageGraphs
 using ProgressMeter: @showprogress
 using IntervalArithmetic
 using Images: findlocalmaxima
@@ -99,19 +101,19 @@ end
 #     db.df[cond, :]
 # end
 
-function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
-    for D in Dlist
-        @showprogress "B" for i = 1:length(Blist)
-            @showprogress "λs" for j = 1:length(Elist)
-                λs = λmap(Elist[j], B=Blist[i], D=D, T=T, Ttr=Ttr,
-                    recompute=recompute)
-                if !any(occursin.(r"poincare_lyapunov.*pdf", readdir(prefix))) || recompute
-                    coloredpoincare(Elist[j], λs, name="lyapunov", B=Blist[i], D=D)
-                end
-            end
-        end
-    end
-end
+# function λlist(Elist, Blist=0.55, Dlist=0.4; T=12000., Ttr=5000., recompute=false)
+#     for D in Dlist
+#         @showprogress "B" for i = 1:length(Blist)
+#             @showprogress "λs" for j = 1:length(Elist)
+#                 λs = λmap(Elist[j], B=Blist[i], D=D, T=T, Ttr=Ttr,
+#                     recompute=recompute)
+#                 if !any(occursin.(r"poincare_lyapunov.*pdf", readdir(prefix))) || recompute
+#                     coloredpoincare(Elist[j], λs, name="lyapunov", B=Blist[i], D=D)
+#                 end
+#             end
+#         end
+#     end
+# end
 
 arr_type(df, col) = nonnothingtype(eltype(df[col]))
 
@@ -119,30 +121,34 @@ function reduce_col(df, col, r)
     DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = unique(df[:B]))
 end
 
-function collect_data(alg, ic_alg, Einterval)
-    db = db_concat()
-    df = compatible(db, ic_alg, alg, Einterval)
+# function collect_data(alg, ic_alg, Einterval)
+#     db = db_concat()
+#     df = compatible(db, ic_alg, alg, Einterval)
+#
+#     for c in [:B, :D]
+#         df[c] = categorical(Array{arr_type(df, c)}(df[c]))
+#     end
+#     df[:E] = Array{arr_type(df, :E)}(df[:E])
+#
+#     return df
+# end
 
-    for c in [:B, :D]
-        df[c] = categorical(Array{arr_type(df, c)}(df[c]))
-    end
-    df[:E] = Array{arr_type(df, :E)}(df[:E])
-
-    return df
-end
-
-function mean_over_ic(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
-        params::PhysicalParameters, Einterval::Interval=0..Inf;
+function mean_over_ic(g::StorageGraph, s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
+        p::PhysicalParameters, Einterval::Interval=0..Inf;
         reduction=hist_mean)
-    df = collect_data(alg, ic_alg, Einterval)
-    by(df[(df[:B] .== params.B) .& (df[:D] .== params.D), :], :E,
-        df->reduce_col(df, s, reduction))
+    pre_dep = (A=p.A,)=>(D=p.D,)=>(B=p.B,)
+    E_vals = g[pre_dep, :E]
+    filter!(E->E ∈ Einterval, E_vals)
+    vals = pmap(eachindex(E_vals)) do i
+        ic_dep = InitialConditions.depchain(p, E_vals[i], ic_alg)
+        reduction(g[foldr(=>, (ic_dep..., alg)), s])
+    end
 end
 
 function mean_over_ic(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_ic(:λs, alg, ic_alg, params, Einterval, reduction=reduction) |>
+    df = mean_over_ic(:λs, (λ_alg=alg,), ic_alg, params, Einterval, reduction=reduction) |>
         @map({_.E, λ=_.val}) |> @orderby(_.E) |>
         @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,

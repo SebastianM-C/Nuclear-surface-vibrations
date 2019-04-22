@@ -21,7 +21,7 @@ E = 50.
 p = PhysicalParameters(B=0.55)
 ic_alg = PoincareRand(n=500)
 dep = Classical.InitialConditions.depchain(p,E,ic_alg)
-g = initialize()
+@time g = initialize()
 g[dep..., (λ_alg=DynSys(),)]
 
 with_logger(dbg) do
@@ -36,4 +36,10 @@ savechanges(g)
 
 @time walkdep(g, foldr(=>, dep))
 
-@time paths_through(g, foldr(=>, dep))
+with_logger(dbg) do
+
+end
+
+@time v = mean_over_ic(g, :λ, (λ_alg=DynSys(),), ic_alg, p)
+using Plots
+plot(g[(A=p.A,)=>(D=p.D,)=>(B=p.B,), :E], v)

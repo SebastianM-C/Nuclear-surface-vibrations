@@ -155,10 +155,10 @@ end
 
 function poincare_explorer(E, name, alg, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, t=values(alg)[1].T, rootkw=(xrtol=1e-6, atol=1e-6))
-    q0, p0 = initial_conditions(E, alg=ic_alg)
-    alg_type = typeof(alg)
     g, t_ = @timed initialize()
     @debug "Loading graph took $t_ seconds."
+    q0, p0 = initial_conditions(g, E, alg=ic_alg)
+    alg_type = typeof(alg)
 
     sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
     @debug "Poincaré map took $t_ seconds."
@@ -166,7 +166,7 @@ function poincare_explorer(E, name, alg, ic_alg; params=PhysicalParameters(),
     ic_dep = InitialConditions.depchain(params, E, ic_alg)
     vals, t_ = @timed g[name, ic_dep..., alg]
     if length(vals) == 0
-        @warn "No alues found!"
+        @warn "No values found!"
         return nothing
     end
     @debug "Loading values took $t_ seconds."

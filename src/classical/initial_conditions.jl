@@ -336,10 +336,17 @@ end
 function initial_conditions(E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false, root=(@__DIR__)*"/../../output/classical")
     g = initialize(root)
+    initial_conditions(g, E, alg=alg, params=params, recompute=recompute)
+    savechanges(g, root)
+
+    return q, p
+end
+
+function initial_conditions(g::StorageGraph, E; alg=PoincareRand(n=500), params=PhysicalParameters(),
+        recompute=false, root=(@__DIR__)*"/../../output/classical")
     nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
     (q, p), t = @timed extract_ics(nodes, alg)
     @debug "Extracting initial conditions from nodes took $t seconds."
-    savechanges(g, root)
 
     return q, p
 end
