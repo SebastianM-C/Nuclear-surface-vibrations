@@ -12,12 +12,8 @@ addprocs([("headnode:35011", 40)], exename="/mnt/storage/julia.sh",
 using .Classical
 using StorageGraphs
 using LightGraphs
-using Logging, LoggingExtras
 using ProgressMeter
-
-function module_filter(level, message, _module, group, id, file, line; kwargs...)
-    Base.moduleroot(_module) == NuclearSurfaceVibrations
-end
+include("dbg.jl")
 
 function compute(g, Elist, Blist, T)
     times = Float64[]
@@ -38,8 +34,6 @@ function compute(g, Elist, Blist, T)
     return times
 end
 
-dbg = FilteredLogger(module_filter, ConsoleLogger(stdout, Logging.Debug))
-
 E = 10.
 ic_alg=PoincareRand(n=500)
 @time g = initialize()
@@ -51,9 +45,10 @@ with_logger(dbg) do
 end
 
 times = compute(g, 10:10:3000, 0.55, 1e6)
-
+using Serialization
+times = serialize("/mnt/storage/Nuclear-surface-vibrations/output/classical/times.jls")
 varinfo()
 
 using Plots
 plot(times, ylabel="compute+add to graph time", xlabel="run number", legend=nothing)
-savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run_B0.1-0.6_E10-3000_T1e6.pdf")
+savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run_B0.55_E10-3000_T1e6.pdf")
