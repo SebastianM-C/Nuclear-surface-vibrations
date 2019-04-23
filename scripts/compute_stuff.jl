@@ -13,7 +13,7 @@ using .Classical
 using StorageGraphs
 using LightGraphs
 using ProgressMeter
-include("dbg.jl")
+include("$(pwd())/scripts/dbg.jl")
 
 function compute(g, Elist, Blist, T)
     times = Float64[]
@@ -35,7 +35,8 @@ function compute(g, Elist, Blist, T)
 end
 
 E = 10.
-ic_alg=PoincareRand(n=500)
+ic_alg = PoincareRand(n=500)
+p = PhysicalParameters()
 @time g = initialize()
 
 @profiler Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
