@@ -11,7 +11,7 @@ using ..DInfty
 using ..Utils
 using ..Classical: AbstractAlgorithm
 
-using Distributed
+using Base.Threads
 using Plots, LaTeXStrings
 using Query, StatsPlots
 using StatsBase
@@ -114,12 +114,12 @@ end
 #         end
 #     end
 # end
-
-arr_type(df, col) = nonnothingtype(eltype(df[col]))
-
-function reduce_col(df, col, r)
-    DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = unique(df[:B]))
-end
+#
+# arr_type(df, col) = nonnothingtype(eltype(df[col]))
+#
+# function reduce_col(df, col, r)
+#     DataFrame(val = r(Array{arr_type(df, col)}(df[col])), B = unique(df[:B]))
+# end
 
 # function collect_data(alg, ic_alg, Einterval)
 #     db = db_concat()
@@ -139,17 +139,20 @@ function mean_over_ic(g::StorageGraph, s::Symbol, alg, ic_alg::InitialConditions
     pre_dep = (A=p.A,)=>(D=p.D,)=>(B=p.B,)
     E_vals = g[pre_dep, :E]
     filter!(E->E ∈ Einterval, E_vals)
-    vals = pmap(eachindex(E_vals)) do i
+    vals = Vector{typeof(values(alg)[1].T)}(undef, length(E_vals))
+    @threads for i in eachindex(E_vals)
         ic_dep = InitialConditions.depchain(p, E_vals[i], ic_alg)
-        reduction(g[foldr(=>, (ic_dep..., alg)), s])
+        vals[i] = reduction(g[s, ic_dep..., alg])
     end
+    DataFrame(:E=>E_vals, :val=>vals)
 end
 
-function mean_over_ic(alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
+function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         Einterval::Interval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_ic(:λs, (λ_alg=alg,), ic_alg, params, Einterval, reduction=reduction) |>
-        @map({_.E, λ=_.val}) |> @orderby(_.E) |>
+    df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params, Einterval, reduction=reduction)
+    @info "Averaging took $t seconds."
+    df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |>
         @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
             size=(width,height),
