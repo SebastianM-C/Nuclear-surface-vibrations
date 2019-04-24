@@ -34,9 +34,10 @@ function compute(g, Elist, Blist, T)
     return times
 end
 
-E = 10.
+E = 120.
 ic_alg = PoincareRand(n=500)
-p = PhysicalParameters()
+p = PhysicalParameters(B=0.5)
+ic_dep = Classical.InitialConditions.depchain(p,E,ic_alg)
 @time g = initialize()
 
 @profiler Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
@@ -53,3 +54,16 @@ varinfo()
 using Plots
 plot(times, ylabel="compute+add to graph time", xlabel="run number", legend=nothing)
 savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run_B0.55_E10-3000_T1e6.pdf")
+
+
+q0, p0 = initial_conditions(g, E, alg=ic_alg, params=p)
+@time l=λmap(p0, q0, DynSys(T=1e5), params=p)
+@time λmap(p0, q0, TimeRescaling(), params=p)
+
+@time l = g[:λ, ic_dep..., (λ_alg=DynSys(T=1e5),)]
+
+@time d = d∞(p0, q0, DInftyAlgorithm(T=1e5), params=p)
+histogram(d, nbins=50)
+histogram(l, nbins=50)
+
+histogram(Γ.(l,d), nbins=50)
