@@ -42,9 +42,13 @@ function edge_max(v)
 end
 
 function hist_mean(v)
-    hist = fit(Histogram, v, nbins=50, closed=:right)
+    mean(select_after_first_max(v))
+end
+
+function select_after_first_max(v; nbins=50)
+    hist = fit(Histogram, v, nbins=nbins, closed=:right)
     firstmax = findlocalmaxima(hist.weights)[1][1]
-    mean(v[v .> hist.edges[1][firstmax+1]])
+    v[v .> hist.edges[1][firstmax+1]]
 end
 
 function hist_max(v, t=3)
