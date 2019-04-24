@@ -67,8 +67,9 @@ function DInfty.Γ(E, reduction, d0, p)
     Γ(λ(E), d_inf(E))
 end
 
-function mean_over_ic(g::StorageGraph, s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
-        p::PhysicalParameters, Einterval::Interval=0..Inf;
+function mean_over_ic(g::StorageGraph, s::Symbol, alg::NamedTuple,
+        ic_alg::InitialConditionsAlgorithm,
+        p::PhysicalParameters, Einterval=0..Inf;
         reduction=hist_mean)
     pre_dep = (A=p.A,)=>(D=p.D,)=>(B=p.B,)
     E_vals = g[pre_dep, :E]
@@ -81,11 +82,12 @@ function mean_over_ic(g::StorageGraph, s::Symbol, alg, ic_alg::InitialConditions
     DataFrame(:E=>E_vals, :val=>vals)
 end
 
-function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
-        Einterval::Interval=0..Inf, reduction=hist_mean,
+function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
+        params=PhysicalParameters(), Einterval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params, Einterval, reduction=reduction)
-    @info "Averaging took $t seconds."
+    df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params,
+        Einterval, reduction=reduction)
+    @debug "Averaging took $t seconds."
     df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |>
         @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
@@ -93,44 +95,67 @@ function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg; params=Ph
             guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_ic(alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
-        Einterval::Interval=0..Inf, reduction=hist_mean,
+function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
+        params=PhysicalParameters(), Einterval=0..Inf, reduction=hist_mean,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600)
-    df = mean_over_ic(:d∞, alg, ic_alg, params, Einterval, reduction=reduction) |>
-        @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
+    df, t = @timed mean_over_ic(g, :d∞, (d∞_alg=alg,), ic_alg, params,
+        Einterval, reduction=reduction)
+    @debug "Averaging took $t seconds."
+    df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
         @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_E(s::Symbol, alg, ic_alg::InitialConditionsAlgorithm,
-        Einterval::Interval=0..Inf; ic_reduction=hist_mean, reduction=average)
-    df = collect_data(alg, ic_alg, Einterval)
-    result = by(df, :B, df->DataFrame(v=reduction(by(df, :E,
-        df->reduce_col(df, s, ic_reduction))[[:val, :E]])))
-    result[:B] = Array(result[:B])
+function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
+        ic_alg::InitialConditionsAlgorithm,
+        p::PhysicalParameters, Einterval=0..Inf, Binterval=0..1;
+        ic_reduction=hist_mean, reduction=average)
+    pre_dep = (A=p.A,)=>(D=p.D,)
+    B_vals = g[pre_dep, :B]
+    filter!(B->B ∈ Binterval, B_vals)
+    vals = Vector{typeof(values(alg)[1].T)}(undef, length(B_vals))
+    params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[1])
 
-    return result
+    for i in eachindex(B_vals)
+        params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[i])
+        vals[i] = reduction(mean_over_ic(g, s, alg, ic_alg, params, Einterval,
+            reduction=ic_reduction))
+    end
+
+    DataFrame(:B=>B_vals, :val=>vals)
 end
 
-function mean_over_E(alg::LyapunovAlgorithm, Einterval::Interval=0..Inf;
-        ic_alg::InitialConditionsAlgorithm,
+function mean_over_E(g::StorageGraph, alg::LyapunovAlgorithm, Einterval=0..Inf;
+        A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600, label="")
-    mean_over_E(:λs, alg, ic_alg, Einterval;
-        ic_reduction=ic_reduction, reduction=reduction) |>
-        @map({λ = _.v, _.B}) |> @orderby(_.B) |>
+    df = mean_over_E(g, :λ, (λ_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
+        Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
+    df |> @map({λ = _.val, _.B}) |> @orderby(_.B) |>
         @df plot!(plt, :B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
             label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
 end
 
-function mean_over_E(alg, Eintervals::NTuple{N, Interval};
-        ic_alg::InitialConditionsAlgorithm,
+function mean_over_E(g::StorageGraph, alg::DInftyAlgorithm, Einterval=0..Inf;
+        A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
+        ic_reduction=hist_mean, reduction=average,
+        plt=plot(), fnt=font(12, "Times"), width=800, height=600, label="")
+    df = mean_over_E(:d∞, (d∞_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
+        Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
+    df |> @map({d = _.val, _.B}) |> @orderby(_.B) |>
+        @df plot!(plt, :B, :d, m=2, xlabel=L"B", ylabel=L"d_\infty", framestyle=:box,
+            label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
+end
+
+function mean_over_E(g::StorageGraph, alg, Eintervals::NTuple{N, Interval};
+        A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
         plt=plot(), fnt=font(12, "Times"), width=800, height=600) where N
     for i=1:N
-        plt = mean_over_E(alg, Eintervals[i]; ic_alg=ic_alg, ic_reduction=ic_reduction,
+        plt = mean_over_E(g, alg, Eintervals[i]; A=A, D=D, Binterval=Binterval,
+                ic_alg=ic_alg, ic_reduction=ic_reduction,
                 reduction=reduction, plt=plt, fnt=fnt, width=width, height=height,
                 label=L"$E \in "*"$(Eintervals[i])\$")
     end
@@ -138,18 +163,7 @@ function mean_over_E(alg, Eintervals::NTuple{N, Interval};
     return plt
 end
 
-function mean_over_E(alg::DInftyAlgorithm, Einterval::Interval=0..Inf;
-        ic_alg::InitialConditionsAlgorithm,
-        ic_reduction=hist_mean, reduction=average,
-        plt=plot(), fnt=font(12, "Times"), width=800, height=600, label="")
-    mean_over_E(:d∞, alg, ic_alg, Einterval;
-        ic_reduction=ic_reduction, reduction=reduction) |>
-        @map({d = _.v, _.B}) |> @orderby(_.B) |>
-        @df plot!(plt, :B, :d, m=2, xlabel=L"B", ylabel=L"d_\infty", framestyle=:box,
-            label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
-end
-
-function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::Interval=0..Inf;
+function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval=0..Inf;
         reductions=(edge_max,mean))
     dfs = [concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
         re=r"E[0-9]+\.[0-9]+", filter=[:E, v]) |>
@@ -159,21 +173,6 @@ function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval::I
     df_f = @join(df_vs[1], df_vs[2], _.E, _.E, {val = f(_.val, __.val)}) |> DataFrame
     df_f[:E] = df_vs[1][:E]
     return df_f
-end
-
-function mean_as_function_of_B(value::Symbol, B, Eintervals::NTuple{N, Interval};
-        reduction=ch_max, plt=plot(), ylabel="", fnt=font(12, "Times"),
-        width=800, height=600, filename="val(E)") where N
-    for i=1:N
-        df = mean_as_function_of_B(value, B, Eintervals[i], reduction=reduction,
-            plt=plt, ylabel=ylabel, fnt=fnt, width=width, height=height,
-            filename=filename)
-        plt = df |> @df plot!(plt, :B, :v, m=2, xlabel=L"B", ylabel=ylabel,
-            label=L"$E \in "*"$(Eintervals[i])\$", framestyle=:box,
-            size=(width,height),
-            guidefont=fnt, tickfont=fnt)
-    end
-    plt
 end
 
 end  # module Reductions
