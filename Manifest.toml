@@ -623,10 +623,10 @@ uuid = "bbac6d45-d8f3-5730-bfe4-7a449cd117ca"
 version = "0.3.0"
 
 [[ImageAxes]]
-deps = ["AxisArrays", "Colors", "FixedPointNumbers", "ImageCore", "MappedArrays", "Reexport", "SimpleTraits", "Test"]
-git-tree-sha1 = "5735ec90843acaa67a4624611921c686cdf4efbf"
+deps = ["AxisArrays", "Colors", "FixedPointNumbers", "ImageCore", "MappedArrays", "Reexport", "SimpleTraits"]
+git-tree-sha1 = "8109bb9a28deca29a5b938ebfa7d0a75319d8776"
 uuid = "2803e5a7-5153-5ecf-9a86-9b4c37f5f5ac"
-version = "0.5.0"
+version = "0.6.0"
 
 [[ImageCore]]
 deps = ["ColorTypes", "Colors", "FFTW", "FixedPointNumbers", "Graphics", "MappedArrays", "OffsetArrays", "PaddedViews", "Random", "Statistics", "Test"]
@@ -1037,9 +1037,9 @@ version = "5.5.0"
 
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
-git-tree-sha1 = "b6c91fc0ab970c0563cbbe69af18d741a49ce551"
+git-tree-sha1 = "8b68513175b2dc4023a564cb0e917ce90e74fd69"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.9.6"
+version = "0.9.7"
 
 [[Packing]]
 deps = ["GeometryTypes", "Test"]
@@ -1372,11 +1372,11 @@ version = "6.1.1"
 
 [[StorageGraphs]]
 deps = ["BSON", "Distributed", "GraphPlot", "JLD", "LightGraphs", "Serialization", "SharedArrays"]
-git-tree-sha1 = "72bd4c3fc82757fd4db11b696e11e2f6f4791fe1"
-repo-rev = "wip"
+git-tree-sha1 = "61a0a040c25f2a672047c2be47e724b5a7b29d9f"
+repo-rev = "master"
 repo-url = "https://github.com/SebastianM-C/StorageGraphs.jl.git"
 uuid = "fa9e2bbc-20aa-512b-a47b-5a4d8687aaeb"
-version = "0.2.0"
+version = "0.2.1"
 
 [[StructArrays]]
 deps = ["PooledArrays", "Requires", "Test"]
