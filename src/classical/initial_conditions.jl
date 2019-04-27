@@ -305,28 +305,16 @@ function depchain(p::PhysicalParameters, E, alg::InitialConditionsAlgorithm)
     ((A=p.A,),(D=p.D,),(B=p.B,),(E=E,),(ic_alg=alg,))
 end
 
-function extract_ics(nodes, ic_alg)
-    q = Array{eltype(nodes[1].q₀)}(undef, length(nodes), 2)
-    p = Array{eltype(nodes[1].p₀)}(undef, length(nodes), 2)
-    for (i, n) in enumerate(nodes)
-        q[i, 1] = n.q₀
-        q[i, 2] = n.q₂
-        p[i, 1] = n.p₀
-        p[i, 2] = n.p₂
-    end
-    return q, p
-end
-
-function compute_if_needed(g::StorageGraph, ic_deps)
-    ic_alg = ic_deps[end].ic_alg
-    (lastn, cpaths), t = @timed walkdep(g, foldr(=>, ic_deps))
+function compute_if_needed!(g::StorageGraph, ic_dep)
+    ic_alg = ic_dep[end].ic_alg
+    (lastn, cpaths), t = @timed walkdep(g, foldr(=>, ic_dep))
     @debug "Finding last node on path took $t seconds."
-    if lastn ≠ ic_deps[end] || length(cpaths) == 0
-        E = ic_deps[end-1].E
-        params = PhysicalParameters(A=ic_deps[1].A, D=ic_deps[2].D, B=ic_deps[3].B)
+    if lastn ≠ ic_dep[end] || length(cpaths) == 0
+        E = ic_dep[end-1].E
+        params = PhysicalParameters(A=ic_dep[1].A, D=ic_dep[2].D, B=ic_dep[3].B)
         (q, p), t = @timed initial_conditions(E, ic_alg; params=params)
         @debug "Generating initial conditions took $t seconds."
-        _, t = @timed add_bulk!(g, foldr(=>, ic_deps), (q₀=q[:,1],q₂=q[:,2], p₀=p[:,1],p₂=p[:,2]))
+        _, t = @timed add_nodes!(g, foldr(=>, (ic_dep..., (q0=q, p0=p))))
         @debug "Adding initial conditions to graph took $t seconds."
     end
 
@@ -336,29 +324,24 @@ end
 function initial_conditions(E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false, root=(@__DIR__)*"/../../output/classical")
     g = initialize(root)
-    initial_conditions(g, E, alg=alg, params=params, recompute=recompute)
+    node = initial_conditions(g, E, alg=alg, params=params, recompute=recompute)
+    q = node[:q0]
+    p = node[:p0]
     savechanges(g, root)
-
-    return q, p
-end
-
-function initial_conditions(g::StorageGraph, E; alg=PoincareRand(n=500), params=PhysicalParameters(),
-        recompute=false, root=(@__DIR__)*"/../../output/classical")
-    nodes = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
-    (q, p), t = @timed extract_ics(nodes, alg)
-    @debug "Extracting initial conditions from nodes took $t seconds."
 
     return q, p
 end
 
 function initial_conditions!(g::StorageGraph, E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false)
-    ic_deps = depchain(params, E, alg)
-    compute_if_needed(g, ic_deps)
-    nodes, t = @timed get_prop.(Ref(g), g[foldr(=>, ic_deps)])
+    ic_dep = depchain(params, E, alg)
+    compute_if_needed!(g, ic_dep)
+    v, t = @timed g[foldr(=>, ic_dep)]
+    @assert length(v) == 1 "Initial condition node not unique!"
     @debug "Finding initial conditions nodes took $t seconds"
+    node = g[v[1]]
 
-    return nodes
+    return node
 end
 
 end  # module InitialConditions
