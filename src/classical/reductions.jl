@@ -72,12 +72,12 @@ function mean_over_ic(g::StorageGraph, s::Symbol, alg::NamedTuple,
         p::PhysicalParameters, Einterval=0..Inf;
         reduction=hist_mean)
     pre_dep = (A=p.A,)=>(D=p.D,)=>(B=p.B,)
-    E_vals = g[pre_dep, :E]
+    E_vals = g[:E, pre_dep]
     filter!(E->E ∈ Einterval, E_vals)
     vals = Vector{typeof(values(alg)[1].T)}(undef, length(E_vals))
     @threads for i in eachindex(E_vals)
         ic_dep = InitialConditions.depchain(p, E_vals[i], ic_alg)
-        vals[i] = reduction(g[s, ic_dep..., alg])
+        vals[i] = reduction(g[s, ic_dep..., alg][1])
     end
     DataFrame(:E=>E_vals, :val=>vals)
 end
@@ -113,7 +113,7 @@ function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
         p::PhysicalParameters, Einterval=0..Inf, Binterval=0..1;
         ic_reduction=hist_mean, reduction=average)
     pre_dep = (A=p.A,)=>(D=p.D,)
-    B_vals = g[pre_dep, :B]
+    B_vals = g[:B, pre_dep]
     filter!(B->B ∈ Binterval, B_vals)
     vals = Vector{typeof(values(alg)[1].T)}(undef, length(B_vals))
     params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[1])
