@@ -372,10 +372,10 @@ uuid = "055956cb-9e8b-5191-98cc-73ae4a59e68a"
 version = "3.1.0"
 
 [[DiffEqSensitivity]]
-deps = ["Compat", "DataFrames", "DiffEqBase", "DiffEqCallbacks", "DiffEqDiffTools", "Flux", "ForwardDiff", "GLM", "LinearAlgebra", "QuadGK", "RecursiveArrayTools", "Statistics", "Test"]
-git-tree-sha1 = "ffff6b51d1dde24befa30a81e9e45efc9653577e"
+deps = ["DataFrames", "DiffEqBase", "DiffEqCallbacks", "DiffEqDiffTools", "Flux", "ForwardDiff", "GLM", "QuadGK", "RecursiveArrayTools"]
+git-tree-sha1 = "a212e5a4e9013371800f1ec75723fffcdff3b17a"
 uuid = "41bf760c-e81c-5289-8e54-58b1f1f8abe2"
-version = "3.2.0"
+version = "3.2.1"
 
 [[DiffResults]]
 deps = ["Compat", "StaticArrays"]
@@ -660,15 +660,15 @@ version = "0.7.0"
 
 [[ImageMorphology]]
 deps = ["ImageCore"]
-git-tree-sha1 = "f509d0c5215fbbf8fe5374e39e0ec1d10d319f46"
+git-tree-sha1 = "5854426c4e136c1fb8b93a82a7142ce5c81734d4"
 uuid = "787d08f9-d448-5407-9aad-5290dd7ab264"
-version = "0.2.0"
+version = "0.2.1"
 
 [[ImageShow]]
-deps = ["Base64", "ColorTypes", "Colors", "FileIO", "FixedPointNumbers", "ImageCore", "OffsetArrays", "Requires", "Test"]
-git-tree-sha1 = "98eb96a852fd2d6f0905cbe4d215ec2113805b46"
+deps = ["Base64", "ColorTypes", "Colors", "FileIO", "FixedPointNumbers", "ImageCore", "OffsetArrays", "Requires"]
+git-tree-sha1 = "c23323afc82b6b553e6b2244d531e50858ea392c"
 uuid = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
-version = "0.1.2"
+version = "0.2.0"
 
 [[ImageTransformations]]
 deps = ["AxisAlgorithms", "ColorTypes", "ColorVectorSpace", "Colors", "CoordinateTransformations", "FixedPointNumbers", "IdentityRanges", "ImageCore", "Interpolations", "LinearAlgebra", "OffsetArrays", "StaticArrays", "Test"]
