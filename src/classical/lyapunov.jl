@@ -79,7 +79,7 @@ function λmap!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=Poincare
     ic_dep = depchain(params, E, ic_alg)
     # ic_node is the node with the compatible initial conditions
     # we need to check if λs were computed for this node
-    outn = outneighbors(g, g[ic_node])
+    outn = outneighbors(g, ic_node)
 
     if length(outn) > 0 && any(has_prop.(Ref(g), outn, :λ_alg))
         # we have some λs computed, we now have to check if they are the

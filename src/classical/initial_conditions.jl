@@ -324,9 +324,7 @@ end
 function initial_conditions(E; alg=PoincareRand(n=500), params=PhysicalParameters(),
         recompute=false, root=(@__DIR__)*"/../../output/classical")
     g = initialize(root)
-    node = initial_conditions(g, E, alg=alg, params=params, recompute=recompute)
-    q = node[:q0]
-    p = node[:p0]
+    q, p = initial_conditions!(g, E, alg=alg, params=params, recompute=recompute)
     savechanges(g, root)
 
     return q, p
