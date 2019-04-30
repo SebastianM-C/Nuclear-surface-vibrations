@@ -382,6 +382,12 @@ function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀
     lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
 end
 
+function log_ticks(lims, l)
+    a = log10(lims[1])
+    b = log10(lims[2])
+    10 .^range(a, b, length=l)
+end
+
 function paths_distance(sol, t)
     idx1 = SVector{4}(1:4)
     idx2 = SVector{4}(5:8)
@@ -391,9 +397,20 @@ function paths_distance(sol, t)
     init = [Point2f0(t[], dist(sol(t[])))]
     distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
     ey = extrema(dist.(sol[:]))
-    limits = FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1]))
-
-    lines(distance, limits=limits)
+    limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
+    ranges = Node((range(sol.t[1], sol.t[end], length=11), log_ticks(ey, 5)))
+    # ranges = Node(([0,10,50,100], [1e-10, 1e-9, 1e-8]))
+    # labels = Node((string.([0,10,50,100]), string.([1e-10, 1e-9, 1e-8])))
+    
+    lines(distance,
+        # axis = (
+        #     ticks = (
+        #         ranges = ranges,
+        #         labels = labels
+        #     ),
+        # ),
+        limits = limits,
+    )
 end
 
 end  # module Visualizations
