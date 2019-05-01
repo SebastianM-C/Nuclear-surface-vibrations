@@ -2,7 +2,8 @@ module Visualizations
 
 export poincare_explorer, animate, animate_solution, θϕ_sections,
     scene_limits2D, scene_limits3D, path_animation2D, path_animation3D,
-    plot_slice!, parallel_paths, paths_distance, paths_distance_log
+    plot_slice!, parallel_paths, paths_distance, paths_distance_log,
+    save_animation
 
 using ..Hamiltonian
 using ..InitialConditions
@@ -303,6 +304,13 @@ function animate(t, tspan, Δt=0.02)
     end
 end
 
+function save_animation(scene, t, tspan, fn, Δt=0.03)
+    record(scene, fn, range(tspan..., step=Δt), framerate=60) do tᵢ
+        push!(t, tᵢ)
+        # sleep(1/120)
+    end
+end
+
 function θ_section(sol, t, N=100; θ=π/2, ϕ=range(0, 2π, length=N), limits, R₀=1)
     r = R(sol, t, θ, ϕ)
 
@@ -374,12 +382,20 @@ function plot_slice!(scene, sim; idxs=[1,2])
         colormap=:inferno)
 end
 
+function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5])
+    p = lift(t->[Point3f0(sol(t, idxs=idxs[1:3])),
+                 Point3f0(sol(t, idxs=idxs[5:7]))], t)
+    meshscatter!(scene, p, limits=scene.limits, markersize=0.04)
+    lines!(scene, p, limits=scene.limits, color=:blue)
+end
+
 function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀","q₂","p₂"),))
     trajectory1 = path3D(sol, t, idxs[1:3])
     trajectory2 = path3D(sol, t, idxs[5:7])
     limits = scene_limits3D(sol, idxs)
     sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
     lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
+    endpoints!(sc, sol, t, idxs)
 end
 
 function log_ticks(lims, l)

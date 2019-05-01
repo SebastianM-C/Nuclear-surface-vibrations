@@ -46,11 +46,11 @@ vbox(surface_sc, section_sc, sizes=[0.7, 0.3])
 animate(t, (0, 40))
 
 
-
+Point3f0(sol(0, idxs=[1,2,3]))
 using .Classical.ParallelTrajectories
 
-d0 = 1e-6
-pprob = parallel_problem(ż, (z0[1], z0[1].+d0/√4), 100., p)
+d0 = 1e-3
+pprob = parallel_problem(ż, (z0[1], z0[1].+d0/√4), 40., p)
 psol = solve(pprob, Vern9(), abstol=1e-14, reltol=1e-14, maxiters=1e9)
 
 parallel_paths(psol, t)
@@ -62,4 +62,6 @@ parallel_sc = parallel_paths(psol, t)
 psc = paths_distance(psol, t)
 lpsc = paths_distance_log(psol, t)
 dsc = hbox(psc, lpsc)
-vbox(parallel_sc, dsc, sizes=[0.5, 0.5])
+sc = vbox(parallel_sc, dsc, sizes=[0.5, 0.5])
+
+save_animation(sc, t, (0, 40), "output\\classical\\test.mp4")
