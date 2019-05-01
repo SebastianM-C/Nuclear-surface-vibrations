@@ -2,7 +2,7 @@ module Visualizations
 
 export poincare_explorer, animate, animate_solution, θϕ_sections,
     scene_limits2D, scene_limits3D, path_animation2D, path_animation3D,
-    plot_slice!, parallel_paths, paths_distance
+    plot_slice!, parallel_paths, paths_distance, paths_distance_log
 
 using ..Hamiltonian
 using ..InitialConditions
@@ -27,7 +27,7 @@ using RecursiveArrayTools
 using DiffEqBase
 using Colors: color
 using LinearAlgebra: norm
-
+using UnicodeFun
 
 x(r, θ, ϕ) = r*sin(θ)*cos(ϕ)
 y(r, θ, ϕ) = r*sin(θ)*sin(ϕ)
@@ -383,9 +383,38 @@ function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀
 end
 
 function log_ticks(lims, l)
-    a = log10(lims[1])
-    b = log10(lims[2])
-    10 .^range(a, b, length=l)
+    a = round(lims[1], RoundNearest)
+    b = round(lims[2], RoundNearest)
+    r = range(a, b, length=l)
+    l = raw"10^{".*string.(r).*"}"
+    t = to_latex.(l)
+    return r, t
+end
+
+function paths_distance_log(sol, t)
+    idx1 = SVector{4}(1:4)
+    idx2 = SVector{4}(5:8)
+
+    @inbounds dist(u) = log10(norm(u[idx1] - u[idx2]))
+
+    init = [Point2f0(t[], dist(sol(t[])))]
+    distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
+    ey = extrema(dist.(sol[:]))
+    limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
+    r, t = log_ticks(ey, 5)
+    ranges = Node((range(sol.t[1], sol.t[end], length=5), r))
+    labels = lift(x->(string.(x[1]), t), ranges)
+
+    lines(distance,
+        axis = (
+            names = (axisnames=("t", "log₁₀(d)"),),
+            ticks = (
+                ranges = ranges,
+                labels = labels
+            ),
+        ),
+        limits = limits,
+    )
 end
 
 function paths_distance(sol, t)
@@ -398,19 +427,8 @@ function paths_distance(sol, t)
     distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
     ey = extrema(dist.(sol[:]))
     limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
-    ranges = Node((range(sol.t[1], sol.t[end], length=11), log_ticks(ey, 5)))
-    # ranges = Node(([0,10,50,100], [1e-10, 1e-9, 1e-8]))
-    # labels = Node((string.([0,10,50,100]), string.([1e-10, 1e-9, 1e-8])))
-    
-    lines(distance,
-        # axis = (
-        #     ticks = (
-        #         ranges = ranges,
-        #         labels = labels
-        #     ),
-        # ),
-        limits = limits,
-    )
+
+    lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),))
 end
 
 end  # module Visualizations

@@ -58,9 +58,8 @@ parallel_paths(psol, t)
 λprob = λ_timeseries_problem(z0[1], TimeRescaling(T=100.,Ttr=0.), params=p)
 λsol = solve(λprob, Vern9(), abstol=1e-14, reltol=1e-14, maxiters=1e9)
 
-parallel_paths(λsol, t)
-
-λsol(0, idxs=[3,4,2])
-λsol(0, idxs=[7,8,6])
-
-paths_distance(λsol, t)
+parallel_sc = parallel_paths(psol, t)
+psc = paths_distance(psol, t)
+lpsc = paths_distance_log(psol, t)
+dsc = hbox(psc, lpsc)
+vbox(parallel_sc, dsc, sizes=[0.5, 0.5])
