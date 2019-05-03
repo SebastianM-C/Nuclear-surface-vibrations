@@ -400,10 +400,10 @@ function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀
     endpoints!(sc, sol, t, idxs)
 end
 
-function log_ticks(lims, l)
+function log_ticks(lims, n)
     a = round(lims[1], RoundNearest)
     b = round(lims[2], RoundNearest)
-    r = range(a, b, length=l)
+    r = range(a, b, length=n)
     l = raw"10^{".*string.(r).*"}"
     t = to_latex.(l)
     return r, t
