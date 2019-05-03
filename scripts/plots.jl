@@ -15,8 +15,8 @@ using AbstractPlotting
 using StatsBase
 using LinearAlgebra:norm
 
-E = 0.4
-p = PhysicalParameters(B=0.55)
+E = 0.1
+p = PhysicalParameters(B=0.15)
 ic_alg = PoincareRand(n=10)
 ic_dep = depchain(p,E,ic_alg)
 @time g = initialize()
@@ -43,7 +43,7 @@ plot_slice!(line_sc, sim[1])
 vbox(surface_sc, line_sc, sizes=[0.5,0.5])
 vbox(surface_sc, section_sc, sizes=[0.7, 0.3])
 
-animate(t, (0, 40))
+Visualizations.animate(t, (0, 40))
 
 
 Point3f0(sol(0, idxs=[1,2,3]))
@@ -64,4 +64,6 @@ lpsc = paths_distance_log(psol, t)
 dsc = hbox(psc, lpsc)
 sc = vbox(parallel_sc, dsc, sizes=[0.5, 0.5])
 
-save_animation(sc, t, (0, 40), "output\\classical\\test.mp4")
+vbox(paths_distance(λsol, t),paths_distance_log(λsol, t))
+save_animation(sc, t, (0, 40), "output/classical/test.webm")
+save("output/classical/nucleus.png", surface_sc)

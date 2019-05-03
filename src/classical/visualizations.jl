@@ -294,7 +294,10 @@ function animate_solution(sol, t; θ_range=(0,π), ϕ_range=(0,2π), R₀=1)
     ez = convert(Matrix, VectorOfArray([[extrema(z.(r,θ,ϕ))...] for r in all_r]))
     limits = scene_limits3D(ex, ey, ez)
 
-    return surface(X, Y, Z, limits=limits, colormap=:inferno, scale_plot=false)
+    return surface(X, Y, Z,
+        limits=limits,
+        colormap=:solar,
+        scale_plot=false)
 end
 
 function animate(t, tspan, Δt=0.02)
@@ -307,7 +310,6 @@ end
 function save_animation(scene, t, tspan, fn, Δt=0.03)
     record(scene, fn, range(tspan..., step=Δt), framerate=60) do tᵢ
         push!(t, tᵢ)
-        # sleep(1/120)
     end
 end
 
@@ -365,7 +367,7 @@ function path_animation3D(sol, t; idxs=[3,4,2,1], labels=(axisnames=("q₀","q�
         init=cinit)
 
     limits = scene_limits3D(sol, idxs)
-    sc = lines(trajectory, limits=limits, scale_plot=false, markersize=0.7,
+    sc = lines(trajectory, limits=limits, scale_plot=false, markersize=0.9,
         color=colors, colormap=colormap, axis=(names=labels,))
 
     o = [limits.origin...,]
