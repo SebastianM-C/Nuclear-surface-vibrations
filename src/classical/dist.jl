@@ -44,7 +44,7 @@ function dhist(d, params, alg, E, ic_alg)
     savefig(plt, dir*"/dinf_$fn.pdf")
 end
 
-function computed∞(nodes, alg, ic_alg, ic_deps, params, E, g)
+function computed∞(node, alg, ic_alg, ic_dep, params, E, g)
     q0 = node[:q0]
     p0 = node[:p0]
     d, t = @timed d∞(p0, q0, alg; params=params)
@@ -154,6 +154,7 @@ end
 function d∞!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DInftyAlgorithm(), recompute=false)
     ic_node = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
+    ic_dep = depchain(params, E, ic_alg)
     # ic_node is the node with the compatible initial conditions
     # we need to check if d∞ was computed for this node
     outn = outneighbors(g, g[ic_node])
