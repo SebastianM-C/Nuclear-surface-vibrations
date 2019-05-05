@@ -15,18 +15,20 @@ using LightGraphs
 using ProgressMeter
 include("$(pwd())/scripts/dbg.jl")
 
-function compute(g, Elist, Blist, T)
+function compute!(g, Elist, Blist, T)
     times = Float64[]
 
     @time @showprogress for B in Blist
         @showprogress for E in Elist
-            λ, t = @timed Classical.Lyapunov.λmap!(g, E, params=PhysicalParameters(B=B), alg=DynSys(T=T))
+            # λ, t = @timed Lyapunov.λmap!(g, E, params=PhysicalParameters(B=B), alg=DynSys(T=T))
+            # λ, t = @timed Lyapunov.λmap!(g, E, params=PhysicalParameters(B=B), alg=TimeRescaling(T=T))
+            d, t = @timed DInfty.d∞!(g, E, params=PhysicalParameters(B=B), alg=DInftyAlgorithm(T=T))
             push!(times, t)
         end
         savechanges(g)
-        if isfile("$(@__DIR__)../STOP")
+        if isfile("STOP")
             @info "Stopping now at $B, $E"
-            rm("$(@__DIR__)../STOP")
+            rm("STOP")
             break
         end
     end
@@ -34,35 +36,38 @@ function compute(g, Elist, Blist, T)
     return times
 end
 
-E = 120.
+E = 0.03
 ic_alg = PoincareRand(n=500)
 p = PhysicalParameters(B=0.5)
 ic_dep = Classical.InitialConditions.depchain(p,E,ic_alg)
 @time g = initialize()
 
-@profiler Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
+@profiler Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
 
 with_logger(dbg) do
-    @time Classical.Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.22), alg=DynSys(T=1e5))
+    @time Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.22), alg=DynSys(T=1e5))
 end
 
-times = compute(g, 10:10:3000, 0.55, 1e6)
+Bs = setdiff(0.1:0.02:0.6, 0.1:0.1:0.6)
+times = compute!(g, 0.01:0.01:10, Bs, 1e5)
 using Serialization
-times = serialize("/mnt/storage/Nuclear-surface-vibrations/output/classical/times.jls")
+times = serialize("/mnt/storage/Nuclear-surface-vibrations/output/classical/times.jls", times)
 varinfo()
 
 using Plots
 plot(times, ylabel="compute+add to graph time", xlabel="run number", legend=nothing)
-savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run_B0.55_E10-3000_T1e6.pdf")
+savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run2_B0.1-0.6_E0.1-10_T1e5_dinf.pdf")
 
 
-q0, p0 = initial_conditions(g, E, alg=ic_alg, params=p)
+q0, p0 = InitialConditions.initial_conditions!(g, E, alg=ic_alg, params=p)
 @time l=λmap(p0, q0, DynSys(T=1e5), params=p)
 @time λmap(p0, q0, TimeRescaling(), params=p)
 
-@time l = g[:λ, ic_dep..., (λ_alg=DynSys(T=1e5),)]
+@time l = g[:λ, ic_dep..., (λ_alg=DynSys(T=1e5),)][1]
 
 @time d = d∞(p0, q0, DInftyAlgorithm(T=1e5), params=p)
+DInfty.d∞!(g, E, alg=DInftyAlgorithm(T=1e5), ic_alg=ic_alg, params=p)
+
 histogram(d, nbins=50)
 histogram(l, nbins=50)
 
