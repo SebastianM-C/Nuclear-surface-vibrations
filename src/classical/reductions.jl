@@ -45,20 +45,29 @@ function hist_mean(v)
     mean(select_after_first_max(v))
 end
 
-function select_after_first_max(v; nbins=50)
+function select_after_first_max(v; nbins=50, t = 0.05)
     hist = fit(Histogram, v, nbins=nbins, closed=:right)
     firstmax = findlocalmaxima(hist.weights)[1][1]
-    v[v .> hist.edges[1][firstmax+1]]
+    if hist.edges[1][firstmax+1] < t
+        return v
+    else
+        return v[v .> hist.edges[1][firstmax+1]]
+    end
 end
 
-function hist_max(v, t=3)
+function select_max_bin(v, t=3)
     hist = fit(Histogram, v, nbins=50, closed=:right)
     threshold = hist.edges[1][t]
     v = v[v.>threshold]
     idx = indmax(hist.weights[t+1:end])
     a = hist.edges[1][t+1:end][idx]
     b = hist.edges[1][t+1:end][idx+1]
-    maximum(v[(v.>a) .& (v.<=b)])
+
+    return v[(v.>a) .& (v.<=b)]
+end
+
+function hist_max(v, t=3)
+    maximum(select_max_bin(v, t))
 end
 
 function DInfty.Γ(E, reduction, d0, p)
