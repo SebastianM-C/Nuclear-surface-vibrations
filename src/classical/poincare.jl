@@ -33,8 +33,7 @@ a Monte Carlo simulation.
 """
 function poincaremap(q0, p0; params=PhysicalParameters(), t=500., axis=3, sgn=1,
         diff_eq_kwargs=(alg=Vern9(), abstol=1e-14, reltol=0, maxiters=1e9),
-        rootkw=(xrtol=1e-6, atol=1e-6), full=false)
-    q0[:,1] .+= eps()
+        rootkw=(xrtol=1e-9, atol=1e-6), full=false)
     z0 = [SVector{4}(vcat(p0[i, :], q0[i, :])) for i ∈ axes(q0, 1)]
     idxs = full ? SVector{4}(1:4) : (axis==3) ? SVector{2}([4,2]) : SVector{2}([3,1])
 

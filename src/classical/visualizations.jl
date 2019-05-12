@@ -1,16 +1,23 @@
 module Visualizations
 
 export poincare_explorer, animate, animate_solution, θϕ_sections,
-    scene_limits2D, scene_limits3D
+    scene_limits2D, scene_limits3D, path_animation2D, path_animation3D,
+    plot_slice!, parallel_paths, paths_distance, paths_distance_log,
+    save_animation
 
 using ..Hamiltonian
 using ..InitialConditions
+using ..InitialConditions: initial_conditions!
 using ..Poincare
 using ..Lyapunov
+using ..Lyapunov: λmap!
 using ..DInfty
+using ..DInfty: d∞!
+using ..ParallelTrajectories
 using ..DataBaseInterface
 
 using AbstractPlotting, GLMakie
+using AbstractPlotting: interpolated_getindex
 using StatsBase
 using StatsMakie
 using Statistics
@@ -20,6 +27,8 @@ using OrdinaryDiffEq
 using RecursiveArrayTools
 using DiffEqBase
 using Colors: color
+using LinearAlgebra: norm
+using UnicodeFun
 
 x(r, θ, ϕ) = r*sin(θ)*cos(ϕ)
 y(r, θ, ϕ) = r*sin(θ)*sin(ϕ)
@@ -58,11 +67,11 @@ function scene_limits2D(sol; idxs=[1,2])
     scene_limits2D(sol[idxs[1],:], sol[idxs[2],:])
 end
 
-function plot_sim(sim; colors=axes(sim, 1), idxs=[1,2])
+function plot_sim(sim; colors=float.(axes(sim, 1)), idxs=[1,2])
     ui, ms = AbstractPlotting.textslider(range(0.001, stop=1., length=1000), "scale", start=0.05)
     data = Scene(resolution=(1000, 1000))
-    colormap = to_colormap(:viridis, size(sim, 1))
-    get_color(i) = AbstractPlotting.interpolated_getindex(colormap, colors[i], extrema(colors))
+    colormap = to_colormap(:inferno, size(sim, 1))
+    get_color(i) = interpolated_getindex(colormap, colors[i], extrema(colors))
     series_alpha = map(eachindex(sim)) do i
         simᵢ = sim[i]
         alpha = Node(1.0)
@@ -90,7 +99,7 @@ function plot_hist(hist)
     return hist_sc, hist_α
 end
 
-function change_α(series_alpha, idxs, α=0.005)
+function change_α(series_alpha, idxs, α=0.001)
     foreach(i-> series_alpha[i][] = α, idxs)
 end
 
@@ -153,23 +162,18 @@ function select_bin(hist_idx, hist, hist_α, scatter_α, data)
     end
 end
 
-function poincare_explorer(E, name, alg, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, t=values(alg)[1].T, rootkw=(xrtol=1e-6, atol=1e-6))
-    g, t_ = @timed initialize()
-    @debug "Loading graph took $t_ seconds."
-    q0, p0 = initial_conditions(g, E, alg=ic_alg)
-    alg_type = typeof(alg)
+function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
+        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
+    # g, t_ = @timed initialize()
+    # @debug "Loading graph took $t_ seconds."
+    q0, p0 = initial_conditions!(g, E, alg=ic_alg, params=params)
 
     sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
     @debug "Poincaré map took $t_ seconds."
 
     ic_dep = InitialConditions.depchain(params, E, ic_alg)
-    vals, t_ = @timed g[name, ic_dep..., alg]
-    if length(vals) == 0
-        @warn "No values found!"
-        return nothing
-    end
-    @debug "Loading values took $t_ seconds."
+    vals, t_ = @timed f(g, E, params=params, ic_alg=ic_alg, alg=alg)
+    @debug "Loading or computing values took $t_ seconds."
     hist = fit(StatsBase.Histogram, vals, nbins=nbins, closed=:left)
 
     colors = Float32.(axes(hist.weights, 1))
@@ -195,17 +199,17 @@ function poincare_explorer(E, name, alg, ic_alg; params=PhysicalParameters(),
     return sc
 end
 
-function poincare_explorer(E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
+function poincare_explorer(g, E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    scene = poincare_explorer(E, :λ, (λ_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
+    scene = poincare_explorer(g, E, λmap!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
         nbins=nbins, rootkw=rootkw)
     scene.children[2][Axis][:names, :axisnames][] = ("λ", "N")
     return scene
 end
 
-function poincare_explorer(E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
+function poincare_explorer(g, E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    poincare_explorer(E, :d∞, (d∞_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
+    poincare_explorer(g, E, d∞!, (d∞_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
         nbins=nbins, rootkw=rootkw)
 end
 
@@ -290,13 +294,22 @@ function animate_solution(sol, t; θ_range=(0,π), ϕ_range=(0,2π), R₀=1)
     ez = convert(Matrix, VectorOfArray([[extrema(z.(r,θ,ϕ))...] for r in all_r]))
     limits = scene_limits3D(ex, ey, ez)
 
-    return surface(X, Y, Z, limits=limits, scale_plot=false)
+    return surface(X, Y, Z,
+        limits=limits,
+        colormap=:solar,
+        scale_plot=false)
 end
 
 function animate(t, tspan, Δt=0.02)
     for tᵢ in range(tspan..., step=Δt)
         push!(t, tᵢ)
         sleep(1/120)
+    end
+end
+
+function save_animation(scene, t, tspan, fn, Δt=0.03)
+    record(scene, fn, range(tspan..., step=Δt), framerate=60) do tᵢ
+        push!(t, tᵢ)
     end
 end
 
@@ -325,6 +338,115 @@ function θϕ_sections(sol, t, limits)
     ϕ_sc = ϕ_section(sol, t, limits=lim)
 
     return hbox(θ_sc, ϕ_sc)
+end
+
+function path_animation2D(sol, t; idxs=[1,2])
+    init = [Point2f0(sol(t[], idxs=idxs[1]), sol(t[], idxs=idxs[2]))]
+    trajectory = lift(t->push!(trajectory[],
+        Point2f0(sol(t, idxs=idxs[1]), sol(t, idxs=idxs[2]))), t;
+        init=init)
+    limits = scene_limits2D(sol, idxs=idxs)
+    lines(trajectory, limits=limits, markersize=0.7, scale_plot=false)
+end
+
+function path3D(sol, t, idxs)
+    init = [Point3f0(sol(t[], idxs=idxs[1]), sol(t[], idxs=idxs[2]), sol(t[], idxs=idxs[3]))]
+    trajectory = lift(t->push!(trajectory[],
+        Point3f0(sol(t, idxs=idxs[1]), sol(t, idxs=idxs[2]), sol(t, idxs=idxs[3]))), t;
+        init=init)
+end
+
+function path_animation3D(sol, t; idxs=[3,4,2,1], labels=(axisnames=("q₀","q₂","p₂"),))
+    trajectory = path3D(sol, t, idxs)
+
+    clims = extrema(sol[idxs[4],:])
+    colormap = to_colormap(:viridis, length(sol))
+    cinit = [interpolated_getindex(colormap, sol(t[], idxs=idxs[4]), clims)]
+    colors = lift(t->push!(colors[],
+        interpolated_getindex(colormap, sol(t, idxs=idxs[4]), clims)), t;
+        init=cinit)
+
+    limits = scene_limits3D(sol, idxs)
+    sc = lines(trajectory, limits=limits, scale_plot=false, markersize=0.9,
+        color=colors, colormap=colormap, axis=(names=labels,))
+
+    o = [limits.origin...,]
+    o[1] = 0
+    w = [limits.widths...,]
+    w[1] = 0.002
+    intersection_plane = FRect3D(o, w)
+    mesh!(sc, intersection_plane, color=(:blue, 0.2), limits=limits)
+end
+
+function plot_slice!(scene, sim; idxs=[1,2])
+    meshscatter!(scene, [Point3f0(0, sim[i][idxs]...) for i in axes(sim,1)],
+        markersize=0.015, limits=scene.limits, color=axes(sim,1), scale_plot=false,
+        colormap=:inferno)
+end
+
+function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5])
+    p = lift(t->[Point3f0(sol(t, idxs=idxs[1:3])),
+                 Point3f0(sol(t, idxs=idxs[5:7]))], t)
+    meshscatter!(scene, p, limits=scene.limits, markersize=0.04)
+    lines!(scene, p, limits=scene.limits, color=:blue)
+end
+
+function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀","q₂","p₂"),))
+    trajectory1 = path3D(sol, t, idxs[1:3])
+    trajectory2 = path3D(sol, t, idxs[5:7])
+    limits = scene_limits3D(sol, idxs)
+    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
+    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
+    endpoints!(sc, sol, t, idxs)
+end
+
+function log_ticks(lims, n)
+    a = round(lims[1], RoundNearest)
+    b = round(lims[2], RoundNearest)
+    r = range(a, b, length=n)
+    l = raw"10^{".*string.(r).*"}"
+    t = to_latex.(l)
+    return r, t
+end
+
+function paths_distance_log(sol, t)
+    idx1 = SVector{4}(1:4)
+    idx2 = SVector{4}(5:8)
+
+    @inbounds dist(u) = log10(norm(u[idx1] - u[idx2]))
+
+    init = [Point2f0(t[], dist(sol(t[])))]
+    distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
+    ey = extrema(dist.(sol[:]))
+    limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
+    r, t = log_ticks(ey, 5)
+    ranges = Node((range(sol.t[1], sol.t[end], length=5), r))
+    labels = lift(x->(string.(x[1]), t), ranges)
+
+    lines(distance,
+        axis = (
+            names = (axisnames=("t", "log₁₀(d)"),),
+            ticks = (
+                ranges = ranges,
+                labels = labels
+            ),
+        ),
+        limits = limits,
+    )
+end
+
+function paths_distance(sol, t)
+    idx1 = SVector{4}(1:4)
+    idx2 = SVector{4}(5:8)
+
+    @inbounds dist(u) = norm(u[idx1] - u[idx2])
+
+    init = [Point2f0(t[], dist(sol(t[])))]
+    distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
+    ey = extrema(dist.(sol[:]))
+    limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
+
+    lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),))
 end
 
 end  # module Visualizations

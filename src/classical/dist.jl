@@ -7,7 +7,7 @@ using ..Parameters
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
-using ..InitialConditions: depchain, initial_conditions!, extract_ics
+using ..InitialConditions: depchain, initial_conditions!
 using ..ParallelTrajectories
 using ..Classical: AbstractAlgorithm
 
@@ -44,11 +44,12 @@ function dhist(d, params, alg, E, ic_alg)
     savefig(plt, dir*"/dinf_$fn.pdf")
 end
 
-function computed∞(nodes, alg, ic_alg, ic_deps, params, E, g)
-    q0, p0 = extract_ics(nodes, ic_alg)
+function computed∞(node, alg, ic_alg, ic_dep, params, E, g)
+    q0 = node[:q0]
+    p0 = node[:p0]
     d, t = @timed d∞(p0, q0, alg; params=params)
     @debug "Computing values took $t seconds."
-    _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (d∞=d,), (d∞_alg=alg,))
+    _, t = @timed add_nodes!(g, foldr(=>,(ic_dep..., node, (d∞_alg=alg,), (d∞=d,))))
     @debug "Adding d∞ to graph took $t seconds."
 
     return d
@@ -152,31 +153,28 @@ end
 
 function d∞!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DInftyAlgorithm(), recompute=false)
-    ic_nodes = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
-    ic_deps = depchain(params, E, ic_alg)
-    # ic_vertices are all the compatible initial conditions
-    # we need to check that for each initial condition all the
-    # outneighbors have at least a λ computed
-    ic_vertices, t = @timed get.(Ref(g.index), ic_nodes, 0)
-    @debug "Found $(length(ic_vertices)) compatible initial conditions in $t seconds"
-    if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :d∞_alg)), &, ic_vertices)
+    ic_node = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
+    ic_dep = depchain(params, E, ic_alg)
+    # ic_node is the node with the compatible initial conditions
+    # we need to check if d∞ was computed for this node
+    outn = outneighbors(g, g[ic_node])
+
+    if length(outn) > 0 && any(has_prop.(Ref(g), outn, :d∞_alg))
         # we have some d∞ computed, we now have to check if they are the
         # right ones
         @debug "Looking for available d∞_algs"
-        d∞_algs = Int[]
-        for v in ic_vertices
-            union!(d∞_algs, outneighbors(g, v))
-        end
-        @debug "Checking for compatible d∞_algs"
-        if mapreduce(a->g[a] == (d∞_alg=alg,), |, d∞_algs)
+        idx = findfirst(v->g[v] == (d∞_alg=alg,), outn)
+        if idx !== nothing
             @debug "Found compatible d∞"
-            d, t = @timed g[:d∞, ic_deps..., (d∞_alg=alg,)]
-            @debug "Loading saved d∞ took $t seconds."
+            vals, t = @timed g[:d∞, ic_dep..., (d∞_alg=alg,)]
+            @assert length(vals) == 1 "d∞ values not uniquely represented by deps!"
+            d = vals[1]
+            @debug "Loading saved λs took $t seconds."
         else
-            d = computed∞(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
+            d = computed∞(ic_node, alg, ic_alg, ic_dep, params, E, g)
         end
     else
-        d = computed∞(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
+        d = computed∞(ic_node, alg, ic_alg, ic_dep, params, E, g)
     end
 
     return d

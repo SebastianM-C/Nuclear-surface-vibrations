@@ -45,20 +45,29 @@ function hist_mean(v)
     mean(select_after_first_max(v))
 end
 
-function select_after_first_max(v; nbins=50)
+function select_after_first_max(v; nbins=50, t = 0.05)
     hist = fit(Histogram, v, nbins=nbins, closed=:right)
     firstmax = findlocalmaxima(hist.weights)[1][1]
-    v[v .> hist.edges[1][firstmax+1]]
+    if hist.edges[1][firstmax+1] < t
+        return v
+    else
+        return v[v .> hist.edges[1][firstmax+1]]
+    end
 end
 
-function hist_max(v, t=3)
+function select_max_bin(v, t=3)
     hist = fit(Histogram, v, nbins=50, closed=:right)
     threshold = hist.edges[1][t]
     v = v[v.>threshold]
     idx = indmax(hist.weights[t+1:end])
     a = hist.edges[1][t+1:end][idx]
     b = hist.edges[1][t+1:end][idx+1]
-    maximum(v[(v.>a) .& (v.<=b)])
+
+    return v[(v.>a) .& (v.<=b)]
+end
+
+function hist_max(v, t=3)
+    maximum(select_max_bin(v, t))
 end
 
 function DInfty.Γ(E, reduction, d0, p)
@@ -72,12 +81,12 @@ function mean_over_ic(g::StorageGraph, s::Symbol, alg::NamedTuple,
         p::PhysicalParameters, Einterval=0..Inf;
         reduction=hist_mean)
     pre_dep = (A=p.A,)=>(D=p.D,)=>(B=p.B,)
-    E_vals = g[pre_dep, :E]
+    E_vals = g[:E, pre_dep]
     filter!(E->E ∈ Einterval, E_vals)
     vals = Vector{typeof(values(alg)[1].T)}(undef, length(E_vals))
     @threads for i in eachindex(E_vals)
         ic_dep = InitialConditions.depchain(p, E_vals[i], ic_alg)
-        vals[i] = reduction(g[s, ic_dep..., alg])
+        vals[i] = reduction(g[s, ic_dep..., alg][1])
     end
     DataFrame(:E=>E_vals, :val=>vals)
 end
@@ -88,7 +97,7 @@ function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
     df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
-    df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |>
+    df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
             size=(width,height),
@@ -101,7 +110,7 @@ function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
     df, t = @timed mean_over_ic(g, :d∞, (d∞_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
-    df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
+    df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
             size=(width,height),
@@ -113,7 +122,7 @@ function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
         p::PhysicalParameters, Einterval=0..Inf, Binterval=0..1;
         ic_reduction=hist_mean, reduction=average)
     pre_dep = (A=p.A,)=>(D=p.D,)
-    B_vals = g[pre_dep, :B]
+    B_vals = g[:B, pre_dep]
     filter!(B->B ∈ Binterval, B_vals)
     vals = Vector{typeof(values(alg)[1].T)}(undef, length(B_vals))
     params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[1])

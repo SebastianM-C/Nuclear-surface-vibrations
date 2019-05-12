@@ -8,7 +8,7 @@ using ..Parameters: @with_kw, @unpack
 using ..Hamiltonian
 using ..DataBaseInterface
 using ..InitialConditions
-using ..InitialConditions: depchain, initial_conditions!, extract_ics
+using ..InitialConditions: depchain, initial_conditions!
 using ..Classical: AbstractAlgorithm
 using ..DInfty: monte_dist
 using ..ParallelTrajectories
@@ -62,11 +62,12 @@ function λhist(λs, params, alg, E, ic_alg)
     savefig(plt, dir*"/lyapunov_$fn.pdf")
 end
 
-function computeλ(nodes, alg, ic_alg, ic_deps, params, E, g)
-    q0, p0 = extract_ics(nodes, ic_alg)
+function computeλ(node, alg, ic_alg, ic_dep, params, E, g)
+    q0 = node[:q0]
+    p0 = node[:p0]
     λs, t = @timed λmap(p0, q0, alg; params=params)
     @debug "Computing values took $t seconds."
-    _, t = @timed add_derived_values!(g, ic_deps, (q₀=q0[:,1],q₂=q0[:,2], p₀=p0[:,1],p₂=p0[:,2]), (λ=λs,), (λ_alg=alg,))
+    _, t = @timed add_nodes!(g, foldr(=>,(ic_dep..., node, (λ_alg=alg,), (λ=λs,))))
     @debug "Adding λs to graph took $t seconds."
 
     return λs
@@ -74,31 +75,28 @@ end
 
 function λmap!(g::StorageGraph, E; params=PhysicalParameters(), ic_alg=PoincareRand(n=500),
         ic_recompute=false, alg=DynSys(), recompute=false)
-    ic_nodes = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
-    ic_deps = depchain(params, E, ic_alg)
-    # ic_vertices are all the compatible initial conditions
-    # we need to check that for each initial condition all the
-    # outneighbors have at least a λ computed
-    ic_vertices, t = @timed get.(Ref(g.index), ic_nodes, 0)
-    @debug "Found $(length(ic_vertices)) compatible initial conditions in $t seconds"
-    if mapreduce(v->any(has_prop.(Ref(g), outneighbors(g, v), :λ_alg)), &, ic_vertices)
+    ic_node = initial_conditions!(g, E, alg=ic_alg, params=params, recompute=ic_recompute)
+    ic_dep = depchain(params, E, ic_alg)
+    # ic_node is the node with the compatible initial conditions
+    # we need to check if λs were computed for this node
+    outn = outneighbors(g, ic_node)
+
+    if length(outn) > 0 && any(has_prop.(Ref(g), outn, :λ_alg))
         # we have some λs computed, we now have to check if they are the
         # right ones
         @debug "Looking for available λ_algs"
-        λ_algs = Int[]
-        for v in ic_vertices
-            union!(λ_algs, outneighbors(g, v))
-        end
-        @debug "Checking for compatible λ_algs"
-        if mapreduce(a->g[a] == (λ_alg=alg,), |, λ_algs)
+        idx = findfirst(v->g[v] == (λ_alg=alg,), outn)
+        if idx !== nothing
             @debug "Found compatible λs"
-            λs, t = @timed g[:λ, ic_deps..., (λ_alg=alg,)]
+            vals, t = @timed g[:λ, ic_dep..., (λ_alg=alg,)]
+            @assert length(vals) == 1 "Lyapunov values not uniquely represented by deps!"
+            λs = vals[1]
             @debug "Loading saved λs took $t seconds."
         else
-            λs = computeλ(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
+            λs = computeλ(ic_node, alg, ic_alg, ic_dep, params, E, g)
         end
     else
-        λs = computeλ(ic_nodes, alg, ic_alg, ic_deps, params, E, g)
+        λs = computeλ(ic_node, alg, ic_alg, ic_dep, params, E, g)
     end
 
     return λs
