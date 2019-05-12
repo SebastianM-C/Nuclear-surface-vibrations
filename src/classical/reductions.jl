@@ -97,7 +97,7 @@ function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
     df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
-    df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |>
+    df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
             size=(width,height),
@@ -110,7 +110,7 @@ function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
     df, t = @timed mean_over_ic(g, :d∞, (d∞_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
-    df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |>
+    df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
             size=(width,height),
