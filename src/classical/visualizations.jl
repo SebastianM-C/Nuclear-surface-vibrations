@@ -115,7 +115,8 @@ function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
     vals, t_ = @timed f(g, E, params=params, ic_alg=ic_alg, alg=alg)
     @debug "Loading or computing values took $t_ seconds."
 
-    data_scene, hist_scene = trajectory_highlighter(ds, vals, nbins=50)
+    data_scene, hist_scene = trajectory_highlighter(ds, vals, nbins=50,
+        cmap=:inferno, α=0.001, markersize = 0.08)
 
     if axis == 3
         data_scene[Axis][:names, :axisnames][] = ("q₂","p₂")
