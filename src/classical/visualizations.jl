@@ -383,7 +383,7 @@ function selected_hist(g, E, f, alg, ic_alg; params,
         nbins=50, select=Reductions.select_after_first_max)
     ic_dep = depchain(params, E, ic_alg)
     vals = f(g, E, params=params, ic_alg=ic_alg, alg=alg)
-    selected = select(λs)
+    selected = select(vals)
 
     hist = fit(Histogram, vals, nbins=nbins, closed=:left)
     shist = fit(Histogram, selected, hist.edges[1], closed=:left)
