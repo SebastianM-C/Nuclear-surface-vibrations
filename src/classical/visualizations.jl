@@ -379,7 +379,7 @@ function paths_distance(sol, t)
     lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),))
 end
 
-function selected_hist(g, E, f, alg, ic_alg, params;
+function selected_hist(g, E, f, alg, ic_alg; params,
         nbins=50, select=Reductions.select_after_first_max)
     ic_dep = depchain(params, E, ic_alg)
     vals = f(g, E, params=params, ic_alg=ic_alg, alg=alg)
