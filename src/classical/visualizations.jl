@@ -3,11 +3,11 @@ module Visualizations
 export poincare_explorer, animate, animate_solution, θϕ_sections,
     scene_limits2D, scene_limits3D, path_animation2D, path_animation3D,
     plot_slice!, parallel_paths, paths_distance, paths_distance_log,
-    save_animation
+    save_animation, selected_hist
 
 using ..Hamiltonian
 using ..InitialConditions
-using ..InitialConditions: initial_conditions!
+using ..InitialConditions: depchain, initial_conditions!
 using ..Poincare
 using ..Lyapunov
 using ..Lyapunov: λmap!
@@ -15,6 +15,7 @@ using ..DInfty
 using ..DInfty: d∞!
 using ..ParallelTrajectories
 using ..DataBaseInterface
+using ..Reductions
 
 using AbstractPlotting, GLMakie
 using AbstractPlotting: interpolated_getindex
@@ -171,7 +172,7 @@ function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
     sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
     @debug "Poincaré map took $t_ seconds."
 
-    ic_dep = InitialConditions.depchain(params, E, ic_alg)
+    ic_dep = depchain(params, E, ic_alg)
     vals, t_ = @timed f(g, E, params=params, ic_alg=ic_alg, alg=alg)
     @debug "Loading or computing values took $t_ seconds."
     hist = fit(StatsBase.Histogram, vals, nbins=nbins, closed=:left)
@@ -209,7 +210,7 @@ end
 
 function poincare_explorer(g, E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    poincare_explorer(g, E, d∞!, (d∞_alg = alg,), ic_alg; params=params, axis=axis, sgn=sgn,
+    poincare_explorer(g, E, d∞!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
         nbins=nbins, rootkw=rootkw)
 end
 
@@ -447,6 +448,28 @@ function paths_distance(sol, t)
     limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
 
     lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),))
+end
+
+function selected_hist(g, E, f, alg, ic_alg, params;
+        nbins=50, select=Reductions.select_after_first_max)
+    ic_dep = depchain(params, E, ic_alg)
+    vals = f(g, E, params=params, ic_alg=ic_alg, alg=alg)
+    selected = select(λs)
+
+    hist = fit(Histogram, vals, nbins=nbins, closed=:left)
+    shist = fit(Histogram, selected, hist.edges[1], closed=:left)
+
+    return hist, shist
+end
+
+function selected_hist(g, E, alg::LyapunovAlgorithm, ic_alg;
+        params, nbins=50, select=Reductions.select_after_first_max)
+    selected_hist(g, E, λmap!, alg, ic_alg, params=params, nbins=nbins,select=selecct)
+end
+
+function selected_hist(g, E, alg::DInftyAlgorithm, ic_alg;
+        params, nbins=50, select=Reductions.select_after_first_max)
+    selected_hist(g, E, d∞!, alg, ic_alg, params=params, nbins=nbins,select=selecct)
 end
 
 end  # module Visualizations

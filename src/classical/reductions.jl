@@ -98,7 +98,7 @@ function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
     df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame |>
-        @df plot!(plt, :E, :λ, m=2, xlabel=L"E", ylabel=L"\lambda",
+        @df plot!(plt, :E, :λ, m=3, xlabel=L"E", ylabel=L"\lambda",
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
@@ -111,7 +111,7 @@ function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
     df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame |>
-        @df plot!(plt, :E, :d∞, m=2, xlabel=L"E", ylabel=L"d_\infty",
+        @df plot!(plt, :E, :d∞, m=3, xlabel=L"E", ylabel=L"d_\infty",
             framestyle=:box, legend=false,
             size=(width,height),
             guidefont=fnt, tickfont=fnt)
@@ -143,7 +143,7 @@ function mean_over_E(g::StorageGraph, alg::LyapunovAlgorithm, Einterval=0..Inf;
     df = mean_over_E(g, :λ, (λ_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
         Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
     df |> @map({λ = _.val, _.B}) |> @orderby(_.B) |>
-        @df plot!(plt, :B, :λ, m=2, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
+        @df plot!(plt, :B, :λ, m=3, xlabel=L"B", ylabel=L"\lambda", framestyle=:box,
             label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
 end
 
@@ -154,7 +154,7 @@ function mean_over_E(g::StorageGraph, alg::DInftyAlgorithm, Einterval=0..Inf;
     df = mean_over_E(:d∞, (d∞_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
         Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
     df |> @map({d = _.val, _.B}) |> @orderby(_.B) |>
-        @df plot!(plt, :B, :d, m=2, xlabel=L"B", ylabel=L"d_\infty", framestyle=:box,
+        @df plot!(plt, :B, :d, m=3, xlabel=L"B", ylabel=L"d_\infty", framestyle=:box,
             label=label, size=(width,height), guidefont=fnt, tickfont=fnt)
 end
 
