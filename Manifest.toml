@@ -129,6 +129,12 @@ git-tree-sha1 = "805164abcd31facf3a7e5b7d803a0d16b23329bc"
 uuid = "96374032-68de-5a5b-8d9e-752f78720389"
 version = "0.7.1"
 
+[[CSSUtil]]
+deps = ["Colors", "Compat", "JSON", "Measures", "Pkg", "WebIO"]
+git-tree-sha1 = "ff13fd99e4dd54f56eb064815f843bc992a871a2"
+uuid = "70588ee8-6100-5070-97c1-3cb50ed05fe8"
+version = "0.1.0"
+
 [[CSTParser]]
 deps = ["LibGit2", "Test", "Tokenize"]
 git-tree-sha1 = "437c93bc191cd55957b3f8dee7794b6131997c56"
@@ -694,6 +700,24 @@ git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"
 uuid = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
 version = "0.5.0"
 
+[[Interact]]
+deps = ["CSSUtil", "InteractBase", "JSON", "Knockout", "Observables", "OrderedCollections", "Reexport", "Test", "WebIO", "Widgets"]
+git-tree-sha1 = "f6531bc554990a6659966afcb8f05543c032068b"
+uuid = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1"
+version = "0.10.2"
+
+[[InteractBase]]
+deps = ["Base64", "CSSUtil", "Colors", "Dates", "JSExpr", "JSON", "Knockout", "Observables", "OrderedCollections", "Random", "Test", "WebIO", "Widgets"]
+git-tree-sha1 = "83fc45f21bfec97e5cd56e790f6945497ab0f095"
+uuid = "d3863d7c-f0c8-5437-a7b4-3ae773c01009"
+version = "0.10.1"
+
+[[InteractiveChaos]]
+deps = ["AbstractPlotting", "Blink", "Colors", "DynamicalSystems", "Interact", "Observables", "Reexport", "StatsBase", "StatsMakie", "Test"]
+git-tree-sha1 = "1b122de32713a06bec16b4f8d3eb87d58f5c0109"
+uuid = "81850811-659e-51ab-a7c2-5dd848ff4aa4"
+version = "0.3.2"
+
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -775,6 +799,12 @@ deps = ["Distributions", "FFTW", "Interpolations", "Optim", "StatsBase", "Test"]
 git-tree-sha1 = "c1048817fe5711f699abc8fabd47b1ac6ba4db04"
 uuid = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 version = "0.5.1"
+
+[[Knockout]]
+deps = ["JSExpr", "JSON", "Observables", "Pkg", "Test", "WebIO"]
+git-tree-sha1 = "5cca7f070f85392cd0f42220c8ea5f7be96dacf4"
+uuid = "bcebb21b-c2e3-54f8-a781-646b90f6d2cc"
+version = "0.2.2"
 
 [[LaTeXStrings]]
 deps = ["Compat"]

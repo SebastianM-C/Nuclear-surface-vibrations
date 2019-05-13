@@ -21,7 +21,10 @@ ic_alg = PoincareRand(n=10)
 ic_dep = depchain(p,E,ic_alg)
 @time g = initialize()
 
-@time poincare_explorer(g, E, DynSys(), ic_alg, params=p)
+g[:λ_alg]
+g[:λ, (λ_alg=TimeRescaling(T=1e5),)]
+
+@time sc = poincare_explorer(g, 120., DynSys(T=1e5), PoincareRand(n=5))
 q0, p0 = initial_conditions!(g, E, alg=ic_alg, params=p)
 sim = poincaremap(q0, p0, params=p, t=100)
 l = Lyapunov.λmap!(g, E, params=p, ic_alg=ic_alg, alg=DynSys())

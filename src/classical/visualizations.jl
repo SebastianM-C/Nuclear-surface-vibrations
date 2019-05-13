@@ -29,7 +29,10 @@ using RecursiveArrayTools
 using DiffEqBase
 using Colors: color
 using LinearAlgebra: norm
+using LightGraphs
+using StorageGraphs
 using UnicodeFun
+using InteractiveChaos
 
 x(r, θ, ϕ) = r*sin(θ)*cos(ϕ)
 y(r, θ, ϕ) = r*sin(θ)*sin(ϕ)
@@ -68,150 +71,75 @@ function scene_limits2D(sol; idxs=[1,2])
     scene_limits2D(sol[idxs[1],:], sol[idxs[2],:])
 end
 
-function plot_sim(sim; colors=float.(axes(sim, 1)), idxs=[1,2])
-    ui, ms = AbstractPlotting.textslider(range(0.001, stop=1., length=1000), "scale", start=0.05)
-    data = Scene(resolution=(1000, 1000))
-    colormap = to_colormap(:inferno, size(sim, 1))
-    get_color(i) = interpolated_getindex(colormap, colors[i], extrema(colors))
-    series_alpha = map(eachindex(sim)) do i
-        simᵢ = sim[i]
-        alpha = Node(1.0)
-        if length(sim[i]) ≠ 0
-            cmap = lift(α-> RGBAf0.(color.(fill(get_color(i), size(simᵢ, 1))), α), alpha)
-            scatter!(data, [Point2f0(simᵢ[i][idxs[1]], simᵢ[i][idxs[2]]) for i in axes(simᵢ)[1]],
-            colormap=cmap, color=fill(colors[i], size(simᵢ, 1)), markersize=ms)
-        end
-        alpha
-    end
-
-    scene = Scene()
-
-    hbox(ui, data, parent=scene)
-    return scene, series_alpha
-end
-
-function plot_hist(hist)
-    cmap = to_colormap(:viridis, length(hist.weights))
-    hist_α = [Node(1.) for i in cmap]
-    bincolor(αs...) = RGBAf0.(color.(cmap), αs)
-    colors = lift(bincolor, hist_α...)
-    hist_sc = plot(hist, color=colors)
-
-    return hist_sc, hist_α
-end
-
-function change_α(series_alpha, idxs, α=0.001)
-    foreach(i-> series_alpha[i][] = α, idxs)
-end
-
-function get_series_idx(selected_plot, scene)
-    plot_idx = findfirst(map(p->selected_plot === p, scene.plots))
-    # println("scatter ", plot_idx)
-
-    plot_idx
-end
-
-function setup_click(scene, idx=1)
-    selection = Node{Any}(0)
-    on(scene.events.mousebuttons) do buttons
-        if ispressed(scene, Mouse.left) && AbstractPlotting.is_mouseinside(scene)
-            plt, click_idx = AbstractPlotting.mouse_selection(scene)
-            selection[] = (plt, click_idx)[idx]
-        end
-    end
-    return selection
-end
-
-bin_with_val(val, hist) = searchsortedfirst(hist.edges[1], val) - 1
-
-function idxs_in_bin(i, hist, val)
-    h = hist.edges[1]
-    bin = interval(h[i], h[i + 1])
-    idx = findall(x -> x ∈ bin, val)
-    return idx
-end
-
-function select_series(scene, selected_plot, scatter_α, hist_α, data, hist)
-    series_idx = map(get_series_idx, selected_plot, scene)
-    on(series_idx) do i
-        if !isa(i, Nothing)
-            scatter_α[i - 1][] = 1.
-            change_α(scatter_α, setdiff(axes(scatter_α, 1), i - 1))
-            selected_bin = bin_with_val(data[i-1], hist)
-            hist_α[selected_bin][] = 1.
-            change_α(hist_α, setdiff(axes(hist_α, 1), selected_bin))
-        else
-            change_α(scatter_α, axes(scatter_α, 1), 1.)
-            change_α(hist_α, axes(hist_α, 1), 1.)
-        end
-        return nothing
-    end
-end
-
-function select_bin(hist_idx, hist, hist_α, scatter_α, data)
-    on(hist_idx) do i
-        if i ≠ 0
-            hist_α[i][] = 1.
-            change_α(hist_α, setdiff(axes(hist.weights, 1), i))
-            change_α(scatter_α, idxs_in_bin(i, hist, data), 1.)
-            change_α(scatter_α, setdiff(axes(scatter_α, 1), idxs_in_bin(i, hist, data)))
-        else
-            change_α(scatter_α, axes(scatter_α, 1), 1.)
-            change_α(hist_α, axes(hist_α, 1), 1.)
-        end
-        return nothing
-    end
-end
-
 function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
         axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
     # g, t_ = @timed initialize()
     # @debug "Loading graph took $t_ seconds."
-    q0, p0 = initial_conditions!(g, E, alg=ic_alg, params=params)
-
-    sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
-    @debug "Poincaré map took $t_ seconds."
-
+    ic_node = initial_conditions!(g, E, alg=ic_alg, params=params)
     ic_dep = depchain(params, E, ic_alg)
+    outn = outneighbors(g, ic_node)
+    q0 = ic_node[:q0]
+    p0 = ic_node[:p0]
+
+    if length(outn) > 0 && any(has_prop.(Ref(g), outn, :poincare_axis))
+        # we have some Poincaré sections computed, we now have to check if they are the
+        # right ones
+        @debug "Looking for available Poincaré sections"
+        idx = findfirst(v->g[v] == (poincare_axis=axis,sgn=sgn,t=t,rootkw=rootkw), outn)
+        if idx !== nothing
+            @debug "Found compatible Poincaré sections"
+            vals, t_ = @timed g[:sim, ic_dep..., (poincare_axis=axis,sgn=sgn,t=t,rootkw=rootkw)]
+            @assert length(vals) == 1 "Poincaré section not uniquely represented by deps!"
+            sim = vals[1]
+            @debug "Loading saved Poincaré sections took $t_ seconds."
+        else
+            sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
+            @debug "Poincaré section took $t_ seconds."
+            _, t_ = @timed add_nodes!(g, foldr(=>,(ic_dep..., ic_node,
+                (poincare_axis=axis,sgn=sgn,t=t,rootkw=rootkw), (sim=sim,))))
+            @debug "Adding Poincaré section to graph took $t_ seconds."
+        end
+    else
+        sim, t_ = @timed poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t, rootkw=rootkw)
+        @debug "Poincaré section took $t_ seconds."
+        _, t_ = @timed add_nodes!(g, foldr(=>,(ic_dep..., ic_node,
+            (poincare_axis=axis,sgn=sgn,t=t,rootkw=rootkw), (sim=sim,))))
+        @debug "Adding Poincaré section to graph took $t_ seconds."
+    end
+    ds = Dataset{2, Float64}[]
+
+    for s in sim
+        push!(ds, Dataset{2, Float64}(s))
+    end
+
     vals, t_ = @timed f(g, E, params=params, ic_alg=ic_alg, alg=alg)
     @debug "Loading or computing values took $t_ seconds."
-    hist = fit(StatsBase.Histogram, vals, nbins=nbins, closed=:left)
 
-    colors = Float32.(axes(hist.weights, 1))
-
-    scatter_sc_with_ui, scatter_α = plot_sim(sim, colors=vals)
-    scatter_sc = scatter_sc_with_ui.children[2]
-
-    hist_sc, hist_α = plot_hist(hist)
+    data_scene, hist_scene = trajectory_highlighter(ds, vals, nbins=50)
 
     if axis == 3
-        scatter_sc[Axis][:names, :axisnames][] = ("q₂","p₂")
+        data_scene[Axis][:names, :axisnames][] = ("q₂","p₂")
     else
-        scatter_sc[Axis][:names, :axisnames][] = ("q₁","p₁")
+        data_scene[Axis][:names, :axisnames][] = ("q₁","p₁")
     end
-    sc = AbstractPlotting.vbox(scatter_sc_with_ui, hist_sc)
 
-    selected_plot = setup_click(scatter_sc, 1)
-    hist_idx = setup_click(hist_sc, 2)
-
-    select_series(scatter_sc, selected_plot, scatter_α, hist_α, vals, hist)
-    select_bin(hist_idx, hist, hist_α, scatter_α, vals)
-
-    return sc
+    return data_scene, hist_scene
 end
 
 function poincare_explorer(g, E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    scene = poincare_explorer(g, E, λmap!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, rootkw=rootkw)
-    scene.children[2][Axis][:names, :axisnames][] = ("λ", "N")
-    return scene
+        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
+    data_scene, hist_scene = poincare_explorer(g, E, λmap!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
+        nbins=nbins, t=t, rootkw=rootkw)
+    hist_scene[Axis][:names, :axisnames][] = ("λ", "N")
+    return AbstractPlotting.vbox(data_scene, hist_scene)
 end
 
 function poincare_explorer(g, E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, rootkw=(xrtol=1e-6, atol=1e-6))
-    poincare_explorer(g, E, d∞!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, rootkw=rootkw)
+        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
+    data_scene, hist_scene = poincare_explorer(g, E, d∞!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
+        nbins=nbins, t=t, rootkw=rootkw)
+    hist_scene[Axis][:names, :axisnames][] = ("d∞", "N")
+    return AbstractPlotting.vbox(data_scene, hist_scene)
 end
 
 function plot_err(errs)
@@ -231,44 +159,44 @@ function plot_err(errs)
     return scene, series_alpha
 end
 
-function poincare_error(E, ic_alg, t=1e4; params=PhysicalParameters(), axis=3,
-        sgn=-1, rootkw=(xrtol=1e-6, atol=1e-6))
-    q0, p0 = initial_conditions(E, alg=ic_alg)
-    sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t,
-        rootkw=rootkw, full=true)
-    err(z) = [H(zᵢ[SVector{2}(1:2)], zᵢ[SVector{2}(3:4)], params) - E for zᵢ in z]
-    errs = err.(sim)
-
-    err_sc, err_α = plot_err(errs)
-    idxs = axis == 3 ? (2,4) : (1,3)
-    scatter_sc_with_ui, scatter_α = plot_sim(sim, colors=maximum.(errs), idxs=idxs)
-    scatter_sc = scatter_sc_with_ui.children[2]
-    if axis == 3
-        scatter_sc[Axis][:names, :axisnames] = ("q₂","p₂")
-    else
-        scatter_sc[Axis][:names, :axisnames] = ("q₁","p₁")
-    end
-
-    selected_plot = setup_click(scatter_sc, 1)
-    # err_idx = setup_click(err_sc, 1)
-
-    series_idx = map(get_series_idx, selected_plot, scatter_sc)
-    on(series_idx) do i
-        if !isa(i, Nothing)
-            scatter_α[i - 1][] = 1.
-            change_α(scatter_α, setdiff(axes(scatter_α, 1), i - 1))
-            err_α[i - 1][] = 1.
-            change_α(err_α, setdiff(axes(err_α, 1), i - 1))
-        else
-            change_α(scatter_α, axes(scatter_α, 1), 1.)
-            change_α(err_α, axes(err_α, 1), 1.)
-        end
-        return nothing
-    end
-
-    scene = Scene()
-    AbstractPlotting.vbox(scatter_sc_with_ui, err_sc, parent=scene)
-end
+# function poincare_error(E, ic_alg, t=1e4; params=PhysicalParameters(), axis=3,
+#         sgn=-1, rootkw=(xrtol=1e-6, atol=1e-6))
+#     q0, p0 = initial_conditions(E, alg=ic_alg)
+#     sim = poincaremap(q0, p0, params=params, sgn=sgn, axis=axis, t=t,
+#         rootkw=rootkw, full=true)
+#     err(z) = [H(zᵢ[SVector{2}(1:2)], zᵢ[SVector{2}(3:4)], params) - E for zᵢ in z]
+#     errs = err.(sim)
+#
+#     err_sc, err_α = plot_err(errs)
+#     idxs = axis == 3 ? (2,4) : (1,3)
+#     scatter_sc_with_ui, scatter_α = plot_sim(sim, colors=maximum.(errs), idxs=idxs)
+#     scatter_sc = scatter_sc_with_ui.children[2]
+#     if axis == 3
+#         scatter_sc[Axis][:names, :axisnames] = ("q₂","p₂")
+#     else
+#         scatter_sc[Axis][:names, :axisnames] = ("q₁","p₁")
+#     end
+#
+#     selected_plot = setup_click(scatter_sc, 1)
+#     # err_idx = setup_click(err_sc, 1)
+#
+#     series_idx = map(get_series_idx, selected_plot, scatter_sc)
+#     on(series_idx) do i
+#         if !isa(i, Nothing)
+#             scatter_α[i - 1][] = 1.
+#             change_α(scatter_α, setdiff(axes(scatter_α, 1), i - 1))
+#             err_α[i - 1][] = 1.
+#             change_α(err_α, setdiff(axes(err_α, 1), i - 1))
+#         else
+#             change_α(scatter_α, axes(scatter_α, 1), 1.)
+#             change_α(err_α, axes(err_α, 1), 1.)
+#         end
+#         return nothing
+#     end
+#
+#     scene = Scene()
+#     AbstractPlotting.vbox(scatter_sc_with_ui, err_sc, parent=scene)
+# end
 
 function grids(N=100; θ_range=(0,π), ϕ_range=(0,2π))
     θ = range(θ_range..., length=N)
@@ -464,12 +392,12 @@ end
 
 function selected_hist(g, E, alg::LyapunovAlgorithm, ic_alg;
         params, nbins=50, select=Reductions.select_after_first_max)
-    selected_hist(g, E, λmap!, alg, ic_alg, params=params, nbins=nbins,select=selecct)
+    selected_hist(g, E, λmap!, alg, ic_alg, params=params, nbins=nbins, select=select)
 end
 
 function selected_hist(g, E, alg::DInftyAlgorithm, ic_alg;
         params, nbins=50, select=Reductions.select_after_first_max)
-    selected_hist(g, E, d∞!, alg, ic_alg, params=params, nbins=nbins,select=selecct)
+    selected_hist(g, E, d∞!, alg, ic_alg, params=params, nbins=nbins, select=select)
 end
 
 end  # module Visualizations

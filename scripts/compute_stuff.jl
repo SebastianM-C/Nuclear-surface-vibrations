@@ -36,16 +36,16 @@ function compute!(g, Elist, Blist, T)
     return times
 end
 
-E = 0.03
+E = 120.
 ic_alg = PoincareRand(n=500)
-p = PhysicalParameters(B=0.5)
+p = PhysicalParameters(B=0.55)
 ic_dep = Classical.InitialConditions.depchain(p,E,ic_alg)
 @time g = initialize()
 
 @profiler Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.2))
 
 with_logger(dbg) do
-    @time Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.22), alg=DynSys(T=1e5))
+    @time Lyapunov.λmap!(g, E, ic_alg=ic_alg, params=PhysicalParameters(B=0.15), alg=DynSys(T=1e5))
 end
 
 Bs = setdiff(0.1:0.02:0.6, 0.1:0.1:0.6)
@@ -60,6 +60,18 @@ savefig("/mnt/storage/Nuclear-surface-vibrations/output/classical/run2_B0.1-0.6_
 
 
 q0, p0 = InitialConditions.initial_conditions!(g, E, alg=ic_alg, params=p)
+
+using StaticArrays
+using OrdinaryDiffEq
+
+z0 = [vcat(p0[i], q0[i]) for i ∈ axes(q0, 1)]
+λprob = λ_timeseries_problem(z0[1], TimeRescaling(T=1e5), params=p)
+sol = solve(λprob, Vern9(), alstol=1e-14, reltol=1e-14)
+
+using .Visualizations
+
+parallel_paths(sol, 100.)
+
 @time l=λmap(p0, q0, DynSys(T=1e5), params=p)
 @time λmap(p0, q0, TimeRescaling(), params=p)
 
