@@ -52,11 +52,7 @@ function select_after_first_max(v; nbins=50, t = 0.05)
 
     hist = fit(Histogram, v, nbins=nbins, closed=:right)
     firstmax = findlocalmaxima(hist.weights)[1][1]
-    if hist.edges[1][firstmax+1] > t
-        return v[v .> hist.edges[1][firstmax+1]]
-    else
-        return v
-    end
+    return v[v .> hist.edges[1][firstmax+1]]
 end
 
 function select_max_bin(v, t=3)
