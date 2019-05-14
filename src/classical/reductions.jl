@@ -93,28 +93,24 @@ end
 
 function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
         params=PhysicalParameters(), Einterval=0..Inf, reduction=hist_mean,
-        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+        plt=plot(), kwargs...)
     df, t = @timed mean_over_ic(g, :λ, (λ_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
     df |> @map({_.E, λ=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :λ, m=3, xlabel=L"E", ylabel=L"\lambda",
-            framestyle=:box, legend=false,
-            size=(width,height),
-            guidefont=fnt, tickfont=fnt)
+            legend=false, kwargs...)
 end
 
 function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
         params=PhysicalParameters(), Einterval=0..Inf, reduction=hist_mean,
-        plt=plot(), fnt=font(12, "Times"), width=800, height=600)
+        plt=plot(), kwargs...)
     df, t = @timed mean_over_ic(g, :d∞, (d∞_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
     @debug "Averaging took $t seconds."
     df |> @map({_.E, d∞=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :d∞, m=3, xlabel=L"E", ylabel=L"d_\infty",
-            framestyle=:box, legend=false,
-            size=(width,height),
-            guidefont=fnt, tickfont=fnt)
+            legend=false, kwargs...)
 end
 
 function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
@@ -128,6 +124,7 @@ function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
     params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[1])
 
     for i in eachindex(B_vals)
+        @info "B: $(B_vals[i])" progress=i/length(B_vals)
         params = PhysicalParameters(A=p.A, D=p.D, B=B_vals[i])
         vals[i] = reduction(mean_over_ic(g, s, alg, ic_alg, params, Einterval,
             reduction=ic_reduction))
