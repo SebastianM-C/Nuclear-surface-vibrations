@@ -72,7 +72,8 @@ function scene_limits2D(sol; idxs=[1,2])
 end
 
 function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
+        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6),
+        markersize=0.1)
     # g, t_ = @timed initialize()
     # @debug "Loading graph took $t_ seconds."
     ic_node = initial_conditions!(g, E, alg=ic_alg, params=params)
@@ -116,7 +117,7 @@ function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
     @debug "Loading or computing values took $t_ seconds."
 
     data_scene, hist_scene = trajectory_highlighter(ds, vals, nbins=50,
-        cmap=:inferno, α=0.001, markersize = 0.08)
+        cmap=:inferno, α=0.001, markersize = markersize)
 
     if axis == 3
         data_scene[Axis][:names, :axisnames][] = ("q₂","p₂")
@@ -127,18 +128,22 @@ function poincare_explorer(g, E, f, alg, ic_alg; params=PhysicalParameters(),
     return data_scene, hist_scene
 end
 
-function poincare_explorer(g, E, alg::LyapunovAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
-    data_scene, hist_scene = poincare_explorer(g, E, λmap!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, t=t, rootkw=rootkw)
+function poincare_explorer(g, E, alg::LyapunovAlgorithm, ic_alg;
+        params=PhysicalParameters(), axis=3, sgn=-1, nbins=50, t=alg.T,
+        rootkw=(xrtol=1e-6, atol=1e-6), markersize=0.1)
+    data_scene, hist_scene = poincare_explorer(g, E, λmap!, alg, ic_alg;
+        params=params, axis=axis, sgn=sgn, nbins=nbins, t=t, rootkw=rootkw,
+        markersize=markersize)
     hist_scene[Axis][:names, :axisnames][] = ("λ", "N")
     return AbstractPlotting.vbox(data_scene, hist_scene)
 end
 
-function poincare_explorer(g, E, alg::DInftyAlgorithm, ic_alg; params=PhysicalParameters(),
-        axis=3, sgn=-1, nbins=50, t=alg.T, rootkw=(xrtol=1e-6, atol=1e-6))
-    data_scene, hist_scene = poincare_explorer(g, E, d∞!, alg, ic_alg; params=params, axis=axis, sgn=sgn,
-        nbins=nbins, t=t, rootkw=rootkw)
+function poincare_explorer(g, E, alg::DInftyAlgorithm, ic_alg;
+        params=PhysicalParameters(), axis=3, sgn=-1, nbins=50, t=alg.T,
+        rootkw=(xrtol=1e-6, atol=1e-6), markersize=0.1)
+    data_scene, hist_scene = poincare_explorer(g, E, d∞!, alg, ic_alg;
+        params=params, axis=axis, sgn=sgn, nbins=nbins, t=t, rootkw=rootkw,
+        markersize=markersize)
     hist_scene[Axis][:names, :axisnames][] = ("d∞", "N")
     return AbstractPlotting.vbox(data_scene, hist_scene)
 end
@@ -286,7 +291,8 @@ function path3D(sol, t, idxs)
         init=init)
 end
 
-function path_animation3D(sol, t; idxs=[3,4,2,1], labels=(axisnames=("q₀","q₂","p₂"),))
+function path_animation3D(sol, t; idxs=[3,4,2,1], markersize=0.9,
+        labels=(axisnames=("q₀","q₂","p₂"),))
     trajectory = path3D(sol, t, idxs)
 
     clims = extrema(sol[idxs[4],:])
@@ -297,7 +303,7 @@ function path_animation3D(sol, t; idxs=[3,4,2,1], labels=(axisnames=("q₀","q�
         init=cinit)
 
     limits = scene_limits3D(sol, idxs)
-    sc = lines(trajectory, limits=limits, scale_plot=false, markersize=0.9,
+    sc = lines(trajectory, limits=limits, scale_plot=false, markersize=markersize,
         color=colors, colormap=colormap, axis=(names=labels,))
 
     o = [limits.origin...,]
@@ -314,24 +320,24 @@ function plot_slice!(scene, sim; idxs=[1,2])
         colormap=:inferno)
 end
 
-function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5]; color=:blue)
+function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5]; color=:blue, markersize=0.01)
     p = lift(t->[Point3f0(sol(t, idxs=idxs[1:3])),
                  Point3f0(sol(t, idxs=idxs[5:7]))], t)
-    meshscatter!(scene, p, limits=scene.limits, markersize=0.04)
+    meshscatter!(scene, p, limits=scene.limits, markersize=markersize)
     lines!(scene, p, limits=scene.limits, color=color)
 end
 
 function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5],
-        labels=(axisnames=("q₀","q₂","p₂"),); color=:blue)
+        labels=(axisnames=("q₀","q₂","p₂"),); color=:blue, lms=0.7, ms=0.01)
     trajectory1 = path3D(sol, t, idxs[1:3])
     trajectory2 = path3D(sol, t, idxs[5:7])
     limits = scene_limits3D(sol, idxs)
 
-    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=0.7,
+    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=lms,
         axis=(names=labels,))
-    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7,
+    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=lms,
         axis=(names=labels,))
-    endpoints!(sc, sol, t, idxs, color=color)
+    endpoints!(sc, sol, t, idxs, color=color, markersize=ms)
 end
 
 function log_ticks(lims, n)
