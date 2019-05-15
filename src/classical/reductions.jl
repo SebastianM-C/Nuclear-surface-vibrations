@@ -117,6 +117,33 @@ function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
             legend=false; kwargs...)
 end
 
+function mean_over_ic(g::StorageGraph, f::Function,
+        λalg::LyapunovAlgorithm, dalg::DInftyAlgorithm, ic_alg;
+        params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
+        reduction2=hist_mean, plt=plot(), kwargs...)
+    df1, t = @timed mean_over_ic(g, :λ, (λ_alg=λalg,), ic_alg, params,
+        Einterval, reduction=reduction1) |> @map({_.E, λ=_.val})
+    @debug "First averaging took $t seconds."
+    df2, t = @timed mean_over_ic(g, :d∞, (d∞_alg=dalg,), ic_alg, params,
+        Einterval, reduction=reduction2) |> @map({_.E, d∞=_.val})
+    @debug "Second averaging took $t seconds."
+
+    df = @join(df1, df2, _.E, _.E,
+        {E = _.E, val = f(_.λ, __.d∞), λ=_.λ, d∞ = __.d∞}) |> DataFrame
+end
+
+function mean_over_ic(g::StorageGraph, λalg::LyapunovAlgorithm,
+        dalg::DInftyAlgorithm, ic_alg;
+        params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
+        reduction2=hist_mean, plt=plot(), kwargs...)
+    df = mean_over_ic(g, Γ, λalg, dalg, ic_alg, params=params,
+        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2,
+        plt=plt, kwargs...)
+    df |> @map({_.E, Γ=_.val}) |> @orderby(_.E) |> DataFrame |>
+        @df plot!(plt, :E, :Γ, m=3, xlabel=L"E", ylabel=L"\Gamma",
+            legend=false; kwargs...)
+end
+
 function mean_over_E(g::StorageGraph, s::Symbol, alg::NamedTuple,
         ic_alg::InitialConditionsAlgorithm,
         p::PhysicalParameters, Einterval=0..Inf, Binterval=0..1;
