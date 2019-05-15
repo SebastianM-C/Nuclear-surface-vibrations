@@ -140,7 +140,7 @@ end
 function mean_over_E(g::StorageGraph, alg::LyapunovAlgorithm, Einterval=0..Inf;
         A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
-        plt=plot(), kwarks...)
+        plt=plot(), kwargs...)
     df = mean_over_E(g, :λ, (λ_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
         Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
     df |> @map({λ = _.val, _.B}) |> @orderby(_.B) |>
@@ -150,21 +150,21 @@ end
 function mean_over_E(g::StorageGraph, alg::DInftyAlgorithm, Einterval=0..Inf;
         A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
-        plt=plot(), kwarks...)
+        plt=plot(), kwargs...)
     df = mean_over_E(:d∞, (d∞_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
         Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
     df |> @map({d = _.val, _.B}) |> @orderby(_.B) |>
-        @df plot!(plt, :B, :d, m=3, xlabel=L"B", ylabel=L"d_\infty"; kwarks...)
+        @df plot!(plt, :B, :d, m=3, xlabel=L"B", ylabel=L"d_\infty"; kwargs...)
 end
 
 function mean_over_E(g::StorageGraph, alg, Eintervals::NTuple{N, T};
         A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
         ic_reduction=hist_mean, reduction=average,
-        plt=plot(), kwarks...) where {N, T}
+        plt=plot(), kwargs...) where {N, T}
     for i=1:N
         plt = mean_over_E(g, alg, Eintervals[i]; A=A, D=D, Binterval=Binterval,
                 ic_alg=ic_alg, ic_reduction=ic_reduction, reduction=reduction,
-                plt=plt, label=L"$E \in "*"$(Eintervals[i])\$", kwarks...)
+                plt=plt, label=L"$E \in "*"$(Eintervals[i])\$", kwargs...)
     end
 
     return plt
