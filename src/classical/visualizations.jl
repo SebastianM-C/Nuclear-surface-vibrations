@@ -314,20 +314,24 @@ function plot_slice!(scene, sim; idxs=[1,2])
         colormap=:inferno)
 end
 
-function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5])
+function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5]; color=:blue)
     p = lift(t->[Point3f0(sol(t, idxs=idxs[1:3])),
                  Point3f0(sol(t, idxs=idxs[5:7]))], t)
     meshscatter!(scene, p, limits=scene.limits, markersize=0.04)
-    lines!(scene, p, limits=scene.limits, color=:blue)
+    lines!(scene, p, limits=scene.limits, color=color)
 end
 
-function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5], labels=(axisnames=("q₀","q₂","p₂"),))
+function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5],
+        labels=(axisnames=("q₀","q₂","p₂"),); color=:blue)
     trajectory1 = path3D(sol, t, idxs[1:3])
     trajectory2 = path3D(sol, t, idxs[5:7])
     limits = scene_limits3D(sol, idxs)
-    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
-    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7, axis=(names=labels,))
-    endpoints!(sc, sol, t, idxs)
+
+    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=0.7,
+        axis=(names=labels,))
+    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=0.7,
+        axis=(names=labels,))
+    endpoints!(sc, sol, t, idxs, color=color)
 end
 
 function log_ticks(lims, n)
