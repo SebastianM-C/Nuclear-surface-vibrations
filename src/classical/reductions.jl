@@ -107,7 +107,8 @@ function mean_over_ic(g::StorageGraph, alg::LyapunovAlgorithm, ic_alg;
 end
 
 function mean_over_ic(g::StorageGraph, alg::DInftyAlgorithm, ic_alg;
-        params=PhysicalParameters(), Einterval=0..Inf, reduction=hist_mean,
+        params=PhysicalParameters(), Einterval=0..Inf,
+        reduction=d->mean(select_after_first_max(d,ut=1)),
         plt=plot(), kwargs...)
     df, t = @timed mean_over_ic(g, :d∞, (d∞_alg=alg,), ic_alg, params,
         Einterval, reduction=reduction)
@@ -149,7 +150,7 @@ end
 
 function mean_over_E(g::StorageGraph, alg::DInftyAlgorithm, Einterval=0..Inf;
         A=1, D=0.4, Binterval=0..1, ic_alg::InitialConditionsAlgorithm,
-        ic_reduction=hist_mean, reduction=average,
+        ic_reduction=d->mean(select_after_first_max(d,ut=1)), reduction=average,
         plt=plot(), kwargs...)
     df = mean_over_E(:d∞, (d∞_alg=alg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
         Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
