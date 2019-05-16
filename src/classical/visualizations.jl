@@ -291,6 +291,15 @@ function path3D(sol, t, idxs)
         init=init)
 end
 
+function add_intersection_plane!(sc, limits=sc.limits[]; thickness=0.002, color=(:blue, 0.2))
+    o = [limits.origin...,]
+    o[1] = 0
+    w = [limits.widths...,]
+    w[1] = thickness
+    intersection_plane = FRect3D(o, w)
+    mesh!(sc, intersection_plane, color=color, limits=limits)
+end
+
 function path_animation3D(sol, t; idxs=[3,4,2,1], markersize=0.9,
         labels=(axisnames=("q₀","q₂","p₂"),))
     trajectory = path3D(sol, t, idxs)
@@ -306,38 +315,35 @@ function path_animation3D(sol, t; idxs=[3,4,2,1], markersize=0.9,
     sc = lines(trajectory, limits=limits, scale_plot=false, markersize=markersize,
         color=colors, colormap=colormap, axis=(names=labels,))
 
-    o = [limits.origin...,]
-    o[1] = 0
-    w = [limits.widths...,]
-    w[1] = 0.002
-    intersection_plane = FRect3D(o, w)
-    mesh!(sc, intersection_plane, color=(:blue, 0.2), limits=limits)
+    add_intersection_plane!(sc, limits)
 end
 
-function plot_slice!(scene, sim; idxs=[1,2])
+function plot_slice!(scene, sim; idxs=[1,2], markersize=0.015, scale_plot=false)
     meshscatter!(scene, [Point3f0(0, sim[i][idxs]...) for i in axes(sim,1)],
-        markersize=0.015, limits=scene.limits, color=axes(sim,1), scale_plot=false,
-        colormap=:inferno)
+        markersize=markersize, limits=scene.limits, color=axes(sim,1),
+        scale_plot=scale_plot, colormap=:inferno)
 end
 
-function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5]; color=:blue, markersize=0.01)
+function endpoints!(scene, sol, t, idxs=[3,4,2,1,7,8,6,5]; color=:blue,
+        markersize=0.01, linewidth=0.7)
     p = lift(t->[Point3f0(sol(t, idxs=idxs[1:3])),
                  Point3f0(sol(t, idxs=idxs[5:7]))], t)
     meshscatter!(scene, p, limits=scene.limits, markersize=markersize)
-    lines!(scene, p, limits=scene.limits, color=color)
+    lines!(scene, p, limits=scene.limits, color=color, linewidth=linewidth)
 end
 
 function parallel_paths(sol, t, idxs=[3,4,2,1,7,8,6,5],
-        labels=(axisnames=("q₀","q₂","p₂"),); color=:blue, lms=0.7, ms=0.01)
+        labels=(axisnames=("q₀","q₂","p₂"),); c1=:black, c2=:black, linecolor=:blue,
+        tlw=0.7, lms=0.01, lw=2, scale_plot=false)
     trajectory1 = path3D(sol, t, idxs[1:3])
     trajectory2 = path3D(sol, t, idxs[5:7])
     limits = scene_limits3D(sol, idxs)
 
-    sc = lines(trajectory1, limits=limits, scale_plot=false, markersize=lms,
-        axis=(names=labels,))
-    lines!(sc, trajectory2, limits=limits, scale_plot=false, markersize=lms,
-        axis=(names=labels,))
-    endpoints!(sc, sol, t, idxs, color=color, markersize=ms)
+    sc = lines(trajectory1, limits=limits, scale_plot=scale_plot, linewidth=tlw,
+        axis=(names=labels,), color=c1)
+    lines!(sc, trajectory2, limits=limits, scale_plot=scale_plot, linewidth=tlw,
+        axis=(names=labels,), color=c2)
+    endpoints!(sc, sol, t, idxs, color=linecolor, markersize=lms, linewidth=lw)
 end
 
 function log_ticks(lims, n)
@@ -375,7 +381,7 @@ function paths_distance_log(sol, t)
     )
 end
 
-function paths_distance(sol, t)
+function paths_distance(sol, t; xlims=(sol.t[1], sol.t[end]), kwargs...)
     idx1 = SVector{4}(1:4)
     idx2 = SVector{4}(5:8)
 
@@ -384,9 +390,9 @@ function paths_distance(sol, t)
     init = [Point2f0(t[], dist(sol(t[])))]
     distance = lift(t->push!(distance[], Point2f0(t, dist(sol(t)))),t; init=init)
     ey = extrema(dist.(sol[:]))
-    limits = Node(FRect2D((0,ey[1]), (sol.t[end], ey[2]-ey[1])))
+    limits = Node(FRect2D((xlims[1],ey[1]), (xlims[2], ey[2]-ey[1])))
 
-    lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),))
+    lines(distance, limits = limits, axis=(names=(axisnames=("t","d"),),); kwargs...)
 end
 
 function selected_hist(g, E, f, alg, ic_alg; params,

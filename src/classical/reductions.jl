@@ -121,7 +121,7 @@ end
 function mean_over_ic(g::StorageGraph, f::Function,
         λalg::LyapunovAlgorithm, dalg::DInftyAlgorithm, ic_alg;
         params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
-        reduction2=d->mean(select_after_first_max(d,ut=1)))
+        reduction2=d->mean(select_after_first_max(d,ut=1)), λtr=0.05)
     df1, t = @timed mean_over_ic(g, :λ, (λ_alg=λalg,), ic_alg, params,
         Einterval, reduction=reduction1) |> @map({_.E, λ=_.val})
     @debug "First averaging took $t seconds."
@@ -130,15 +130,17 @@ function mean_over_ic(g::StorageGraph, f::Function,
     @debug "Second averaging took $t seconds."
 
     df = @join(df1, df2, _.E, _.E,
-        {E = _.E, val = f(_.λ, __.d∞), λ=_.λ, d∞ = __.d∞}) |> DataFrame
+        {E = _.E, λ=_.λ, d∞ = _.λ > λtr ? __.d∞ : 0}) |> DataFrame |>
+        @map({E = _.E, val = f(_.λ, _.d∞), λ=_.λ, d∞=_.d∞}) |>
+        DataFrame
 end
 
 function mean_over_ic(g::StorageGraph, λalg::LyapunovAlgorithm,
         dalg::DInftyAlgorithm, ic_alg;
         params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
-        reduction2=hist_mean, plt=plot(), kwargs...)
+        reduction2=hist_mean, plt=plot(), λtr=0.05, kwargs...)
     df = mean_over_ic(g, Γ, λalg, dalg, ic_alg, params=params,
-        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2)
+        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2, λtr=λtr)
     df |> @map({_.E, Γ=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :Γ, m=3, xlabel=L"E", ylabel=L"\Gamma",
             legend=false; kwargs...)
