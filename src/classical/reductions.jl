@@ -121,7 +121,7 @@ end
 function mean_over_ic(g::StorageGraph, f::Function,
         λalg::LyapunovAlgorithm, dalg::DInftyAlgorithm, ic_alg;
         params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
-        reduction2=hist_mean, plt=plot(), kwargs...)
+        reduction2=d->mean(select_after_first_max(d,ut=1)))
     df1, t = @timed mean_over_ic(g, :λ, (λ_alg=λalg,), ic_alg, params,
         Einterval, reduction=reduction1) |> @map({_.E, λ=_.val})
     @debug "First averaging took $t seconds."
