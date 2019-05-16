@@ -138,8 +138,7 @@ function mean_over_ic(g::StorageGraph, λalg::LyapunovAlgorithm,
         params=PhysicalParameters(), Einterval=0..Inf, reduction1=hist_mean,
         reduction2=hist_mean, plt=plot(), kwargs...)
     df = mean_over_ic(g, Γ, λalg, dalg, ic_alg, params=params,
-        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2,
-        plt=plt, kwargs...)
+        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2)
     df |> @map({_.E, Γ=_.val}) |> @orderby(_.E) |> DataFrame |>
         @df plot!(plt, :E, :Γ, m=3, xlabel=L"E", ylabel=L"\Gamma",
             legend=false; kwargs...)
