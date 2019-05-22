@@ -1,9 +1,9 @@
 # Fingerprints of global classical phase-space structure in quantum spectra
 
-This code reproduces the results of the following article:
-**Fingerprints of global classical phase-space structure in quantum spectra**,
-*S. Micluta-Campeanu, M.C. Raportaru, A.I. Nicolin, V. Baran*,
-Rom. Rep. Phys. **70**, 105 (2018)
+This repository contains several codes for analysing the chaotic dynamics of a non-linear system
+inspired from nuclear physics. More precisely, the model describes the quadrupole vibrations of
+the surface of a heavy nuclei.
+![nucleus](nucleus.gif)
 
 The code is organized in two parts, corresponding to the simulations for
 classical and quantum chaos.
@@ -59,4 +59,9 @@ $$
 P(s) = \alpha P_P(s) + (1-\alpha) P_W(s)
 $$
 
-and the $\alpha$ coefficient is obtained.  
+and the $\alpha$ coefficient is obtained.
+
+# Citing
+If you found the code here useful, please cite: **Fingerprints of global classical phase-space structure in quantum spectra**,
+*S. Micluta-Campeanu, M.C. Raportaru, A.I. Nicolin, V. Baran*,
+Rom. Rep. Phys. **70**, 105 (2018)
