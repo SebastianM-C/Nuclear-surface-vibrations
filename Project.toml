@@ -3,7 +3,7 @@ uuid = "61377714-a6e6-11e8-0d55-23ea14e6950b"
 authors = ["Sebastian Micluța-Câmpeanu"]
 description = "Codes for articles analyzing the chaotic dynamics of nuclear surface vibrations"
 repository = "https://github.com/SebastianM-C/Nuclear-surface-vibrations.git"
-version = "0.1.0"
+version = "2.0.0"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
