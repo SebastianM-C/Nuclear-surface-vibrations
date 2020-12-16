@@ -199,16 +199,33 @@ function mean_over_E(g::StorageGraph, alg, Eintervals::NTuple{N, T};
     return plt
 end
 
-function mean_over_E(f::Function, values::Tuple{Symbol, Symbol}, B, Einterval=0..Inf;
-        reductions=(edge_max,mean))
-    dfs = [concat(r"z0.csv", location="classical/B$(B[1])-D0.4",
-        re=r"E[0-9]+\.[0-9]+", filter=[:E, v]) |>
-        @filter(_.E ∈ Einterval && _.E % 10 .== 0) |> DataFrame for v in values]
-    df_vs = [by(dfs[i], :E, df->DataFrame(val = reductions[i](df[values[i]]))) |>
-        @orderby(_.E) |> DataFrame for i in eachindex(dfs)]
-    df_f = @join(df_vs[1], df_vs[2], _.E, _.E, {val = f(_.val, __.val)}) |> DataFrame
-    df_f[:E] = df_vs[1][:E]
-    return df_f
+function mean_over_E(g::StorageGraph, f::Function,
+        λalg::LyapunovAlgorithm, dalg::DInftyAlgorithm, ic_alg;
+        A=1, D=0.4, Binterval=0..1, Einterval=0..Inf, ic_reduction1=hist_mean,
+        ic_reduction2=d->mean(select_after_first_max(d,ut=1)), λtr=0.05,
+        reduction=average)
+    df1 = mean_over_E(g, :λ, (λ_alg=λalg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
+        Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
+    df2 = mean_over_E(:d∞, (d∞_alg=dalg,), ic_alg, PhysicalParameters(A=A,D=D,B=0.),
+        Einterval, Binterval; ic_reduction=ic_reduction, reduction=reduction)
+
+    df = @join(df1, df2, _.E, _.E,
+        {E = _.E, λ=_.λ, d∞ = _.λ > λtr ? __.d∞ : 0}) |> DataFrame |>
+        @map({E = _.E, val = f(_.λ, _.d∞), λ=_.λ, d∞=_.d∞}) |>
+        DataFrame
+end
+
+function mean_over_E(g::StorageGraph, λalg::LyapunovAlgorithm,
+        dalg::DInftyAlgorithm, ic_alg;
+        A=1, D=0.4, Binterval=0..1, Einterval=0..Inf, ic_reduction1=hist_mean,
+        ic_reduction2=d->mean(select_after_first_max(d,ut=1)), λtr=0.05,
+        reduction=average, kwargs...)
+    df = mean_over_E(g, Γ, λalg, dalg, ic_alg, A=A, D=D, Binterval=Binterval,
+        Einterval=Einterval, reduction1=reduction1, reduction2=reduction2,
+        reduction=reduction, λtr=λtr)
+    df |> @map({_.B, Γ=_.val}) |> @orderby(_.B) |> DataFrame |>
+        @df plot!(plt, :B, :Γ, m=3, xlabel=L"B", ylabel=L"\Gamma",
+            legend=false; kwargs...)
 end
 
 end  # module Reductions
